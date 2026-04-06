@@ -45,6 +45,20 @@
                             low: '#3b82f6',
                             info: '#6b7280',
                         }
+                    },
+                    animation: {
+                        'grid': 'grid 20s linear infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        grid: {
+                            '0%': { transform: 'translateY(-50%)' },
+                            '100%': { transform: 'translateY(0)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
                     }
                 }
             }
@@ -66,10 +80,13 @@
             .preview-container { 
                 box-shadow: none !important; 
                 max-width: 100% !important; 
-                width: 100% !important;
+                width: 210mm !important;
                 margin: 0 !important; 
                 padding: 0 !important; 
             }
+            /* Forzar tamaños A4 en impresión */
+            .print-a4-height { height: 297mm !important; min-height: 297mm !important; }
+            .print-p-20mm { padding: 20mm !important; }
             .print-bg-gray { background-color: #f9fafb !important; }
             .print-bg-dark { background-color: #111827 !important; color: #34d399 !important; }
             .print-border { border: 1px solid #e5e7eb !important; }
@@ -90,24 +107,31 @@
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
         }
         
         .metal-btn {
-            background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 15px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 15px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.15);
             backdrop-filter: blur(10px);
             color: #fff;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .metal-btn:hover {
-            background: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 20px rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.2);
-            transform: translateY(-2px);
+            background: linear-gradient(145deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 25px rgba(0,0,0,0.6), 0 0 15px rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            transform: translateY(-3px) scale(1.02);
+        }
+
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
         }
     </style>
 </head>
@@ -263,7 +287,7 @@
                 link: "https://www.youtube.com/@ElPinguinoDeMario", 
                 icon: <Icons.YouTube className="w-4 h-4 mr-1.5"/>, 
                 img: "https://github.com/ccyl13/Automatic_Report/blob/main/a9flsbyS.jpeg?raw=true",
-                btnColor: "text-red-400 group-hover:text-red-300"
+                btnColor: "text-red-400 group-hover:text-red-300 hover:border-red-400/50 hover:shadow-[0_0_15px_rgba(248,113,113,0.4)]"
             },
             { 
                 name: "Manuel Martínez", 
@@ -274,7 +298,7 @@
                 link: "https://curiosidadesdehackers.com/", 
                 icon: <Icons.Web className="w-4 h-4 mr-1.5"/>, 
                 img: "https://github.com/ccyl13/Automatic_Report/blob/main/images.jpeg?raw=true",
-                btnColor: "text-green-400 group-hover:text-green-300"
+                btnColor: "text-green-400 group-hover:text-green-300 hover:border-green-400/50 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]"
             },
             { 
                 name: "Thomas O'neil Álvarez", 
@@ -285,7 +309,7 @@
                 link: "https://www.linkedin.com/in/thomasoneil%C3%A1lvarez", 
                 icon: <Icons.LinkedIn className="w-4 h-4 mr-1.5"/>, 
                 img: "https://github.com/ccyl13/Automatic_Report/blob/main/IMG_9275.jpeg?raw=true",
-                btnColor: "text-blue-400 group-hover:text-blue-300"
+                btnColor: "text-blue-400 group-hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(96,165,250,0.4)]"
             }
         ];
 
@@ -580,10 +604,14 @@
             };
 
             return (
-                <div className={`fixed inset-0 z-[100] overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-800 via-brand-950 to-black flex flex-col justify-between p-4 sm:p-8 text-white ${isFadingOut ? 'splash-exit' : 'splash-enter'}`}>
+                <div className={`fixed inset-0 z-[100] overflow-y-auto bg-gray-900 flex flex-col justify-between p-4 sm:p-8 text-white ${isFadingOut ? 'splash-exit' : 'splash-enter'}`}>
                     
+                    {/* Fondo animado */}
+                    <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none animate-grid"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-brand-950 pointer-events-none"></div>
+
                     {/* Top Bar: Lang Toggle */}
-                    <div className="flex justify-end pt-2">
+                    <div className="relative z-10 flex justify-end pt-2">
                         <button 
                             onClick={toggleLanguage}
                             className="metal-btn px-4 py-2 rounded-full font-bold text-xs sm:text-sm flex items-center"
@@ -595,32 +623,32 @@
                     </div>
 
                     {/* Main Content */}
-                    <div className="flex-grow flex flex-col items-center justify-center mt-6 sm:-mt-10 pb-12">
+                    <div className="relative z-10 flex-grow flex flex-col items-center justify-center mt-6 sm:-mt-10 pb-12">
                         
-                        <div className="flex flex-col items-center mb-10 sm:mb-16 text-center">
-                            <h2 className="text-sm sm:text-xl font-medium text-gray-400 tracking-widest uppercase mb-2">{t.splashWelcome}</h2>
-                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-brand-100 to-brand-500 drop-shadow-lg px-2">
+                        <div className="flex flex-col items-center mb-10 sm:mb-16 text-center animate-float">
+                            <h2 className="text-sm sm:text-xl font-medium text-brand-300 tracking-[0.3em] uppercase mb-2 drop-shadow-md">{t.splashWelcome}</h2>
+                            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-200 to-brand-500 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)] px-2">
                                 Automatic Report
                             </h1>
                         </div>
 
                         <div className="w-full max-w-5xl">
-                            <p className="text-center text-gray-400 font-medium mb-6 sm:mb-8 text-xs sm:text-sm tracking-widest uppercase">
+                            <p className="text-center text-gray-400 font-bold mb-6 sm:mb-10 text-xs sm:text-sm tracking-widest uppercase">
                                 {t.splashDevBy}
                             </p>
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8 mb-10 sm:mb-16 px-2 sm:px-4">
                                 {authorsData.map((author, index) => (
                                     <div key={index} className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col items-center hover:-translate-y-2 transition-all duration-300 group">
-                                        <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full overflow-hidden mb-4 sm:mb-5 border-4 border-white/10 group-hover:border-white/30 transition-colors shadow-2xl bg-white/5 flex items-center justify-center">
+                                        <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full overflow-hidden mb-4 sm:mb-5 border-2 border-white/20 group-hover:border-white/50 transition-colors shadow-[0_0_25px_rgba(0,0,0,0.5)] bg-white/5 flex items-center justify-center">
                                             <img src={author.img} alt={author.name} className="w-full h-full object-cover" />
                                         </div>
                                         <h3 className="text-base sm:text-lg font-bold text-center mb-2 text-white">{author.name}</h3>
                                         
-                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 mb-5 sm:mb-6 text-center">
+                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 mb-5 sm:mb-8 text-center">
                                             {author.roles[lang].map((r, i) => (
                                                 <React.Fragment key={i}>
-                                                    <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider">{r}</span>
+                                                    <span className="text-[10px] sm:text-[11px] text-gray-300 font-medium uppercase tracking-wider">{r}</span>
                                                     {i < author.roles[lang].length - 1 && <span className="text-[10px] text-brand-500/80 hidden sm:inline">•</span>}
                                                 </React.Fragment>
                                             ))}
@@ -641,7 +669,7 @@
 
                         <button 
                             onClick={handleEnterClick}
-                            className="bg-emerald-500 hover:bg-emerald-400 text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-8 sm:px-12 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] hover:scale-105 transition-all duration-300"
+                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-8 sm:px-12 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:shadow-[0_0_35px_rgba(16,185,129,0.8)] hover:scale-105 transition-all duration-300 border border-emerald-400/50"
                         >
                             {t.splashEnterBtn} &rarr;
                         </button>
@@ -754,10 +782,30 @@
                 }
             };
 
+            // SECCIÓN DE SEGURIDAD APLICADA: 
+            // - Validación del tipo estricto de imagen para evitar bypass con scripts embebidos en SVG.
+            // - Límite de peso para prevenir ataques de denegación de servicio de lado del cliente (DoS en navegador).
             const handleImageUpload = (e) => {
                 const files = Array.from(e.target.files);
-                const newImages = files.map(file => URL.createObjectURL(file));
+                
+                const validFiles = files.filter(file => {
+                    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+                    if (!validTypes.includes(file.type)) {
+                        alert(lang === 'es' ? `Por seguridad, el formato de ${file.name} no está permitido. Usa JPG, PNG o WEBP.` : `For security reasons, ${file.name} format is not allowed. Use JPG, PNG or WEBP.`);
+                        return false;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(lang === 'es' ? `El archivo ${file.name} excede el límite de 5MB.` : `File ${file.name} exceeds the 5MB limit.`);
+                        return false;
+                    }
+                    return true;
+                });
+
+                const newImages = validFiles.map(file => URL.createObjectURL(file));
                 setCurrentFinding(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+                
+                // Reiniciar el input file
+                e.target.value = '';
             };
 
             const removeImage = (indexToRemove) => {
@@ -900,7 +948,7 @@
                                             {t.images}
                                         </label>
                                         <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-2 sm:px-3 py-1.5 rounded text-[10px] sm:text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm">
-                                            <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                            <input type="file" multiple accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageUpload} className="hidden" />
                                             {t.uploadImage}
                                         </label>
                                     </div>
@@ -1016,84 +1064,87 @@
                 </div>
             );
 
+            // PREVIEW AHORA RESPONSIVA:
+            // max-w-[210mm] permite que en móviles se adapte al 100% de la pantalla sin scroll horizontal.
+            // Al hacer ventana "print", media queries fuerzan un tamaño A4 exacto.
             const renderPreview = () => (
-                <div className="preview-container bg-white mx-auto paper-shadow text-gray-800" style={{ width: '210mm', minHeight: '297mm' }}>
-                    <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
-                        <div className="mt-20 mb-12 text-brand-900">
-                            <Icons.Shield className="w-16 h-16" />
+                <div className="preview-container bg-white mx-auto paper-shadow text-gray-800 w-full max-w-[210mm] print-a4-height">
+                    <div className="flex flex-col relative page-break p-6 sm:p-10 md:p-16 lg:p-[20mm] min-h-auto print-a4-height">
+                        <div className="mt-8 sm:mt-12 md:mt-20 mb-8 sm:mb-12 text-brand-900">
+                            <Icons.Shield className="w-12 h-12 sm:w-16 sm:h-16" />
                         </div>
 
                         <div className="flex-grow">
-                            <h1 className="text-5xl font-black mb-6 text-brand-950 leading-tight tracking-tight">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-6 text-brand-950 leading-tight tracking-tight">
                                 {auditData.documentTitle}
                             </h1>
-                            <div className="w-24 h-1.5 bg-brand-600 mb-16 print-bg-dark"></div>
+                            <div className="w-16 sm:w-24 h-1 sm:h-1.5 bg-brand-600 mb-10 sm:mb-16 print-bg-dark"></div>
 
-                            <div className="grid grid-cols-2 gap-x-12 gap-y-12">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-8 sm:gap-y-12">
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepFor}</p>
-                                    <p className="text-xl font-bold text-gray-900">{auditData.clientCompany}</p>
-                                    <p className="text-sm text-gray-600 mt-1">{auditData.targetAsset}</p>
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepFor}</p>
+                                    <p className="text-lg sm:text-xl font-bold text-gray-900">{auditData.clientCompany}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 mt-1">{auditData.targetAsset}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepBy}</p>
-                                    <p className="text-xl font-bold text-gray-900">{auditData.auditorCompany}</p>
-                                    <p className="text-sm text-gray-600 mt-1">{auditData.auditorName}</p>
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepBy}</p>
+                                    <p className="text-lg sm:text-xl font-bold text-gray-900">{auditData.auditorCompany}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600 mt-1">{auditData.auditorName}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.date}</p>
-                                    <p className="text-lg font-semibold text-gray-800">{auditData.date}</p>
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.date}</p>
+                                    <p className="text-base sm:text-lg font-semibold text-gray-800">{auditData.date}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.version}</p>
-                                    <p className="text-lg font-semibold text-gray-800">v{auditData.version}</p>
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.version}</p>
+                                    <p className="text-base sm:text-lg font-semibold text-gray-800">v{auditData.version}</p>
                                 </div>
-                                <div className="col-span-2 pt-4 border-t border-gray-200">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.globalRisk}</p>
-                                    <p className={`text-2xl font-black uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</p>
+                                <div className="col-span-1 sm:col-span-2 pt-4 border-t border-gray-200">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.globalRisk}</p>
+                                    <p className={`text-xl sm:text-2xl font-black uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="mt-auto border-t-2 border-brand-900 pt-4 pb-2 print-border">
-                            <p className="text-xs text-gray-400 text-center uppercase tracking-widest">{t.genBy}</p>
+                        <div className="mt-12 border-t-2 border-brand-900 pt-4 pb-2 print-border">
+                            <p className="text-[10px] sm:text-xs text-gray-400 text-center uppercase tracking-widest">{t.genBy}</p>
                         </div>
                     </div>
 
-                    <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
-                        <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.execSummary}</h2>
-                        <div className="w-full h-px bg-gray-200 mb-8 print-bg-gray"></div>
+                    <div className="flex flex-col relative page-break p-6 sm:p-10 md:p-16 lg:p-[20mm] print-a4-height">
+                        <h2 className="text-2xl sm:text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.execSummary}</h2>
+                        <div className="w-full h-px bg-gray-200 mb-6 sm:mb-8 print-bg-gray"></div>
 
-                        <p className="text-gray-700 text-base leading-relaxed mb-8 text-justify">
+                        <p className="text-gray-700 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8 text-justify">
                             {t.summaryText1} <strong className="text-gray-900">{auditData.clientCompany}</strong>{t.summaryText2} <strong className="text-gray-900">{stats.total}</strong> {t.summaryText3} <strong className="text-gray-900">{auditData.targetAsset}</strong>{t.summaryText4} <strong className={`uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</strong>{t.summaryText5}
                         </p>
 
-                        <div className="flex gap-4 mb-10">
+                        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-10">
                             {['crit', 'high', 'med', 'low', 'info'].map(sev => {
                                 const styles = getSeverityStyles(sev);
                                 return (
-                                    <div key={sev} className={`flex-1 border rounded-xl p-4 text-center bg-white shadow-sm flex flex-col items-center justify-center ${styles.border} print-border`}>
-                                        <span className={`text-4xl font-black mb-1 ${styles.textDark}`}>{stats.counts[sev]}</span>
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{severities[sev][lang]}</span>
+                                    <div key={sev} className={`flex-1 border rounded-xl p-3 sm:p-4 text-center bg-white shadow-sm flex flex-col items-center justify-center ${styles.border} print-border`}>
+                                        <span className={`text-2xl sm:text-4xl font-black mb-1 ${styles.textDark}`}>{stats.counts[sev]}</span>
+                                        <span className="text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider">{severities[sev][lang]}</span>
                                     </div>
                                 );
                             })}
                         </div>
 
-                        <div className="bg-gray-50 rounded-xl p-8 border border-gray-100 print-bg-gray print-border">
-                            <h3 className="text-xs font-bold text-brand-900 uppercase tracking-widest mb-6">{t.distTitle}</h3>
-                            <div className="space-y-4">
+                        <div className="bg-gray-50 rounded-xl p-5 sm:p-8 border border-gray-100 print-bg-gray print-border">
+                            <h3 className="text-[10px] sm:text-xs font-bold text-brand-900 uppercase tracking-widest mb-4 sm:mb-6">{t.distTitle}</h3>
+                            <div className="space-y-3 sm:space-y-4">
                                 {['crit', 'high', 'med', 'low', 'info'].map(sev => {
                                     const count = stats.counts[sev];
                                     const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
                                     const styles = getSeverityStyles(sev);
                                     return (
-                                        <div key={sev} className="flex items-center text-sm">
-                                            <span className="w-24 font-semibold text-gray-700">{severities[sev][lang]}</span>
-                                            <div className="flex-grow h-2.5 bg-gray-200 rounded-full overflow-hidden mr-4 print-bg-gray">
+                                        <div key={sev} className="flex items-center text-xs sm:text-sm">
+                                            <span className="w-20 sm:w-24 font-semibold text-gray-700">{severities[sev][lang]}</span>
+                                            <div className="flex-grow h-2 sm:h-2.5 bg-gray-200 rounded-full overflow-hidden mx-2 sm:mr-4 print-bg-gray">
                                                 <div className={`h-full rounded-full ${styles.bg}`} style={{ width: `${percentage}%` }}></div>
                                             </div>
-                                            <span className="w-8 text-right font-bold text-gray-900">{count}</span>
+                                            <span className="w-6 sm:w-8 text-right font-bold text-gray-900">{count}</span>
                                         </div>
                                     );
                                 })}
@@ -1101,69 +1152,69 @@
                         </div>
                     </div>
 
-                    <div className="p-[20mm] pt-10 page-break">
-                        <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.techDetails}</h2>
-                        <div className="w-full h-px bg-gray-200 mb-12 print-bg-gray"></div>
+                    <div className="p-6 sm:p-10 md:p-16 lg:p-[20mm] pt-10 page-break">
+                        <h2 className="text-2xl sm:text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.techDetails}</h2>
+                        <div className="w-full h-px bg-gray-200 mb-8 sm:mb-12 print-bg-gray"></div>
 
                         {findings.length === 0 ? (
-                            <p className="italic text-gray-500">{t.noFindingsPrint}</p>
+                            <p className="italic text-gray-500 text-sm sm:text-base">{t.noFindingsPrint}</p>
                         ) : (
                             findings.map((f, i) => {
                                 const styles = getSeverityStyles(f.severity);
                                 return (
-                                    <div key={f.id} className="mb-12 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden avoid-break print-border">
-                                        <div className="p-6 border-b border-gray-100 relative">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-3 pr-24">
-                                                    <span className="text-2xl font-black text-brand-600">#{i+1}</span>
-                                                    <h3 className="text-xl font-bold text-gray-900 leading-tight">{f.title}</h3>
+                                    <div key={f.id} className="mb-8 sm:mb-12 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden avoid-break print-border">
+                                        <div className="p-4 sm:p-6 border-b border-gray-100 relative">
+                                            <div className="flex justify-between items-start mb-3 sm:mb-4">
+                                                <div className="flex items-center gap-2 sm:gap-3 pr-20 sm:pr-24">
+                                                    <span className="text-xl sm:text-2xl font-black text-brand-600">#{i+1}</span>
+                                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{f.title}</h3>
                                                 </div>
-                                                <div className={`absolute top-6 right-6 px-4 py-1.5 rounded-md font-bold text-xs uppercase tracking-wider ${styles.bg} ${styles.text} print-bg-dark`}>
+                                                <div className={`absolute top-4 sm:top-6 right-4 sm:right-6 px-3 sm:px-4 py-1 sm:py-1.5 rounded-md font-bold text-[10px] sm:text-xs uppercase tracking-wider ${styles.bg} ${styles.text} print-bg-dark`}>
                                                     {severities[f.severity][lang]}
                                                 </div>
                                             </div>
                                             
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {f.cvss && (
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
-                                                        <Icons.Activity className="w-4 h-4 inline mr-1 text-gray-500" /> CVSS: {f.cvss}
+                                                    <span className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded border border-gray-200 text-[10px] sm:text-xs font-medium text-gray-600 bg-gray-50 print-border">
+                                                        <Icons.Activity className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 text-gray-500" /> CVSS: {f.cvss}
                                                     </span>
                                                 )}
                                                 {(f.reference || f.cve) && (
-                                                    <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
-                                                        <Icons.Book className="w-4 h-4 inline mr-1 text-gray-500" /> {f.reference} {f.cve ? `/ ${f.cve}` : ''}
+                                                    <span className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded border border-gray-200 text-[10px] sm:text-xs font-medium text-gray-600 bg-gray-50 print-border break-all">
+                                                        <Icons.Book className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 text-gray-500" /> {f.reference} {f.cve ? `/ ${f.cve}` : ''}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         
-                                        <div className="p-6 space-y-8">
+                                        <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
                                             <div>
-                                                <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                    <Icons.Alert className="w-4 h-4 mr-2 text-severity-crit" /> {t.techDesc}
+                                                <h4 className="flex items-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
+                                                    <Icons.Alert className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-severity-crit" /> {t.techDesc}
                                                 </h4>
-                                                <p className="text-gray-700 text-sm leading-relaxed text-justify whitespace-pre-wrap">{f.description}</p>
+                                                <p className="text-gray-700 text-xs sm:text-sm leading-relaxed text-justify whitespace-pre-wrap">{f.description}</p>
                                             </div>
 
                                             {f.poc && (
                                                 <div>
-                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Code className="w-4 h-4 mr-2 text-gray-400" /> {t.poc}
+                                                    <h4 className="flex items-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
+                                                        <Icons.Code className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-gray-400" /> {t.poc}
                                                     </h4>
-                                                    <div className="bg-brand-950 rounded-lg p-5 print-bg-dark">
-                                                        <pre className="font-mono text-sm text-green-400 whitespace-pre-wrap leading-relaxed">{f.poc}</pre>
+                                                    <div className="bg-brand-950 rounded-lg p-4 sm:p-5 print-bg-dark overflow-x-auto">
+                                                        <pre className="font-mono text-[10px] sm:text-sm text-green-400 whitespace-pre-wrap leading-relaxed">{f.poc}</pre>
                                                     </div>
                                                 </div>
                                             )}
 
                                             {f.images && f.images.length > 0 && (
                                                 <div>
-                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Target className="w-5 h-5 mr-2 text-gray-400" /> {t.images}
+                                                    <h4 className="flex items-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
+                                                        <Icons.Target className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-gray-400" /> {t.images}
                                                     </h4>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         {f.images.map((img, idx) => (
-                                                            <div key={idx} className="border border-gray-200 p-2 rounded-lg print-border">
+                                                            <div key={idx} className="border border-gray-200 p-2 rounded-lg print-border flex justify-center">
                                                                 <img src={img} className="max-w-full h-auto object-contain rounded" alt={`Evidencia ${idx+1}`} />
                                                             </div>
                                                         ))}
@@ -1173,10 +1224,10 @@
 
                                             {f.impact && (
                                                 <div>
-                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Alert className="w-4 h-4 mr-2 text-severity-crit" /> {t.impact}
+                                                    <h4 className="flex items-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
+                                                        <Icons.Alert className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-severity-crit" /> {t.impact}
                                                     </h4>
-                                                    <div className="border-l-4 border-severity-crit bg-red-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
+                                                    <div className="border-l-4 border-severity-crit bg-red-50/50 p-3 sm:p-4 rounded-r-lg text-xs sm:text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
                                                         <p className="whitespace-pre-wrap">{f.impact}</p>
                                                     </div>
                                                 </div>
@@ -1184,10 +1235,10 @@
 
                                             {f.remediation && (
                                                 <div>
-                                                    <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Check className="w-4 h-4 mr-2 text-green-600" /> {t.remediation}
+                                                    <h4 className="flex items-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 sm:mb-3">
+                                                        <Icons.Check className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-green-600" /> {t.remediation}
                                                     </h4>
-                                                    <div className="border-l-4 border-green-500 bg-green-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
+                                                    <div className="border-l-4 border-green-500 bg-green-50/50 p-3 sm:p-4 rounded-r-lg text-xs sm:text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
                                                         <p className="whitespace-pre-wrap">{f.remediation}</p>
                                                     </div>
                                                 </div>
@@ -1198,9 +1249,9 @@
                             })
                         )}
                         
-                        <div className="mt-20 pt-4 border-t border-gray-200 flex justify-between text-[10px] text-gray-400 uppercase tracking-widest print-border">
-                            <div>{t.classifications[auditData.classification]} • {t.prepFor} {auditData.clientCompany}<br/>{t.genBy}</div>
-                            <div className="text-right">{t.reportVer} {auditData.version}<br/>{auditData.date}</div>
+                        <div className="mt-12 sm:mt-20 pt-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-widest print-border gap-2 sm:gap-0">
+                            <div className="text-center sm:text-left">{t.classifications[auditData.classification]} • {t.prepFor} {auditData.clientCompany}<br/>{t.genBy}</div>
+                            <div className="text-center sm:text-right">{t.reportVer} {auditData.version}<br/>{auditData.date}</div>
                         </div>
                     </div>
 
@@ -1208,18 +1259,18 @@
             );
 
             return (
-                <div className="min-h-screen flex flex-col font-sans relative">
+                <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden">
                     {showSplash && <SplashScreen onEnter={() => setShowSplash(false)} lang={lang} t={t} toggleLanguage={toggleLanguage} />}
                     
                     {/* TOP NAVBAR */}
                     <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-40">
-                        <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                                <div className="text-brand-500"><Icons.Shield className="w-8 h-8 sm:w-10 sm:h-10 text-brand-500" /></div>
-                                <h1 className="hidden md:block text-lg sm:text-xl font-bold tracking-tight truncate">{t.appTitle}</h1>
+                        <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex justify-between items-center">
+                            <div className="flex items-center space-x-2 sm:space-x-3 w-1/3">
+                                <div className="text-brand-500"><Icons.Shield className="w-6 h-6 sm:w-10 sm:h-10 text-brand-500" /></div>
+                                <h1 className="hidden sm:block text-base md:text-xl font-bold tracking-tight truncate">{t.appTitle}</h1>
                             </div>
                             
-                            <div className="flex items-center space-x-1 sm:space-x-4">
+                            <div className="flex items-center justify-end space-x-1 sm:space-x-4 w-2/3">
                                 <button 
                                     onClick={toggleLanguage}
                                     className="px-2 sm:px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800 hover:bg-gray-700 font-bold text-[10px] sm:text-xs flex items-center transition-colors"
@@ -1249,7 +1300,7 @@
 
                                 <button 
                                     onClick={triggerPrint}
-                                    className="px-3 sm:px-5 py-1.5 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-md font-bold text-[10px] sm:text-sm flex items-center shadow-md transition-colors"
+                                    className="px-2 sm:px-5 py-1.5 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-md font-bold text-[10px] sm:text-sm flex items-center shadow-md transition-colors"
                                 >
                                     <Icons.Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                                     <span className="hidden sm:inline">{t.generatePdf}</span>
@@ -1260,15 +1311,16 @@
                     </header>
 
                     {/* MAIN CONTENT */}
-                    <main className="flex-grow p-2 sm:p-4 md:p-8 w-full overflow-hidden">
-                        <div className={activeTab === 'editor' ? 'block no-print' : 'hidden'}>
+                    <main className="flex-grow p-3 sm:p-4 md:p-8 w-full bg-gray-100 flex flex-col items-center">
+                        <div className={`w-full max-w-7xl ${activeTab === 'editor' ? 'block no-print' : 'hidden'}`}>
                             {renderEditor()}
                         </div>
-                        {/* Se utiliza overflow-x-auto para que el visor A4 pueda deslizarse lateralmente en móvil sin romper la app */}
-                        <div className={activeTab === 'preview' ? 'block py-4 sm:py-8 bg-gray-200 overflow-x-auto w-full' : 'hidden print-only'}>
-                            <div className="min-w-[210mm] w-max mx-auto px-2">
-                                {renderPreview()}
-                            </div>
+                        {/* RESPONSIVE A4 VISUALIZATION 
+                            Para móvil, la hoja se adapta a 'w-full' con un tope de 'max-w-[210mm]'
+                            En escritorio, tiene aspecto centrado de A4 normal.
+                        */}
+                        <div className={`w-full ${activeTab === 'preview' ? 'block' : 'hidden print-only'}`}>
+                            {renderPreview()}
                         </div>
                     </main>
                 </div>

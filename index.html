@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Reportes de Seguridad / Security Report Generator</title>
+    <title>Automatic Report | Security Generator</title>
     
+    <!-- Favicon dinámico SVG -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>" />
+
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -73,11 +76,39 @@
         }
         @media screen { .print-only { display: none !important; } }
         body { background-color: #f3f4f6; }
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .paper-shadow { box-shadow: 0 0 15px rgba(0,0,0,0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* Splash Screen Animations & Glassmorphism */
+        .splash-enter { opacity: 1; transition: opacity 0.5s ease-out; }
+        .splash-exit { opacity: 0; transition: opacity 0.5s ease-out; pointer-events: none; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .metal-btn {
+            background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 15px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        
+        .metal-btn:hover {
+            background: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 20px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased font-sans">
@@ -86,25 +117,33 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // --- SVGs ---
+        // --- SVGs Responsivos ---
         const Icons = {
-            Shield: () => <svg className="w-16 h-16 text-brand-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>,
-            Target: () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>,
-            Code: () => <svg className="w-4 h-4 mr-2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>,
-            Alert: () => <svg className="w-4 h-4 mr-2 text-severity-crit" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>,
-            Check: () => <svg className="w-4 h-4 mr-2 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
-            Book: () => <svg className="w-4 h-4 inline mr-1 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>,
-            Activity: () => <svg className="w-4 h-4 inline mr-1 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
-            Globe: () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Shield: ({className}) => <svg className={className || "w-16 h-16 text-brand-900"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>,
+            Target: ({className}) => <svg className={className || "w-5 h-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>,
+            Code: ({className}) => <svg className={className || "w-4 h-4 mr-2 text-gray-400"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>,
+            Alert: ({className}) => <svg className={className || "w-4 h-4 mr-2 text-severity-crit"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>,
+            Check: ({className}) => <svg className={className || "w-4 h-4 mr-2 text-green-600"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
+            Book: ({className}) => <svg className={className || "w-4 h-4 inline mr-1 text-gray-500"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>,
+            Activity: ({className}) => <svg className={className || "w-4 h-4 inline mr-1 text-gray-500"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
+            Globe: ({className}) => <svg className={className || "w-4 h-4 sm:mr-2"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>,
+            YouTube: ({className}) => <svg className={className || "w-4 h-4 mr-1.5"} fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>,
+            LinkedIn: ({className}) => <svg className={className || "w-4 h-4 mr-1.5"} fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+            Web: ({className}) => <svg className={className || "w-4 h-4 mr-1.5"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>,
+            Edit: ({className}) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>,
+            Eye: ({className}) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>,
+            Download: ({className}) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
         };
 
-        // --- DICCIONARIOS DE UI ---
         const UI = {
             es: {
                 appTitle: "Automatic Report",
-                editPanel: "Panel de Edición",
+                splashWelcome: "Bienvenido a",
+                splashDevBy: "ESTA HERRAMIENTA FUE DESARROLLADA POR:",
+                splashEnterBtn: "Acceder a la Herramienta",
+                editPanel: "Edición",
                 preview: "Previsualizar",
-                generatePdf: "Generar PDF",
+                generatePdf: "PDF",
                 newFinding: "Registrar Nuevo Hallazgo",
                 newFindingDesc: "Completa los detalles de la vulnerabilidad descubierta.",
                 quickTemplate: "Plantilla Rápida (Auto-completar)",
@@ -152,9 +191,12 @@
             },
             en: {
                 appTitle: "Automatic Report",
-                editPanel: "Edit Panel",
+                splashWelcome: "Welcome to",
+                splashDevBy: "THIS TOOL WAS DEVELOPED BY:",
+                splashEnterBtn: "Access the Tool",
+                editPanel: "Editor",
                 preview: "Preview",
-                generatePdf: "Generate PDF",
+                generatePdf: "PDF",
                 newFinding: "Register New Finding",
                 newFindingDesc: "Fill in the details of the discovered vulnerability.",
                 quickTemplate: "Quick Template (Auto-fill)",
@@ -209,6 +251,43 @@
             low:  { es: 'Baja', en: 'Low' },
             info: { es: 'Informativa', en: 'Informational' }
         };
+
+        // --- DATOS DE AUTORES ---
+        const authorsData = [
+            { 
+                name: "El Pingüino de Mario", 
+                roles: {
+                    es: ["Creador de contenido", "Web Pentester", "Web Developer", "Linux Sysadmin & Hardening", "Docente"],
+                    en: ["Content Creator", "Web Pentester", "Web Developer", "Linux Sysadmin & Hardening", "Instructor"]
+                },
+                link: "https://www.youtube.com/@ElPinguinoDeMario", 
+                icon: <Icons.YouTube className="w-4 h-4 mr-1.5"/>, 
+                img: "https://github.com/ccyl13/Automatic_Report/blob/main/a9flsbyS.jpeg?raw=true",
+                btnColor: "text-red-400 group-hover:text-red-300"
+            },
+            { 
+                name: "Manuel Martínez", 
+                roles: {
+                    es: ["Security Researcher", "Hacker & Cybersecurity Consultant", "DFIR", "CSIRT"],
+                    en: ["Security Researcher", "Hacker & Cybersecurity Consultant", "DFIR", "CSIRT"]
+                },
+                link: "https://curiosidadesdehackers.com/", 
+                icon: <Icons.Web className="w-4 h-4 mr-1.5"/>, 
+                img: "https://github.com/ccyl13/Automatic_Report/blob/main/images.jpeg?raw=true",
+                btnColor: "text-green-400 group-hover:text-green-300"
+            },
+            { 
+                name: "Thomas O'neil Álvarez", 
+                roles: {
+                    es: ["Hacker Ético", "Divulgador", "Docente", "#1 LinkedIn España & LATAM"],
+                    en: ["Ethical Hacker", "Tech Communicator", "Instructor", "#1 LinkedIn Spain & LATAM"]
+                },
+                link: "https://www.linkedin.com/in/thomasoneil%C3%A1lvarez", 
+                icon: <Icons.LinkedIn className="w-4 h-4 mr-1.5"/>, 
+                img: "https://github.com/ccyl13/Automatic_Report/blob/main/IMG_9275.jpeg?raw=true",
+                btnColor: "text-blue-400 group-hover:text-blue-300"
+            }
+        ];
 
         // --- PLANTILLAS BILINGÜES ---
         const templates = {
@@ -478,7 +557,7 @@
             id: '',
             templateKey: 'custom',
             title: '',
-            severity: 'med', // Internal key
+            severity: 'med', 
             description: '',
             cvss: '',
             poc: '',
@@ -489,7 +568,91 @@
             images: []
         };
 
+        // --- COMPONENTE: SPLASH SCREEN ---
+        const SplashScreen = ({ onEnter, lang, t, toggleLanguage }) => {
+            const [isFadingOut, setIsFadingOut] = useState(false);
+
+            const handleEnterClick = () => {
+                setIsFadingOut(true);
+                setTimeout(() => {
+                    onEnter();
+                }, 500);
+            };
+
+            return (
+                <div className={`fixed inset-0 z-[100] overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-800 via-brand-950 to-black flex flex-col justify-between p-4 sm:p-8 text-white ${isFadingOut ? 'splash-exit' : 'splash-enter'}`}>
+                    
+                    {/* Top Bar: Lang Toggle */}
+                    <div className="flex justify-end pt-2">
+                        <button 
+                            onClick={toggleLanguage}
+                            className="metal-btn px-4 py-2 rounded-full font-bold text-xs sm:text-sm flex items-center"
+                        >
+                            <Icons.Globe className="w-4 h-4 sm:mr-2" />
+                            <span className="hidden sm:inline">{lang === 'es' ? '🇪🇸 Español' : '🇬🇧 English'}</span>
+                            <span className="sm:hidden">{lang === 'es' ? '🇪🇸 ES' : '🇬🇧 EN'}</span>
+                        </button>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-grow flex flex-col items-center justify-center mt-6 sm:-mt-10 pb-12">
+                        
+                        <div className="flex flex-col items-center mb-10 sm:mb-16 text-center">
+                            <h2 className="text-sm sm:text-xl font-medium text-gray-400 tracking-widest uppercase mb-2">{t.splashWelcome}</h2>
+                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-brand-100 to-brand-500 drop-shadow-lg px-2">
+                                Automatic Report
+                            </h1>
+                        </div>
+
+                        <div className="w-full max-w-5xl">
+                            <p className="text-center text-gray-400 font-medium mb-6 sm:mb-8 text-xs sm:text-sm tracking-widest uppercase">
+                                {t.splashDevBy}
+                            </p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8 mb-10 sm:mb-16 px-2 sm:px-4">
+                                {authorsData.map((author, index) => (
+                                    <div key={index} className="glass-card rounded-2xl p-5 sm:p-6 flex flex-col items-center hover:-translate-y-2 transition-all duration-300 group">
+                                        <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full overflow-hidden mb-4 sm:mb-5 border-4 border-white/10 group-hover:border-white/30 transition-colors shadow-2xl bg-white/5 flex items-center justify-center">
+                                            <img src={author.img} alt={author.name} className="w-full h-full object-cover" />
+                                        </div>
+                                        <h3 className="text-base sm:text-lg font-bold text-center mb-2 text-white">{author.name}</h3>
+                                        
+                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 mb-5 sm:mb-6 text-center">
+                                            {author.roles[lang].map((r, i) => (
+                                                <React.Fragment key={i}>
+                                                    <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider">{r}</span>
+                                                    {i < author.roles[lang].length - 1 && <span className="text-[10px] text-brand-500/80 hidden sm:inline">•</span>}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                        
+                                        <a 
+                                            href={author.link} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className={`mt-auto metal-btn px-4 sm:px-6 py-2.5 rounded-full font-bold text-xs sm:text-sm flex items-center w-full justify-center ${author.btnColor}`}
+                                        >
+                                            {author.icon} Visitar Perfil
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleEnterClick}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-8 sm:px-12 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] hover:scale-105 transition-all duration-300"
+                        >
+                            {t.splashEnterBtn} &rarr;
+                        </button>
+
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
+            const [showSplash, setShowSplash] = useState(true);
             const [lang, setLang] = useState('es');
             const [activeTab, setActiveTab] = useState('editor');
             const t = UI[lang];
@@ -500,12 +663,11 @@
                 targetAsset: 'Aplicación Principal',
                 auditorCompany: 'Empresa Auditora LLC',
                 auditorName: 'Juan Pérez',
-                classification: '1', // index of classifications array: 0, 1, 2, 3
+                classification: '2', // Index of classifications: 2 is Confidential
                 version: '1.0',
                 date: new Date().toISOString().split('T')[0]
             });
 
-            // Initialize with SQLi template based on current lang
             const initTpl = templates['sqli'];
             const [findings, setFindings] = useState([{
                 id: 'initial-demo',
@@ -524,19 +686,15 @@
             
             const [currentFinding, setCurrentFinding] = useState(initialFindingState);
 
-            // Change App language
             const toggleLanguage = () => {
                 setLang(prev => prev === 'es' ? 'en' : 'es');
             };
 
-            // Dynamic updates when language changes
             useEffect(() => {
-                // Update default document title if untouched
                 if (auditData.documentTitle === UI[lang === 'es' ? 'en' : 'es'].docTitle || auditData.documentTitle === 'Reporte Técnico de Vulnerabilidades' || auditData.documentTitle === 'Technical Vulnerability Report') {
                     setAuditData(prev => ({...prev, documentTitle: UI[lang].docTitle}));
                 }
 
-                // If currently editing a template, swap its language in the form
                 if (currentFinding.templateKey !== 'custom' && templates[currentFinding.templateKey]) {
                     const tpl = templates[currentFinding.templateKey];
                     setCurrentFinding(prev => ({
@@ -549,7 +707,6 @@
                     }));
                 }
 
-                // Translate all existing added findings based on their original template Key
                 setFindings(prevFindings => prevFindings.map(f => {
                     if (f.templateKey !== 'custom' && templates[f.templateKey]) {
                         const tpl = templates[f.templateKey];
@@ -562,7 +719,7 @@
                             remediation: tpl[lang].remediation
                         };
                     }
-                    return f; // Custom findings remain unchanged
+                    return f; 
                 }));
             }, [lang]);
 
@@ -631,7 +788,6 @@
                 });
             };
 
-            // --- ESTADÍSTICAS CALCULADAS ---
             const stats = useMemo(() => {
                 const counts = { crit: 0, high: 0, med: 0, low: 0, info: 0 };
                 findings.forEach(f => { if(counts[f.severity] !== undefined) counts[f.severity]++; });
@@ -656,26 +812,24 @@
                 }
             };
 
-            // --- VISTA: EDITOR ---
             const renderEditor = () => (
-                <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
-                    {/* COLUMNA IZQUIERDA: Nuevo Hallazgo */}
+                <div className="flex flex-col lg:flex-row gap-5 lg:gap-8 max-w-7xl mx-auto w-full">
                     <div className="w-full lg:w-1/2">
-                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-xl shadow-sm border border-gray-100">
                             <div className="flex items-center mb-2">
-                                <Icons.Target />
-                                <h2 className="text-xl font-bold ml-2 text-gray-900">{t.newFinding}</h2>
+                                <Icons.Target className="w-5 h-5 text-brand-900" />
+                                <h2 className="text-lg sm:text-xl font-bold ml-2 text-gray-900">{t.newFinding}</h2>
                             </div>
-                            <p className="text-gray-500 mb-8 text-sm">{t.newFindingDesc}</p>
+                            <p className="text-gray-500 mb-6 sm:mb-8 text-xs sm:text-sm">{t.newFindingDesc}</p>
 
-                            <form onSubmit={addFinding} className="space-y-6">
-                                <div className="bg-indigo-50/50 p-5 rounded-lg border border-indigo-100/50">
-                                    <label className="block text-xs font-bold text-brand-900 uppercase tracking-wider mb-2">{t.quickTemplate}</label>
+                            <form onSubmit={addFinding} className="space-y-5 sm:space-y-6">
+                                <div className="bg-indigo-50/50 p-4 sm:p-5 rounded-lg border border-indigo-100/50">
+                                    <label className="block text-[10px] sm:text-xs font-bold text-brand-900 uppercase tracking-wider mb-2">{t.quickTemplate}</label>
                                     <select 
                                         name="templateKey" 
                                         value={currentFinding.templateKey} 
                                         onChange={handleTemplateChange}
-                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm font-medium text-gray-700 cursor-pointer"
+                                        className="w-full p-2.5 bg-white border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-xs sm:text-sm font-medium text-gray-700 cursor-pointer"
                                     >
                                         <option value="custom">{t.customOther}</option>
                                         {Object.values(templates).sort((a,b) => a[lang].title.localeCompare(b[lang].title)).map(tpl => (
@@ -684,14 +838,14 @@
                                     </select>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.specTitle}</label>
-                                        <input required type="text" name="title" value={currentFinding.title} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" />
+                                        <input required type="text" name="title" value={currentFinding.title} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.severity}</label>
-                                        <select name="severity" value={currentFinding.severity} onChange={handleFindingChange} className={`w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none font-semibold text-sm ${getSeverityStyles(currentFinding.severity).textDark} ${getSeverityStyles(currentFinding.severity).lightBg}`}>
+                                        <select name="severity" value={currentFinding.severity} onChange={handleFindingChange} className={`w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none font-semibold text-xs sm:text-sm ${getSeverityStyles(currentFinding.severity).textDark} ${getSeverityStyles(currentFinding.severity).lightBg}`}>
                                             {Object.keys(severities).map(k => (
                                                 <option key={k} value={k}>{severities[k][lang]}</option>
                                             ))}
@@ -699,63 +853,63 @@
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-5">
                                     <div className="md:col-span-3">
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.techDesc}</label>
-                                        <textarea required name="description" value={currentFinding.description} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                        <textarea required name="description" value={currentFinding.description} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm resize-y"></textarea>
                                     </div>
                                     <div className="md:col-span-1">
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.cvss}</label>
-                                        <input type="text" name="cvss" value={currentFinding.cvss} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-center font-mono text-sm bg-gray-50" placeholder="9.8" />
+                                        <input type="text" name="cvss" value={currentFinding.cvss} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-center font-mono text-xs sm:text-sm bg-gray-50" placeholder="9.8" />
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center">
-                                        <Icons.Code /> {t.poc}
+                                        <Icons.Code className="w-4 h-4 mr-2" /> {t.poc}
                                     </label>
-                                    <textarea name="poc" value={currentFinding.poc} onChange={handleFindingChange} rows="4" className="w-full p-3 bg-gray-900 text-green-400 border border-gray-800 rounded-md shadow-inner font-mono text-xs focus:ring-2 focus:ring-brand-500 outline-none resize-none leading-relaxed"></textarea>
+                                    <textarea name="poc" value={currentFinding.poc} onChange={handleFindingChange} rows="4" className="w-full p-3 bg-gray-900 text-green-400 border border-gray-800 rounded-md shadow-inner font-mono text-[10px] sm:text-xs focus:ring-2 focus:ring-brand-500 outline-none resize-y leading-relaxed"></textarea>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.impact}</label>
-                                        <textarea name="impact" value={currentFinding.impact} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                        <textarea name="impact" value={currentFinding.impact} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm resize-y"></textarea>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.remediation}</label>
-                                        <textarea name="remediation" value={currentFinding.remediation} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none"></textarea>
+                                        <textarea name="remediation" value={currentFinding.remediation} onChange={handleFindingChange} rows="3" className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm resize-y"></textarea>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.reference}</label>
-                                        <input type="text" name="reference" value={currentFinding.reference} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" />
+                                        <input type="text" name="reference" value={currentFinding.reference} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">{t.cve}</label>
-                                        <input type="text" name="cve" value={currentFinding.cve} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="CVE-XXXX-XXXX" />
+                                        <input type="text" name="cve" value={currentFinding.cve} onChange={handleFindingChange} className="w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-2 focus:ring-brand-500 outline-none text-xs sm:text-sm" placeholder="CVE-XXXX-XXXX" />
                                     </div>
                                 </div>
 
-                                <div className="border border-dashed border-gray-300 p-5 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                <div className="border border-dashed border-gray-300 p-4 sm:p-5 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
                                     <div className="flex justify-between items-center mb-3">
-                                        <label className="text-xs font-bold text-gray-700 flex items-center">
+                                        <label className="text-[10px] sm:text-xs font-bold text-gray-700 flex items-center">
                                             <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                             {t.images}
                                         </label>
-                                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm">
+                                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-2 sm:px-3 py-1.5 rounded text-[10px] sm:text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm">
                                             <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
                                             {t.uploadImage}
                                         </label>
                                     </div>
                                     
                                     {currentFinding.images.length > 0 ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mt-3">
                                             {currentFinding.images.map((imgSrc, index) => (
                                                 <div key={index} className="relative group rounded-md overflow-hidden border border-gray-200 shadow-sm">
-                                                    <img src={imgSrc} alt="Evidencia" className="h-20 w-full object-cover" />
+                                                    <img src={imgSrc} alt="Evidencia" className="h-16 sm:h-20 w-full object-cover" />
                                                     <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-600/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                                     </button>
@@ -764,50 +918,49 @@
                                         </div>
                                     ) : (
                                         <div className="text-center py-4 border-2 border-dashed border-gray-200 rounded-md">
-                                            <p className="text-xs text-gray-400">{t.noImages}</p>
+                                            <p className="text-[10px] sm:text-xs text-gray-400">{t.noImages}</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <button type="submit" className="w-full bg-brand-950 hover:bg-black text-white font-semibold py-3.5 px-4 rounded-lg shadow-md transition-colors flex justify-center items-center">
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                <button type="submit" className="w-full bg-brand-950 hover:bg-black text-white font-semibold py-3 sm:py-3.5 px-4 rounded-lg shadow-md transition-colors flex justify-center items-center text-sm sm:text-base">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                     {t.registerBtn}
                                 </button>
                             </form>
                         </div>
                     </div>
 
-                    {/* COLUMNA DERECHA: Datos & Lista */}
-                    <div className="w-full lg:w-1/2 space-y-8">
-                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                            <h2 className="text-lg font-bold mb-6 flex items-center text-brand-900">
+                    <div className="w-full lg:w-1/2 space-y-5 lg:space-y-8">
+                        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-xl shadow-sm border border-gray-100">
+                            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center text-brand-900">
                                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 {t.auditData}
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 text-xs sm:text-sm">
                                 <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.docTitle}</label>
+                                    <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.docTitle}</label>
                                     <input type="text" name="documentTitle" value={auditData.documentTitle} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.clientComp}</label>
+                                    <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.clientComp}</label>
                                     <input type="text" name="clientCompany" value={auditData.clientCompany} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.targetAsset}</label>
+                                    <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.targetAsset}</label>
                                     <input type="text" name="targetAsset" value={auditData.targetAsset} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditComp}</label>
+                                    <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditComp}</label>
                                     <input type="text" name="auditorCompany" value={auditData.auditorCompany} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditorName}</label>
+                                    <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.auditorName}</label>
                                     <input type="text" name="auditorName" value={auditData.auditorName} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-gray-50/50" />
                                 </div>
-                                <div className="md:col-span-2 grid grid-cols-3 gap-5 border-t border-gray-100 pt-5 mt-2">
+                                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 border-t border-gray-100 pt-4 sm:pt-5 mt-2">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.classification}</label>
+                                        <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.classification}</label>
                                         <select name="classification" value={auditData.classification} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-white">
                                             {t.classifications.map((c, idx) => (
                                                 <option key={idx} value={idx}>{c}</option>
@@ -815,44 +968,44 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.version}</label>
+                                        <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.version}</label>
                                         <input type="text" name="version" value={auditData.version} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none text-center bg-white" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.date}</label>
+                                        <label className="block text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">{t.date}</label>
                                         <input type="date" name="date" value={auditData.date} onChange={handleAuditChange} className="w-full p-2.5 border border-gray-200 rounded-md focus:ring-2 focus:ring-brand-500 outline-none bg-white" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                                <h2 className="text-lg font-bold text-gray-900">{t.addedFindings}</h2>
-                                <span className="bg-brand-100 text-brand-900 text-xs font-bold px-3 py-1 rounded-full">{stats.total} {t.findingsCount}</span>
+                        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-xl shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-100">
+                                <h2 className="text-base sm:text-lg font-bold text-gray-900">{t.addedFindings}</h2>
+                                <span className="bg-brand-100 text-brand-900 text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full">{stats.total} {t.findingsCount}</span>
                             </div>
                             
-                            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                            <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[600px] overflow-y-auto pr-1 sm:pr-2">
                                 {findings.length === 0 ? (
-                                    <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                        <p className="text-sm text-gray-500">{t.noFindings}</p>
+                                    <div className="text-center py-8 sm:py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                        <p className="text-xs sm:text-sm text-gray-500">{t.noFindings}</p>
                                     </div>
                                 ) : (
                                     findings.map((f, index) => {
                                         const styles = getSeverityStyles(f.severity);
                                         return (
-                                            <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-4 relative group hover:border-brand-300 hover:shadow-md transition-all">
-                                                <button onClick={() => removeFinding(f.id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white" title="Remove">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 relative group hover:border-brand-300 hover:shadow-md transition-all">
+                                                <button onClick={() => removeFinding(f.id)} className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-400 hover:text-red-500 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-white" title="Remove">
+                                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 </button>
                                                 
-                                                <div className="flex items-start gap-3 mb-2 pr-8">
-                                                    <span className={`mt-0.5 text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${styles.bg} ${styles.text}`}>
+                                                <div className="flex items-start gap-2 sm:gap-3 mb-2 pr-6 sm:pr-8">
+                                                    <span className={`mt-0.5 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 rounded uppercase tracking-wider ${styles.bg} ${styles.text}`}>
                                                         {severities[f.severity][lang]}
                                                     </span>
-                                                    <h3 className="font-bold text-gray-900 leading-tight">{f.title}</h3>
+                                                    <h3 className="font-bold text-sm sm:text-base text-gray-900 leading-tight">{f.title}</h3>
                                                 </div>
-                                                <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{f.description}</p>
+                                                <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 leading-relaxed">{f.description}</p>
                                             </div>
                                         )
                                     })
@@ -863,14 +1016,11 @@
                 </div>
             );
 
-            // --- VISTA: PREVIEW DEL REPORTE ---
             const renderPreview = () => (
                 <div className="preview-container bg-white mx-auto paper-shadow text-gray-800" style={{ width: '210mm', minHeight: '297mm' }}>
-                    
-                    {/* PORTADA */}
                     <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
                         <div className="mt-20 mb-12 text-brand-900">
-                            <Icons.Shield />
+                            <Icons.Shield className="w-16 h-16" />
                         </div>
 
                         <div className="flex-grow">
@@ -910,7 +1060,6 @@
                         </div>
                     </div>
 
-                    {/* RESUMEN EJECUTIVO */}
                     <div className="h-[297mm] p-[20mm] flex flex-col relative page-break">
                         <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.execSummary}</h2>
                         <div className="w-full h-px bg-gray-200 mb-8 print-bg-gray"></div>
@@ -952,7 +1101,6 @@
                         </div>
                     </div>
 
-                    {/* DETALLE TÉCNICO */}
                     <div className="p-[20mm] pt-10 page-break">
                         <h2 className="text-3xl font-black text-brand-950 mb-4 tracking-tight">{t.techDetails}</h2>
                         <div className="w-full h-px bg-gray-200 mb-12 print-bg-gray"></div>
@@ -978,12 +1126,12 @@
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {f.cvss && (
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
-                                                        <Icons.Activity /> CVSS: {f.cvss}
+                                                        <Icons.Activity className="w-4 h-4 inline mr-1 text-gray-500" /> CVSS: {f.cvss}
                                                     </span>
                                                 )}
                                                 {(f.reference || f.cve) && (
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded border border-gray-200 text-xs font-medium text-gray-600 bg-gray-50 print-border">
-                                                        <Icons.Book /> {f.reference} {f.cve ? `/ ${f.cve}` : ''}
+                                                        <Icons.Book className="w-4 h-4 inline mr-1 text-gray-500" /> {f.reference} {f.cve ? `/ ${f.cve}` : ''}
                                                     </span>
                                                 )}
                                             </div>
@@ -992,7 +1140,7 @@
                                         <div className="p-6 space-y-8">
                                             <div>
                                                 <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                    <Icons.Alert /> {t.techDesc}
+                                                    <Icons.Alert className="w-4 h-4 mr-2 text-severity-crit" /> {t.techDesc}
                                                 </h4>
                                                 <p className="text-gray-700 text-sm leading-relaxed text-justify whitespace-pre-wrap">{f.description}</p>
                                             </div>
@@ -1000,7 +1148,7 @@
                                             {f.poc && (
                                                 <div>
                                                     <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Code /> {t.poc}
+                                                        <Icons.Code className="w-4 h-4 mr-2 text-gray-400" /> {t.poc}
                                                     </h4>
                                                     <div className="bg-brand-950 rounded-lg p-5 print-bg-dark">
                                                         <pre className="font-mono text-sm text-green-400 whitespace-pre-wrap leading-relaxed">{f.poc}</pre>
@@ -1011,7 +1159,7 @@
                                             {f.images && f.images.length > 0 && (
                                                 <div>
                                                     <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Target /> {t.images}
+                                                        <Icons.Target className="w-5 h-5 mr-2 text-gray-400" /> {t.images}
                                                     </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         {f.images.map((img, idx) => (
@@ -1026,7 +1174,7 @@
                                             {f.impact && (
                                                 <div>
                                                     <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Alert /> {t.impact}
+                                                        <Icons.Alert className="w-4 h-4 mr-2 text-severity-crit" /> {t.impact}
                                                     </h4>
                                                     <div className="border-l-4 border-severity-crit bg-red-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
                                                         <p className="whitespace-pre-wrap">{f.impact}</p>
@@ -1037,7 +1185,7 @@
                                             {f.remediation && (
                                                 <div>
                                                     <h4 className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <Icons.Check /> {t.remediation}
+                                                        <Icons.Check className="w-4 h-4 mr-2 text-green-600" /> {t.remediation}
                                                     </h4>
                                                     <div className="border-l-4 border-green-500 bg-green-50/50 p-4 rounded-r-lg text-sm text-gray-800 leading-relaxed print-bg-gray print-border">
                                                         <p className="whitespace-pre-wrap">{f.remediation}</p>
@@ -1060,55 +1208,67 @@
             );
 
             return (
-                <div className="min-h-screen flex flex-col font-sans">
+                <div className="min-h-screen flex flex-col font-sans relative">
+                    {showSplash && <SplashScreen onEnter={() => setShowSplash(false)} lang={lang} t={t} toggleLanguage={toggleLanguage} />}
+                    
                     {/* TOP NAVBAR */}
-                    <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-50">
-                        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                            <div className="flex items-center space-x-3">
-                                <div className="text-brand-500"><Icons.Shield /></div>
-                                <h1 className="text-xl font-bold tracking-tight">{t.appTitle}</h1>
+                    <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-40">
+                        <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                                <div className="text-brand-500"><Icons.Shield className="w-8 h-8 sm:w-10 sm:h-10 text-brand-500" /></div>
+                                <h1 className="hidden md:block text-lg sm:text-xl font-bold tracking-tight truncate">{t.appTitle}</h1>
                             </div>
                             
-                            <div className="flex items-center space-x-2 sm:space-x-4">
-                                {/* LANGUAGE TOGGLE */}
+                            <div className="flex items-center space-x-1 sm:space-x-4">
                                 <button 
                                     onClick={toggleLanguage}
-                                    className="px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800 hover:bg-gray-700 font-bold text-xs flex items-center transition-colors mr-2"
+                                    className="px-2 sm:px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800 hover:bg-gray-700 font-bold text-[10px] sm:text-xs flex items-center transition-colors"
                                 >
-                                    <Icons.Globe />
-                                    {lang === 'es' ? '🇪🇸 ES' : '🇬🇧 EN'}
+                                    <Icons.Globe className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{lang === 'es' ? '🇪🇸 ES' : '🇬🇧 EN'}</span>
                                 </button>
+
+                                <div className="w-px h-4 sm:h-6 bg-gray-700 mx-1 sm:mx-2"></div>
 
                                 <button 
                                     onClick={() => setActiveTab('editor')}
-                                    className={`px-3 py-2 sm:px-4 rounded-md font-semibold text-xs sm:text-sm transition-all ${activeTab === 'editor' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
+                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md font-semibold text-[10px] sm:text-sm transition-all flex items-center ${activeTab === 'editor' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
                                 >
-                                    {t.editPanel}
+                                    <Icons.Edit className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{t.editPanel}</span>
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('preview')}
-                                    className={`px-3 py-2 sm:px-4 rounded-md font-semibold text-xs sm:text-sm transition-all ${activeTab === 'preview' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
+                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md font-semibold text-[10px] sm:text-sm transition-all flex items-center ${activeTab === 'preview' ? 'bg-brand-600 text-white shadow' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
                                 >
-                                    {t.preview}
+                                    <Icons.Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{t.preview}</span>
                                 </button>
-                                <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                                
+                                <div className="w-px h-4 sm:h-6 bg-gray-700 mx-1 sm:mx-2"></div>
+
                                 <button 
                                     onClick={triggerPrint}
-                                    className="px-3 py-2 sm:px-5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-md font-bold text-xs sm:text-sm flex items-center shadow-md transition-colors"
+                                    className="px-3 sm:px-5 py-1.5 sm:py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-md font-bold text-[10px] sm:text-sm flex items-center shadow-md transition-colors"
                                 >
-                                    {t.generatePdf}
+                                    <Icons.Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">{t.generatePdf}</span>
+                                    <span className="sm:hidden ml-1">PDF</span>
                                 </button>
                             </div>
                         </div>
                     </header>
 
                     {/* MAIN CONTENT */}
-                    <main className="flex-grow p-4 md:p-8 overflow-x-hidden">
+                    <main className="flex-grow p-2 sm:p-4 md:p-8 w-full overflow-hidden">
                         <div className={activeTab === 'editor' ? 'block no-print' : 'hidden'}>
                             {renderEditor()}
                         </div>
-                        <div className={activeTab === 'preview' ? 'block py-8 bg-gray-200' : 'hidden print-only'}>
-                            {renderPreview()}
+                        {/* Se utiliza overflow-x-auto para que el visor A4 pueda deslizarse lateralmente en móvil sin romper la app */}
+                        <div className={activeTab === 'preview' ? 'block py-4 sm:py-8 bg-gray-200 overflow-x-auto w-full' : 'hidden print-only'}>
+                            <div className="min-w-[210mm] w-max mx-auto px-2">
+                                {renderPreview()}
+                            </div>
                         </div>
                     </main>
                 </div>

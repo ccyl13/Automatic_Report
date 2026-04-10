@@ -34,7 +34,7 @@ const SplashScreen = ({ onEnter, lang, t, toggleLanguage }) => {
                 
                 <div className="flex flex-col items-center mb-10 sm:mb-16 text-center animate-float">
                     <h2 className="text-sm sm:text-xl font-medium text-brand-300 tracking-[0.3em] uppercase mb-2 drop-shadow-md">{t.splashWelcome}</h2>
-                    <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-200 to-brand-500 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)] px-2">
+                    <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(59,130,246,0.5)] px-2">
                         Pentestify
                     </h1>
                 </div>

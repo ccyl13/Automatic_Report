@@ -1,5 +1,7 @@
 # Pentestify
 
+[![Docker Tests](https://img.shields.io/badge/Docker-Tested-success)](test_docker.py)
+
 Generador interactivo de reportes de pentesting que permite registrar vulnerabilidades (con plantillas predefinidas o manualmente), visualizar estadísticas de riesgo en tiempo real, **guardar reportes en base de datos** y exportar informes corporativos estructurados en formato PDF.
 
 ## Características
@@ -125,6 +127,26 @@ La base de datos SQLite se guarda en el directorio local `./data/` gracias al vo
 - API: `http://localhost:8000`
 - API Docs (Swagger): `http://localhost:8000/docs`
 - API Docs (ReDoc): `http://localhost:8000/redoc`
+
+### Test de Docker (Integración)
+
+Para verificar que la dockerización funciona correctamente, ejecuta el test automatizado:
+
+```bash
+# Ejecutar test básico
+python test_docker.py
+
+# Ejecutar con salida detallada
+python test_docker.py --verbose
+```
+
+Este test verifica:
+- ✅ Construcción de imagen Docker
+- ✅ Inicio del contenedor
+- ✅ API endpoints (raíz, docs)
+- ✅ CRUD de reportes y hallazgos
+- ✅ Persistencia de base de datos
+- ✅ Frontend servido correctamente
 
 ---
 

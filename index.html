@@ -24,28 +24,14 @@
 <body>
     <div id="root"></div>
 
-    <!-- 
-        ORDEN DE CARGA DE SCRIPTS:
-        Los archivos deben cargarse en este orden debido a las dependencias entre ellos
-    -->
-    
-    <!-- 1. Configuración y Constantes -->
     <script src="js/config/constants.js" type="text/babel"></script>
-    
-    <!-- 2. Servicios API -->
     <script src="js/services/api.js" type="text/babel"></script>
-    
-    <!-- 3. Datos e Internacionalización -->
     <script src="js/data/i18n.js" type="text/babel"></script>
     <script src="js/data/templates.js" type="text/babel"></script>
-    
-    <!-- 4. Componentes React (orden: Iconos -> Autores -> SplashScreen -> App) -->
     <script src="js/components/Icons.js" type="text/babel"></script>
     <script src="js/data/authors.js" type="text/babel"></script>
     <script src="js/components/SplashScreen.js" type="text/babel"></script>
     <script src="js/components/App.js" type="text/babel"></script>
-    
-    <!-- 4. Punto de entrada -->
     <script src="js/main.js" type="text/babel"></script>
 </body>
 </html>

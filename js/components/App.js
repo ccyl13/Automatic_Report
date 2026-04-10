@@ -387,74 +387,114 @@ const App = () => {
         return { counts, total: findings.length, globalRiskKey };
     }, [findings]);
 
-    // Selector de reportes guardados
-    const renderReportSelector = () => {
+    // Página de reportes guardados
+    const renderReportsPage = () => {
         if (!showReportSelector) return null;
         
         return (
-            <div className="fixed inset-0 z-50 bg-gray-900/90 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-xl">
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-gray-900">
+            <div className="min-h-screen bg-gray-100">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                             {lang === 'es' ? 'Mis Reportes' : 'My Reports'}
-                        </h2>
+                        </h1>
                         <button 
                             onClick={() => setShowReportSelector(false)}
-                            className="text-gray-500 hover:text-gray-700"
+                            className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
+                            {lang === 'es' ? 'Volver al Editor' : 'Back to Editor'}
                         </button>
                     </div>
                     
-                    <div className="p-6 overflow-y-auto max-h-[60vh]">
-                        {savedReports.length === 0 ? (
-                            <p className="text-center text-gray-500 py-8">
-                                {lang === 'es' ? 'No hay reportes guardados' : 'No saved reports'}
-                            </p>
-                        ) : (
-                            <div className="space-y-3">
-                                {savedReports.map(report => (
-                                    <div key={report.id} className="border border-gray-200 rounded-lg p-4 hover:border-brand-500 transition-colors">
-                                        <div className="flex justify-between items-start">
-                                            <div 
-                                                className="flex-grow cursor-pointer"
-                                                onClick={() => loadReport(report.id)}
-                                            >
-                                                <h3 className="font-semibold text-gray-900">{report.document_title}</h3>
-                                                <p className="text-sm text-gray-500">{report.client_company}</p>
-                                                <div className="flex gap-4 mt-2 text-xs text-gray-400">
-                                                    <span>{report.target_asset}</span>
-                                                    <span>•</span>
-                                                    <span>{report.date}</span>
-                                                    <span>•</span>
-                                                    <span>{report.findings_count} {lang === 'es' ? 'hallazgos' : 'findings'}</span>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="p-6 border-b border-gray-200">
+                            <button
+                                onClick={createNewReport}
+                                className="w-full sm:w-auto bg-brand-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-brand-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                {lang === 'es' ? 'Crear Nuevo Reporte' : 'Create New Report'}
+                            </button>
+                        </div>
+                        
+                        <div className="p-6">
+                            {savedReports.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p className="text-gray-500 text-lg">
+                                        {lang === 'es' ? 'No hay reportes guardados' : 'No saved reports'}
+                                    </p>
+                                    <p className="text-gray-400 text-sm mt-2">
+                                        {lang === 'es' ? 'Crea tu primer reporte usando el botón de arriba' : 'Create your first report using the button above'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {savedReports.map(report => (
+                                        <div key={report.id} className="border border-gray-200 rounded-lg p-5 hover:border-brand-500 hover:shadow-md transition-all bg-white">
+                                            <div className="flex justify-between items-start gap-4">
+                                                <div 
+                                                    className="flex-grow cursor-pointer"
+                                                    onClick={() => loadReport(report.id)}
+                                                >
+                                                    <h3 className="font-semibold text-gray-900 text-lg">{report.document_title}</h3>
+                                                    <p className="text-gray-600 mt-1">{report.client_company}</p>
+                                                    <div className="flex flex-wrap gap-3 mt-3 text-sm text-gray-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                            </svg>
+                                                            {report.target_asset}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                            {report.date}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
+                                                            {report.findings_count} {lang === 'es' ? 'hallazgos' : 'findings'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => loadReport(report.id)}
+                                                        className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                                        title={lang === 'es' ? 'Abrir' : 'Open'}
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteReport(report.id)}
+                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title={lang === 'es' ? 'Eliminar' : 'Delete'}
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => deleteReport(report.id)}
-                                                className="text-red-500 hover:text-red-700 ml-4"
-                                                title="Eliminar"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    
-                    <div className="p-6 border-t border-gray-200 bg-gray-50">
-                        <button
-                            onClick={createNewReport}
-                            className="w-full bg-brand-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-brand-700 transition-colors"
-                        >
-                            {lang === 'es' ? '+ Crear Nuevo Reporte' : '+ Create New Report'}
-                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -860,10 +900,11 @@ const App = () => {
         <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden">
             {showSplash && <SplashScreen onEnter={() => setShowSplash(false)} lang={lang} t={t} toggleLanguage={toggleLanguage} />}
             
-            {/* Selector de reportes */}
-            {renderReportSelector()}
+            {/* Página de reportes - pantalla completa */}
+            {showReportSelector && renderReportsPage()}
             
-            {/* TOP NAVBAR */}
+            {/* TOP NAVBAR - oculto cuando se muestra página de reportes */}
+            {!showReportSelector && (
             <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-40">
                 <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex justify-between items-center">
                     <div className="flex items-center space-x-2 sm:space-x-3 w-1/3">
@@ -927,9 +968,10 @@ const App = () => {
                     </div>
                 </div>
             </header>
+            )}
 
-            {/* Indicador de guardando */}
-            {isLoading && (
+            {/* Indicador de guardando - solo en editor */}
+            {isLoading && !showReportSelector && (
                 <div className="fixed top-16 right-4 z-50 bg-brand-600 text-white px-4 py-2 rounded-md text-sm shadow-lg flex items-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -939,7 +981,8 @@ const App = () => {
                 </div>
             )}
 
-            {/* MAIN CONTENT */}
+            {/* MAIN CONTENT - oculto cuando se muestra página de reportes */}
+            {!showReportSelector && (
             <main className="flex-grow p-3 sm:p-4 md:p-8 w-full bg-gray-100 flex flex-col items-center">
                 <div className={`w-full max-w-7xl ${activeTab === 'editor' ? 'block no-print' : 'hidden'}`}>
                     {renderEditor()}
@@ -948,6 +991,7 @@ const App = () => {
                     {renderPreview()}
                 </div>
             </main>
+            )}
         </div>
     );
 };

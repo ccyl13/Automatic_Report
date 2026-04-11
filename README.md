@@ -17,16 +17,13 @@
 
 ## Características
 
-<br>
-
-| Innovación | Capacidades Clave | Función y Valor de UX |
-| :--- | :--- | :--- |
-| <img src="https://raw.githubusercontent.com/ccyl13/Pentestify/main/icons/bilingual.svg" height="60" alt="Bilingual Icon"> **INTERNACIONAL**<br>*Sistema Bilingüe* | <ul><li>**Español / Inglés**</li><li>Localización Completa</li><li>Cambio Instantáneo</li></ul> | **Alcance Global Corporativo**.<br>Configura la herramienta y tus reportes en el idioma que mejor se adapte a tu cliente, garantizando la máxima claridad profesional y seriedad en tus entregas. |
-| <img src="https://raw.githubusercontent.com/ccyl13/Pentestify/main/icons/vulnerability.svg" height="60" alt="Vulnerability Icon"> **VULNERABILIDADES**<br>*Auditoría Quirúrgica* | <ul><li>**14 Plantillas Profesionales**</li><li>**SQLi, XSS, IDOR, RCE**, etc.</li><li>**Carga de Datos Automatizada**</li></ul> | **Eficiencia y Consistencia**.<br>Carga descripciones detalladas, pasos de reproducción y recomendaciones para vulnerabilidades comunes al instante. Solo ajusta los detalles específicos. |
-| <img src="https://raw.githubusercontent.com/ccyl13/Pentestify/main/icons/pdf.svg" height="60" alt="PDF Export Icon"> **REPORTES PRO**<br>*Exportación PDF* | <ul><li>Generación PDF **Corporativo**</li><li>Estructura Profesional</li><li>Listo para Entregar</li></ul> | **La Última Impresión es la que Cuenta**.<br>Genera informes de pentesting impecables, estructurados de forma lógica y con un diseño sobrio, listos para enviar directamente al cliente. |
-| <img src="https://raw.githubusercontent.com/ccyl13/Pentestify/main/icons/evidence.svg" height="60" alt="Graphical Evidence Icon"> **EVIDENCIAS**<br>*Soporte Gráfico* | <ul><li>**Evidencias en Base64**</li><li>Múltiples Imágenes por Hallazgo</li><li>Incrustación en Base de Datos</li></ul> | **Verificabilidad y Claridad**.<br>Añade capturas de pantalla, pruebas de concepto y evidencias gráficas a tus hallazgos, guardándolas de forma segura junto a la descripción de la vulnerabilidad. |
-
-<br>
+| :--- | :--- |
+| **📝 Persistencia de datos** | **Cero Pérdida de Información**. <br>Guarda tus reportes en una base de datos SQLite para continuar tu trabajo después. Cada hallazgo y cambio se sincroniza automáticamente. |
+| **🌐 Sistema bilingüe** | **Alcance Global Corporativo**. <br>Configura la herramienta y genera reportes en **Español o Inglés** con un solo clic, adaptándote instantáneamente a las necesidades de tu cliente. |
+| **📊 Estadísticas de riesgo** | **Entiende tu Auditoría de un Vistazo**. <br>Visualización en tiempo real de la criticidad de los hallazgos mediante gráficas dinámicas y asíncronas. Controla el perfil de riesgo global de tu pentest. |
+| **🎯 14 plantillas profesionales** | **Eficiencia y Consistencia**. <br>Carga descripciones detalladas, pasos de reproducción y recomendaciones para **SQLi, XSS, IDOR, RCE**, LFI, CORS, etc. al instante. Ahorra tiempo crítico y mantén la calidad uniforme. |
+| **🖼️ Evidencias gráficas** | **Verificabilidad y Claridad**. <br>Soporte para múltiples imágenes en formato **Base64** directamente en el reporte. Cada hallazgo será incontestable y transparente para el cliente. |
+| **📄 Exportación PDF** | **La Última Impresión es la que Cuenta**. <br>Genera informes de pentesting impecables, estructurados de forma lógica, con un diseño sobrio y profesional. Listos para ser entregados directamente a la dirección de la empresa auditada. |
 
 ## Estructura del Proyecto
 

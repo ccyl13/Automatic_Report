@@ -46,6 +46,7 @@ class ReportBase(BaseModel):
     version: str = "1.0"
     date: str = ""
     lang: str = "es"
+    client_logo: str = ""
 
 
 class ReportCreate(ReportBase):

@@ -17,7 +17,7 @@
     --severity-crit: #dc2626;
     --severity-high: #f97316;
     --severity-med: #eab308;
-    --severity-low: #3b82f6;
+    --severity-low: #22c55e;
     --severity-info: #6b7280;
     
     /* Grises */
@@ -826,8 +826,14 @@ button:disabled, .btn:disabled {
         -webkit-print-color-adjust: exact !important; 
         print-color-adjust: exact !important;
     }
+    .navbar,
+    .navbar-actions,
     .no-print { 
         display: none !important; 
+    }
+    button,
+    .btn-primary {
+        display: none !important;
     }
     .print-only { 
         display: block !important; 
@@ -838,16 +844,22 @@ button:disabled, .btn:disabled {
     .avoid-break { 
         page-break-inside: avoid; 
     }
-    #root { 
-        padding: 0; 
-        margin: 0; 
+    #root,
+    #app { 
+        padding: 0 !important; 
+        margin: 0 !important; 
+    }
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
     }
     .preview-container { 
         box-shadow: none !important; 
         max-width: 100% !important; 
         width: 210mm !important;
-        margin: 0 !important; 
-        padding: 0 !important; 
+        margin: 0 auto !important; 
+        padding: 20mm !important; 
     }
     .print-a4-height { 
         height: 297mm !important; 
@@ -1511,4 +1523,112 @@ button {
 .text-muted {
     color: #94a3b8;
     font-size: 0.875rem;
+}
+
+/* ---- Image Upload Styles ---- */
+.image-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    border: 1px dashed #cbd5e1;
+}
+
+.image-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.image-remove-btn:hover {
+    background: #dc2626;
+}
+
+/* ---- Finding Evidence in Preview ---- */
+.finding-images {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.finding-images-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+}
+
+@media print {
+    .finding-images-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.5rem !important;
+    }
+    .finding-evidence-img {
+        max-height: 400px !important;
+        aspect-ratio: auto !important;
+    }
+}
+
+.finding-evidence-img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.finding-evidence-img:hover {
+    transform: scale(1.01);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* ---- File Input Styling ---- */
+input[type="file"] {
+    padding: 0.5rem;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    cursor: pointer;
+    width: 100%;
+}
+
+input[type="file"]:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
 }

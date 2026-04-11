@@ -15,7 +15,7 @@ Generador interactivo de reportes de pentesting que permite registrar vulnerabil
 
 ```
 Automatic_Report/
-├── index.html              # Frontend React
+├── index.html              # Frontend
 ├── Dockerfile              # Imagen Docker
 ├── run.py                  # Script para iniciar el servidor
 ├── requirements.txt        # Dependencias Python
@@ -101,7 +101,7 @@ Los datos se almacenan en `pentestify.db` (SQLite) con dos tablas:
 
 ## Tecnologías
 
-- **Frontend**: React 18 (CDN), CSS Vanilla, Inter Font
+- **Frontend**: JavaScript Vanilla, CSS, Inter Font
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
 - **Base de datos**: SQLite
 - **Build**: Python http.server (frontend), Uvicorn (backend)

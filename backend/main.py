@@ -132,15 +132,11 @@ def create_finding(report_id: int, finding: schemas.FindingCreate, db: Session =
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     
-    # Obtener el siguiente índice de orden
-    max_order = db.query(models.Finding).filter(
-        models.Finding.report_id == report_id
-    ).count()
-    
+    # Usamos el order_index proporcionado por el frontend
     db_finding = models.Finding(
-        **finding.dict(),
+        **finding.dict(exclude={'order_index'}),
         report_id=report_id,
-        order_index=max_order
+        order_index=finding.order_index
     )
     db.add(db_finding)
     db.commit()

@@ -15,17 +15,6 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
-## Características
-
-| Característica | Descripción y Valor de UX |
-| :--- | :--- |
-| **📝 Persistencia de datos** | **Cero Pérdida de Información**. <br>Guarda tus reportes en una base de datos SQLite para continuar tu trabajo después. Cada hallazgo y cambio se sincroniza automáticamente. |
-| **🌐 Sistema bilingüe** | **Alcance Global Corporativo**. <br>Configura la herramienta y genera reportes en **Español o Inglés** con un solo clic, adaptándote instantáneamente a las necesidades de tu cliente. |
-| **📊 Estadísticas de riesgo** | **Entiende tu Auditoría de un Vistazo**. <br>Visualización en tiempo real de la criticidad de los hallazgos mediante gráficas dinámicas y asíncronas. Controla el perfil de riesgo global de tu pentest. |
-| **🎯 14 plantillas profesionales** | **Eficiencia y Consistencia**. <br>Carga descripciones detalladas, pasos de reproducción y recomendaciones para **SQLi, XSS, IDOR, RCE**, LFI, CORS, etc. al instante. Ahorra tiempo crítico y mantén la calidad uniforme. |
-| **🖼️ Evidencias gráficas** | **Verificabilidad y Claridad**. <br>Soporte para múltiples imágenes en formato **Base64** directamente en el reporte. Cada hallazgo será incontestable y transparente para el cliente. |
-| **📄 Exportación PDF** | **La Última Impresión es la que Cuenta**. <br>Genera informes de pentesting impecables, estructurados de forma lógica, con un diseño sobrio y profesional. Listos para ser entregados directamente a la dirección de la empresa auditada. |
-
 ## Estructura del Proyecto
 
 ```

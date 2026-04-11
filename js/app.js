@@ -938,12 +938,6 @@ function renderPreview() {
                 <!-- PARTE SUPERIOR Y MEDIA CENTRALIZADA -->
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex: 1;">
                     
-                    <div style="width: 100%; display:flex; justify-content:flex-end; margin-bottom: 0.25rem;">
-                        <span style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:999px; padding:0.4rem 1.2rem; font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.1em; text-transform:uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                            ${t.classifications[d.classification] || d.classification}
-                        </span>
-                    </div>
-
                     <div style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;">
                         ${d.clientLogo ? `
                             <img src="${d.clientLogo}" alt="Logo Cliente" style="max-height: 380px; width: 100%; max-width: 700px; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
@@ -968,25 +962,36 @@ function renderPreview() {
                     </div>
                 </div>
 
-                <!-- PIE DE PÁGINA (Ajustado directamente debajo sin tanto espacio) -->
-                <div style="margin-top: 3rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem;">
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
-                        <div style="padding-right: 1.5rem; border-right: 2px solid #e2e8f0;">
-                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.clientCompany}</p>
-                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.clientCompany)}</p>
+                <div style="margin-top: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display: flex; gap: 0;">
+                        <div style="flex: 1; padding: 0 1rem; border-right: 1px solid #cbd5e1;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                                <span style="font-size:0.6rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.1em;">${t.clientCompany}</span>
+                            </div>
+                            <p style="font-size:0.95rem; font-weight:700; color:#0f172a; margin:0; line-height:1.4;">${escapeHTML(d.clientCompany)}</p>
                         </div>
-                        <div style="padding: 0 1.5rem; border-right: 2px solid #e2e8f0;">
-                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.auditorCompany}</p>
-                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0 0 0.25rem;">${escapeHTML(d.auditorCompany)}</p>
-                            <p style="font-size:0.9rem; font-weight:600; color:#475569; margin:0;">${escapeHTML(d.auditorName)}</p>
+                        <div style="flex: 1; padding: 0 1rem; border-right: 1px solid #cbd5e1;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span style="font-size:0.6rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.1em;">${t.auditorCompany}</span>
+                            </div>
+                            <p style="font-size:0.95rem; font-weight:700; color:#0f172a; margin:0; line-height:1.4;">${escapeHTML(d.auditorCompany)}</p>
+                            <p style="font-size:0.8rem; font-weight:500; color:#64748b; margin:0.25rem 0 0 0;">${escapeHTML(d.auditorName)}</p>
                         </div>
-                        <div style="padding: 0 1.5rem; border-right: 2px solid #e2e8f0;">
-                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.date}</p>
-                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.date)}</p>
+                        <div style="flex: 1; padding: 0 1rem; border-right: 1px solid #cbd5e1;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span style="font-size:0.6rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.1em;">${t.date}</span>
+                            </div>
+                            <p style="font-size:0.95rem; font-weight:700; color:#0f172a; margin:0;">${escapeHTML(d.date)}</p>
                         </div>
-                        <div style="padding-left: 1.5rem;">
-                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.version}</p>
-                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.version)}</p>
+                        <div style="flex: 0.7; padding: 0 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                <span style="font-size:0.6rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.1em;">${t.version}</span>
+                            </div>
+                            <p style="font-size:1.1rem; font-weight:800; color:#2563eb; margin:0;">${escapeHTML(d.version)}</p>
                         </div>
                     </div>
                 </div>
@@ -1023,15 +1028,15 @@ function renderPreview() {
                 </div>
             </div>
             
-            <!-- RESUMEN EJECUTIVO -->
-            <div id="summary" style="page-break-after: always; padding: 2rem 0;">
-                <h2 style="font-size: 2rem; color: #111827; margin-bottom: 2rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">Resumen Ejecutivo</h2>
-                ${renderCvssSummary()}
-            </div>
-            
-            <!-- INCIDENCIAS -->
-            <div id="incidents" style="padding: 2rem 0; page-break-inside: avoid;">
-                <h2 style="font-size: 2rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">${t.incidentsSectionTitle}</h2>
+            <!-- RESUMEN EJECUTIVO + INCIDENCIAS (misma página) -->
+            <div style="padding: 2rem 0; page-break-inside: avoid;">
+                <div id="summary" style="margin-bottom: 3rem;">
+                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">Resumen Ejecutivo</h2>
+                    ${renderCvssSummary()}
+                </div>
+                
+                <div id="incidents">
+                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">${t.incidentsSectionTitle}</h2>
                 ${d.hasIncidents ? `
                     <div style="background:#fff7ed; border:1px solid #fed7aa; border-left:6px solid #f97316; border-radius:10px; padding:1.5rem 2rem;">
                         <p style="font-weight:700; color:#c2410c; margin-bottom:0.75rem; font-size:1rem; display:flex; align-items:center; gap:0.5rem;">
@@ -1198,14 +1203,25 @@ function setTab(tab) {
 }
 
 function printReport() {
-    const printWindow = window.open('', '_blank');
     const printContent = document.querySelector('.preview-container');
     if (!printContent) {
         alert(state.lang === 'es' ? 'Primero ve a la vista previa' : 'Go to preview first');
         return;
     }
     
-    printWindow.document.write(`
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
         <!DOCTYPE html>
         <html>
         <head>
@@ -1225,14 +1241,20 @@ function printReport() {
         </body>
         </html>
     `);
+    doc.close();
     
-    printWindow.document.close();
-    printWindow.focus();
+    iframe.onload = () => {
+        setTimeout(() => {
+            iframe.contentWindow.print();
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 1000);
+        }, 500);
+    };
     
-    setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-    }, 500);
+    if (iframe.contentDocument.readyState === 'complete') {
+        iframe.onload();
+    }
 }
 
 async function showReports() {

@@ -1065,3 +1065,450 @@ button:disabled, .btn:disabled {
 ::-webkit-scrollbar-thumb:hover { 
     background: #94a3b8; 
 }
+
+/* ==========================================
+   VANILLA APP STYLES
+   ========================================== */
+
+/* ---- Splash Screen ---- */
+.splash-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.splash-content {
+    text-align: center;
+    color: white;
+    padding: 2rem;
+}
+
+.splash-logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    color: #60a5fa;
+}
+
+.splash-logo svg {
+    width: 100%;
+    height: 100%;
+}
+
+.splash-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 30px rgba(96, 165, 250, 0.5);
+}
+
+.splash-tagline {
+    font-size: 1.25rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
+
+.splash-desc {
+    font-size: 1rem;
+    color: #64748b;
+    max-width: 500px;
+    margin: 0 auto 2rem;
+}
+
+.splash-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-enter {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border: none;
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 40px rgba(59, 130, 246, 0.4);
+}
+
+.btn-enter:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 50px rgba(59, 130, 246, 0.5);
+}
+
+.lang-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.lang-toggle button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #94a3b8;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lang-toggle button.active,
+.lang-toggle button:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: white;
+}
+
+/* ---- Navbar ---- */
+.navbar {
+    background: #0f172a;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.navbar-brand svg {
+    width: 32px;
+    height: 32px;
+    color: #3b82f6;
+}
+
+.dirty-indicator {
+    color: #fbbf24;
+}
+
+.navbar-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.navbar-actions button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #94a3b8;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.navbar-actions button:hover,
+.navbar-actions button.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: white;
+}
+
+.navbar-actions button.btn-primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.navbar-actions button.btn-primary:hover {
+    background: #2563eb;
+}
+
+/* ---- Main Content ---- */
+.main-content {
+    background: #f1f5f9;
+    min-height: calc(100vh - 60px);
+    padding: 1.5rem;
+}
+
+/* ---- Editor ---- */
+.editor-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+    .editor-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- Cards ---- */
+.card {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.card h2,
+.card h3 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+/* ---- Forms ---- */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 0.375rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- Buttons ---- */
+button {
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+/* ---- Findings ---- */
+.findings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.finding-item {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border-left: 4px solid;
+}
+
+.finding-item.severity-crit { border-left-color: #dc2626; }
+.finding-item.severity-high { border-left-color: #ea580c; }
+.finding-item.severity-med { border-left-color: #ca8a04; }
+.finding-item.severity-low { border-left-color: #16a34a; }
+.finding-item.severity-info { border-left-color: #64748b; }
+
+.finding-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.finding-number {
+    font-weight: 600;
+    color: #64748b;
+}
+
+.finding-title {
+    flex: 1;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.finding-severity {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* ---- Reports Page ---- */
+.reports-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.reports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.reports-header h1 {
+    color: #1e293b;
+    font-size: 1.875rem;
+}
+
+.reports-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.report-card {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.report-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.report-card h3 {
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.report-card p {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+/* ---- Preview ---- */
+.preview-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 3rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.report-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.report-header h1 {
+    color: #1e293b;
+    font-size: 1.875rem;
+    margin-bottom: 1rem;
+}
+
+.report-meta {
+    text-align: left;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.report-meta p {
+    color: #475569;
+}
+
+.findings-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.finding-preview {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+}
+
+.finding-preview.severity-crit { border-left: 4px solid #dc2626; }
+.finding-preview.severity-high { border-left: 4px solid #ea580c; }
+.finding-preview.severity-med { border-left: 4px solid #ca8a04; }
+.finding-preview.severity-low { border-left: 4px solid #16a34a; }
+.finding-preview.severity-info { border-left: 4px solid #64748b; }
+
+.finding-preview h3 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+.finding-preview p {
+    color: #475569;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+/* ---- Empty State ---- */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.empty-state p {
+    color: #64748b;
+}
+
+.text-muted {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}

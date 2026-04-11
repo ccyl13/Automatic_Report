@@ -17,6 +17,8 @@ Generador interactivo de reportes de pentesting que permite registrar vulnerabil
 Automatic_Report/
 ├── index.html              # Frontend React
 ├── Dockerfile              # Imagen Docker
+├── run.py                  # Script para iniciar el servidor
+├── requirements.txt        # Dependencias Python
 ├── css/
 │   └── styles.css          # Estilos CSS vanilla
 ├── js/
@@ -37,7 +39,6 @@ Automatic_Report/
     ├── models.py
     ├── schemas.py
     ├── database.py
-    ├── requirements.txt
     └── tests/                # Tests pytest
         ├── conftest.py
         ├── test_reports.py
@@ -49,32 +50,13 @@ Automatic_Report/
 ### 1. Instalar dependencias del backend
 
 ```bash
-cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 2. Iniciar el servidor backend
-
-```bash
-# Desde la carpeta backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# O ejecutar directamente
-python main.py
+python run.py
 ```
 
 El servidor estará disponible en: `http://localhost:8000`
-
-### 3. Iniciar el frontend
-
-Usa cualquier servidor estático para servir los archivos. Por ejemplo:
-
-```bash
-# Desde la raíz del proyecto
-python -m http.server 8000
-```
-
-Abre en tu navegador: `http://localhost:8000`
 
 ---
 

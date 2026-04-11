@@ -1,6 +1,19 @@
+<p align="center">
+  <img src="https://github.com/ccyl13/Pentestify/blob/main/pentestify.png?raw=true" alt="Pentestify Banner" width="100%">
+</p>
+
 # Pentestify
 
-Generador interactivo de reportes de pentesting que permite registrar vulnerabilidades (con plantillas predefinidas o manualmente), visualizar estadísticas de riesgo en tiempo real, **guardar reportes en base de datos** y exportar informes corporativos estructurados en formato PDF.
+<p align="center">
+  <strong>Generador interactivo de reportes de pentesting.</strong><br>
+  Registra vulnerabilidades, visualiza estadísticas de riesgo en tiempo real y exporta informes corporativos estruturados en PDF.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
+  <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
+</p>
 
 ## Características
 

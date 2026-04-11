@@ -1836,7 +1836,7 @@ button:disabled,
 
 /* ---- Eliminación de cabeceras/pies de página del navegador en impresión ---- */
 @page {
-    margin: 0;
+    margin: 18mm 20mm; /* Márgenes estilo documento Word */
     size: A4;
 }
 
@@ -1865,9 +1865,30 @@ button:disabled,
 
     .page-break {
         page-break-before: always;
+        break-before: page;
     }
 
     .avoid-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Evitar que elementos importantes se corten por la mitad */
+    img, svg, table, pre, blockquote, .card, .finding-block {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Mantener títulos unidos a sus párrafos */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    /* Evitar líneas viudas y huérfanas en textos largos */
+    p, li {
+        orphans: 3;
+        widows: 3;
         page-break-inside: avoid;
     }
 
@@ -1886,18 +1907,17 @@ button:disabled,
     .preview-container {
         box-shadow: none !important;
         max-width: 100% !important;
-        width: 210mm !important;
-        margin: 0 auto !important;
+        width: 100% !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
 
     .print-a4-height {
-        height: 297mm !important;
-        min-height: 297mm !important;
+        min-height: calc(100vh - 36mm) !important;
     }
 
     .print-p-20mm {
-        padding: 20mm !important;
+        padding: 0 !important;
     }
 
     .print-bg-gray {
@@ -1918,8 +1938,15 @@ button:disabled,
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         background: #ffffff !important;
-        min-height: 297mm !important;
-        height: 297mm !important;
+        min-height: calc(100vh - 36mm) !important; /* Total de la página descontando márgenes */
+        padding: 0 !important; /* Desactiva el padding hardcodeado ahora que hay @page margin */
+        justify-content: center !important;
+    }
+
+    /* Ajuste para que los elementos dentro de la portada se distribuyan bien sin desbordar */
+    .cover-page > div {
+        transform: scale(0.95); /* Cede un poco de espacio para evitar saltos */
+        transform-origin: center center;
     }
 
     /* Páginas interiores: fondo blanco */
@@ -1928,8 +1955,7 @@ button:disabled,
     #summary,
     #incidents {
         background: white !important;
-        padding-left: 15mm !important;
-        padding-right: 15mm !important;
+        padding: 0 !important; /* Margins are now handled globally by @page */
     }
 }
 

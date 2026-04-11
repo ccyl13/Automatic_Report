@@ -16,7 +16,10 @@ const state = {
         classification: '2',
         version: '1.0',
         date: new Date().toISOString().split('T')[0],
-        lang: 'es'
+        lang: 'es',
+        auditType: 'pentesting_web',
+        hasIncidents: false,
+        incidentsText: ''
     },
     findings: [],
     currentFinding: {
@@ -94,7 +97,23 @@ const UI = {
             '2': 'Interno',
             '3': 'Confidencial',
             '4': 'Restringido'
-        }
+        },
+        auditType: 'Tipo de Auditoría',
+        auditTypes: {
+            'pentesting_web': 'Pentesting Web',
+            'caja_negra': 'Caja Negra (Black Box)',
+            'caja_gris': 'Caja Gris (Grey Box)',
+            'caja_blanca': 'Caja Blanca (White Box)',
+            'intrusion_interna': 'Intrusión Interna',
+            'phishing': 'Campaña de Phishing',
+            'analisis_automatico': 'Análisis Automático de Vulnerabilidades'
+        },
+        incidents: 'Incidencias durante la Auditoría',
+        incidentsYes: 'Sí, hubo incidencias',
+        incidentsNo: 'No hubo incidencias',
+        incidentsDesc: 'Descripción de las incidencias',
+        incidentsNoneText: 'No se registraron incidencias durante el proceso de auditoría.',
+        incidentsSectionTitle: 'Incidencias'
     },
     en: {
         appTitle: 'Pentestify',
@@ -151,7 +170,23 @@ const UI = {
             '2': 'Internal',
             '3': 'Confidential',
             '4': 'Restricted'
-        }
+        },
+        auditType: 'Audit Type',
+        auditTypes: {
+            'pentesting_web': 'Web Pentesting',
+            'caja_negra': 'Black Box',
+            'caja_gris': 'Grey Box',
+            'caja_blanca': 'White Box',
+            'intrusion_interna': 'Internal Intrusion',
+            'phishing': 'Phishing Campaign',
+            'analisis_automatico': 'Automatic Vulnerability Analysis'
+        },
+        incidents: 'Incidents during the Audit',
+        incidentsYes: 'Yes, there were incidents',
+        incidentsNo: 'No incidents',
+        incidentsDesc: 'Incident description',
+        incidentsNoneText: 'No incidents were recorded during the audit process.',
+        incidentsSectionTitle: 'Incidents'
     }
 };
 
@@ -481,6 +516,19 @@ const templates = {
 // ==========================================
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
+
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
+
 const createEl = (tag, className, html) => {
     const el = document.createElement(tag);
     if (className) el.className = className;
@@ -564,10 +612,10 @@ function renderNavbar() {
     return `
         <header class="navbar">
             <div class="navbar-brand">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="height: 32px; width: 32px; color: #6366f1; flex-shrink: 0;">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M12 8v4"/><path d="M12 16h.01"/>
                 </svg>
-                <span>${t.appTitle}</span>
                 ${state.isDirty ? '<span class="dirty-indicator">•</span>' : ''}
             </div>
             
@@ -598,28 +646,28 @@ function renderEditor() {
                         <div class="form-group">
                             <label>${t.quickTemplate}</label>
                             <select onchange="applyTemplate(this.value)">
-                                <option value="custom">${t.customOther}</option>
-                                <option value="sqli">SQL Injection</option>
-                                <option value="xss">XSS</option>
-                                <option value="idor">IDOR</option>
-                                <option value="ssrf">SSRF</option>
-                                <option value="csrf">CSRF</option>
-                                <option value="xxe">XXE</option>
-                                <option value="rce">RCE</option>
-                                <option value="lfi">LFI</option>
-                                <option value="cors">CORS Misconfig</option>
-                                <option value="path_traversal">Path Traversal</option>
-                                <option value="command_injection">Command Injection</option>
-                                <option value="insecure_deserialization">Insecure Deserialization</option>
-                                <option value="jwt_bypass">JWT Bypass</option>
-                                <option value="file_upload">File Upload</option>
-                                <option value="security_misconfig">Security Misconfig</option>
+                                <option value="custom" ${state.currentFinding.templateKey === 'custom' ? 'selected' : ''}>${t.customOther}</option>
+                                <option value="sqli" ${state.currentFinding.templateKey === 'sqli' ? 'selected' : ''}>SQL Injection</option>
+                                <option value="xss" ${state.currentFinding.templateKey === 'xss' ? 'selected' : ''}>XSS</option>
+                                <option value="idor" ${state.currentFinding.templateKey === 'idor' ? 'selected' : ''}>IDOR</option>
+                                <option value="ssrf" ${state.currentFinding.templateKey === 'ssrf' ? 'selected' : ''}>SSRF</option>
+                                <option value="csrf" ${state.currentFinding.templateKey === 'csrf' ? 'selected' : ''}>CSRF</option>
+                                <option value="xxe" ${state.currentFinding.templateKey === 'xxe' ? 'selected' : ''}>XXE</option>
+                                <option value="rce" ${state.currentFinding.templateKey === 'rce' ? 'selected' : ''}>RCE</option>
+                                <option value="lfi" ${state.currentFinding.templateKey === 'lfi' ? 'selected' : ''}>LFI</option>
+                                <option value="cors" ${state.currentFinding.templateKey === 'cors' ? 'selected' : ''}>CORS Misconfig</option>
+                                <option value="path_traversal" ${state.currentFinding.templateKey === 'path_traversal' ? 'selected' : ''}>Path Traversal</option>
+                                <option value="command_injection" ${state.currentFinding.templateKey === 'command_injection' ? 'selected' : ''}>Command Injection</option>
+                                <option value="insecure_deserialization" ${state.currentFinding.templateKey === 'insecure_deserialization' ? 'selected' : ''}>Insecure Deserialization</option>
+                                <option value="jwt_bypass" ${state.currentFinding.templateKey === 'jwt_bypass' ? 'selected' : ''}>JWT Bypass</option>
+                                <option value="file_upload" ${state.currentFinding.templateKey === 'file_upload' ? 'selected' : ''}>File Upload</option>
+                                <option value="security_misconfig" ${state.currentFinding.templateKey === 'security_misconfig' ? 'selected' : ''}>Security Misconfig</option>
                             </select>
                         </div>
                         
                         <div class="form-group">
                             <label>${t.vulnTitle}</label>
-                            <input type="text" id="findingTitle" value="${state.currentFinding.title}" required oninput="updateCurrentFinding('title', this.value)">
+                            <input type="text" id="findingTitle" value="${escapeHTML(state.currentFinding.title)}" required oninput="updateCurrentFinding('title', this.value)">
                         </div>
                         
                         <div class="form-group">
@@ -633,22 +681,22 @@ function renderEditor() {
                         
                         <div class="form-group">
                             <label>${t.description}</label>
-                            <textarea id="findingDescription" rows="4" oninput="updateCurrentFinding('description', this.value)">${state.currentFinding.description}</textarea>
+                            <textarea id="findingDescription" rows="4" oninput="updateCurrentFinding('description', this.value)">${escapeHTML(state.currentFinding.description)}</textarea>
                         </div>
                         
                         <div class="form-group">
                             <label>${t.cvss}</label>
-                            <input type="text" id="findingCvss" value="${state.currentFinding.cvss}" oninput="updateCurrentFinding('cvss', this.value)">
+                            <input type="text" id="findingCvss" value="${escapeHTML(state.currentFinding.cvss)}" oninput="updateCurrentFinding('cvss', this.value)">
                         </div>
                         
                         <div class="form-group">
                             <label>${t.poc}</label>
-                            <textarea id="findingPoc" rows="4" oninput="updateCurrentFinding('poc', this.value)">${state.currentFinding.poc}</textarea>
+                            <textarea id="findingPoc" rows="4" oninput="updateCurrentFinding('poc', this.value)">${escapeHTML(state.currentFinding.poc)}</textarea>
                         </div>
                         
                         <div class="form-group">
                             <label>${t.impact}</label>
-                            <textarea id="findingImpact" rows="3" oninput="updateCurrentFinding('impact', this.value)">${state.currentFinding.impact}</textarea>
+                            <textarea id="findingImpact" rows="3" oninput="updateCurrentFinding('impact', this.value)">${escapeHTML(state.currentFinding.impact)}</textarea>
                         </div>
 
                         <div class="form-group image-upload-section" onpaste="handleImagePaste(event)">
@@ -670,17 +718,17 @@ function renderEditor() {
 
                         <div class="form-group">
                             <label>${t.remediation}</label>
-                            <textarea id="findingRemediation" rows="3" oninput="updateCurrentFinding('remediation', this.value)">${state.currentFinding.remediation}</textarea>
+                            <textarea id="findingRemediation" rows="3" oninput="updateCurrentFinding('remediation', this.value)">${escapeHTML(state.currentFinding.remediation)}</textarea>
                         </div>
 
                         <div class="form-group">
                             <label>${t.reference}</label>
-                            <input type="text" id="findingReference" value="${state.currentFinding.reference}" oninput="updateCurrentFinding('reference', this.value)">
+                            <input type="text" id="findingReference" value="${escapeHTML(state.currentFinding.reference)}" oninput="updateCurrentFinding('reference', this.value)">
                         </div>
 
                         <div class="form-group">
                             <label>${t.cve}</label>
-                            <input type="text" id="findingCve" value="${state.currentFinding.cve}" oninput="updateCurrentFinding('cve', this.value)">
+                            <input type="text" id="findingCve" value="${escapeHTML(state.currentFinding.cve)}" oninput="updateCurrentFinding('cve', this.value)">
                         </div>
                         
                         <div class="form-actions">
@@ -719,11 +767,11 @@ function renderAuditData() {
             <div class="form-row">
                 <div class="form-group">
                     <label>${t.documentTitle}</label>
-                    <input type="text" value="${d.documentTitle}" onchange="updateAuditData('documentTitle', this.value)">
+                    <input type="text" value="${escapeHTML(d.documentTitle)}" onchange="updateAuditData('documentTitle', this.value)">
                 </div>
                 <div class="form-group">
                     <label>${t.clientCompany}</label>
-                    <input type="text" value="${d.clientCompany}" onchange="updateAuditData('clientCompany', this.value)">
+                    <input type="text" value="${escapeHTML(d.clientCompany)}" onchange="updateAuditData('clientCompany', this.value)">
                 </div>
             </div>
             
@@ -741,17 +789,17 @@ function renderAuditData() {
             <div class="form-row">
                 <div class="form-group">
                     <label>${t.targetAsset}</label>
-                    <input type="text" value="${d.targetAsset}" onchange="updateAuditData('targetAsset', this.value)">
+                    <input type="text" value="${escapeHTML(d.targetAsset)}" onchange="updateAuditData('targetAsset', this.value)">
                 </div>
                 <div class="form-group">
                     <label>${t.auditorCompany}</label>
-                    <input type="text" value="${d.auditorCompany}" onchange="updateAuditData('auditorCompany', this.value)">
+                    <input type="text" value="${escapeHTML(d.auditorCompany)}" onchange="updateAuditData('auditorCompany', this.value)">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>${t.auditorName}</label>
-                    <input type="text" value="${d.auditorName}" onchange="updateAuditData('auditorName', this.value)">
+                    <input type="text" value="${escapeHTML(d.auditorName)}" onchange="updateAuditData('auditorName', this.value)">
                 </div>
                 <div class="form-group">
                     <label>${t.classification}</label>
@@ -765,12 +813,38 @@ function renderAuditData() {
             <div class="form-row">
                 <div class="form-group">
                     <label>${t.version}</label>
-                    <input type="text" value="${d.version}" onchange="updateAuditData('version', this.value)">
+                    <input type="text" value="${escapeHTML(d.version)}" onchange="updateAuditData('version', this.value)">
                 </div>
                 <div class="form-group">
                     <label>${t.date}</label>
-                    <input type="date" value="${d.date}" onchange="updateAuditData('date', this.value)">
+                    <input type="date" value="${escapeHTML(d.date)}" onchange="updateAuditData('date', this.value)">
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>${t.auditType}</label>
+                <select onchange="updateAuditData('auditType', this.value)">
+                    ${Object.entries(t.auditTypes).map(([key, label]) =>
+        `<option value="${key}" ${d.auditType === key ? 'selected' : ''}>${label}</option>`
+    ).join('')}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>${t.incidents}</label>
+                <div class="incidents-toggle" style="display:flex; gap:0.75rem; margin-bottom:0.5rem;">
+                    <label style="display:flex; align-items:center; gap:0.4rem; font-weight:500; text-transform:none; letter-spacing:normal; cursor:pointer;">
+                        <input type="radio" name="hasIncidents" value="no" ${!d.hasIncidents ? 'checked' : ''} onchange="updateAuditData('hasIncidents', false)" style="width:auto; padding:0; margin:0;">
+                        ${t.incidentsNo}
+                    </label>
+                    <label style="display:flex; align-items:center; gap:0.4rem; font-weight:500; text-transform:none; letter-spacing:normal; cursor:pointer;">
+                        <input type="radio" name="hasIncidents" value="yes" ${d.hasIncidents ? 'checked' : ''} onchange="updateAuditData('hasIncidents', true)" style="width:auto; padding:0; margin:0;">
+                        ${t.incidentsYes}
+                    </label>
+                </div>
+                ${d.hasIncidents ? `
+                <textarea rows="3" placeholder="${t.incidentsDesc}..." oninput="updateAuditData('incidentsText', this.value)">${escapeHTML(d.incidentsText)}</textarea>
+                ` : ''}
             </div>
         </div>
     `;
@@ -789,7 +863,7 @@ function renderFindingsList() {
                 <div class="finding-item severity-${f.severity}">
                     <div class="finding-header">
                         <span class="finding-number">#${idx + 1}</span>
-                        <span class="finding-title">${f.title}</span>
+                        <span class="finding-title">${escapeHTML(f.title)}</span>
                         <span class="finding-severity">${t.severityLevels[f.severity]}</span>
                         <button onclick="deleteFinding(${idx})">×</button>
                     </div>
@@ -858,61 +932,239 @@ function renderCvssSummary() {
 
 function renderPreview() {
     if (state.activeTab !== 'preview' || state.showSplash || state.showReportSelector) return '';
-    if (state.showReportSelector) return ''
 
     const t = UI[state.lang];
     const d = state.auditData;
 
     return `
         <div class="preview-container">
-            <div class="report-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
-                <div>
-                    <h1 style="margin-bottom: 1rem; color: #111827;">${d.documentTitle}</h1>
-                    <div class="report-meta">
-                        <p><strong>${t.clientCompany}:</strong> ${d.clientCompany}</p>
-                        <p><strong>${t.targetAsset}:</strong> ${d.targetAsset}</p>
-                        <p><strong>${t.auditorCompany}:</strong> ${d.auditorCompany}</p>
-                        <p><strong>${t.auditorName}:</strong> ${d.auditorName}</p>
-                        <p><strong>${t.date}:</strong> ${d.date}</p>
+            <!-- PORTADA -->
+            <div class="cover-page" style="
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-height: 100vh;
+                page-break-after: always;
+                background: #ffffff;
+                color: #111827;
+                padding: 3rem 4rem;
+            ">
+                
+                <!-- PARTE SUPERIOR Y MEDIA CENTRALIZADA -->
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex: 1;">
+                    
+                    <!-- CABECERA: clasificación (esquina superior derecha) -->
+                    <div style="width: 100%; display:flex; justify-content:flex-end; margin-bottom: 2rem;">
+                        <span style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:999px; padding:0.4rem 1.2rem; font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.1em; text-transform:uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            ${t.classifications[d.classification] || d.classification}
+                        </span>
+                    </div>
+
+                    <!-- LOGO DEL CLIENTE GIGANTE -->
+                    <div style="margin-bottom: 4rem; width: 100%; display: flex; justify-content: center;">
+                        ${d.clientLogo ? `
+                            <img src="${d.clientLogo}" alt="Logo Cliente" style="max-height: 380px; width: 100%; max-width: 700px; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
+                        ` : `
+                            <div style="width:160px; height:160px; background:linear-gradient(135deg,#2563eb,#1e40af); border-radius:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 15px 40px rgba(37,99,235,0.3);">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- SEPARADOR DECORATIVO -->
+                    <div style="display:flex; align-items:center; gap:1.5rem; width: 60%; margin-bottom:4rem;">
+                        <div style="flex:1; height:2px; background:linear-gradient(90deg, transparent, #e2e8f0);"></div>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <div style="flex:1; height:2px; background:linear-gradient(-90deg, transparent, #e2e8f0);"></div>
+                    </div>
+
+                    <!-- BADGE + TÍTULO + RED TEAM INFO -->
+                    <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+                        <span style="display:inline-flex; align-items:center; gap:0.5rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:999px; padding:0.4rem 1.25rem; font-size:0.85rem; font-weight:800; color:#1d4ed8; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:1.5rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            ${t.auditTypes[d.auditType] || escapeHTML(d.auditType)}
+                        </span>
+
+                        <h1 style="font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; margin: 0 0 1.25rem; color: #0f172a; line-height:1.1; max-width: 800px;">
+                            ${escapeHTML(d.documentTitle)}
+                        </h1>
+
+                        <div style="width: 80px; height: 5px; background: linear-gradient(90deg, #2563eb, #6366f1); border-radius: 6px; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(37,99,235,0.3);"></div>
+
+                        <p style="font-size: 1.35rem; color: #475569; font-weight: 600; margin:0; letter-spacing: -0.01em;">
+                            ${escapeHTML(d.targetAsset)}
+                        </p>
                     </div>
                 </div>
-                ${d.clientLogo ? `
-                    <div class="client-logo-container" style="max-width: 200px; max-height: 120px;">
-                        <img src="${d.clientLogo}" alt="Logo Cliente" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: 8px;">
+
+                <!-- PIE DE PÁGINA (Ajustado directamente debajo sin tanto espacio) -->
+                <div style="margin-top: 3rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                        <div style="padding-right: 1.5rem; border-right: 2px solid #e2e8f0;">
+                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.clientCompany}</p>
+                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.clientCompany)}</p>
+                        </div>
+                        <div style="padding: 0 1.5rem; border-right: 2px solid #e2e8f0;">
+                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.auditorCompany}</p>
+                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0 0 0.25rem;">${escapeHTML(d.auditorCompany)}</p>
+                            <p style="font-size:0.9rem; font-weight:600; color:#475569; margin:0;">${escapeHTML(d.auditorName)}</p>
+                        </div>
+                        <div style="padding: 0 1.5rem; border-right: 2px solid #e2e8f0;">
+                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.date}</p>
+                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.date)}</p>
+                        </div>
+                        <div style="padding-left: 1.5rem;">
+                            <p style="font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.15em; margin:0 0 0.5rem;">${t.version}</p>
+                            <p style="font-size:1.05rem; font-weight:800; color:#0f172a; margin:0;">${escapeHTML(d.version)}</p>
+                        </div>
                     </div>
-                ` : ''}
+                </div>
             </div>
             
-            ${renderCvssSummary()}
+            <!-- ÍNDICE -->
+            <div class="index-page" style="padding: 4rem 2rem; min-height: 100vh; page-break-after: always; max-width: 900px; margin: 0 auto;">
+                <h2 style="font-size: 2.25rem; color: #111827; margin-bottom: 2.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">Índice</h2>
+                
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <a href="#summary" style="display: flex; justify-content: space-between; text-decoration: none; color: #374151; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; font-size: 1.125rem; transition: color 0.2s;">
+                        <span>Resumen Ejecutivo (CVSS)</span>
+                    </a>
+                    <a href="#incidents" style="display: flex; justify-content: space-between; text-decoration: none; color: #374151; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; font-size: 1.125rem; transition: color 0.2s;">
+                        <span>${t.incidentsSectionTitle}</span>
+                    </a>
+                    
+                    ${state.findings.length > 0 ? `<h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #4b5563; font-size: 1.5rem; font-weight: 700;">Hallazgos Técnicos</h3>` : ''}
+                    
+                    ${state.findings.map((f, idx) => `
+                        <a href="#finding-${idx}" style="display: flex; justify-content: space-between; text-decoration: none; color: #111827; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; align-items: center; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
+                            <div style="padding-right: 1rem;">
+                                <span style="display: inline-block; width: 2rem; font-weight: 700; color: #6b7280;">${idx + 1}.</span>
+                                <span style="font-weight: 500;">${escapeHTML(f.title)}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 6px; background-color: var(--severity-${f.severity}); color: white; min-width: 80px; text-align: center; display: inline-block;">
+                                    ${t.severityLevels[f.severity]}
+                                </span>
+                                <span style="font-weight: 700; color: #6b7280; font-size: 0.875rem; width: 40px; text-align: right;">${escapeHTML(f.cvss || '-')}</span>
+                            </div>
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
             
+            <!-- RESUMEN EJECUTIVO -->
+            <div id="summary" style="page-break-after: always; padding: 2rem 0;">
+                <h2 style="font-size: 2rem; color: #111827; margin-bottom: 2rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">Resumen Ejecutivo</h2>
+                ${renderCvssSummary()}
+            </div>
+            
+            <!-- INCIDENCIAS -->
+            <div id="incidents" style="padding: 2rem 0; page-break-inside: avoid;">
+                <h2 style="font-size: 2rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">${t.incidentsSectionTitle}</h2>
+                ${d.hasIncidents ? `
+                    <div style="background:#fff7ed; border:1px solid #fed7aa; border-left:6px solid #f97316; border-radius:10px; padding:1.5rem 2rem;">
+                        <p style="font-weight:700; color:#c2410c; margin-bottom:0.75rem; font-size:1rem; display:flex; align-items:center; gap:0.5rem;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            Se registraron incidencias durante la auditoría
+                        </p>
+                        <p style="color:#9a3412; line-height:1.7; white-space:pre-wrap;">${formatMultiline(d.incidentsText || '')}</p>
+                    </div>
+                ` : `
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-left:6px solid #22c55e; border-radius:10px; padding:1.5rem 2rem; display:flex; align-items:center; gap:1rem;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <p style="color:#166534; font-weight:600; font-size:1.05rem; margin:0;">${t.incidentsNoneText}</p>
+                    </div>
+                `}
+            </div>
+
+            <!-- HALLAZGOS TÉCNICOS -->
             <div class="findings-preview">
                 ${state.findings.map((f, idx) => `
-                    <div class="finding-preview severity-${f.severity}">
-                        <h3>#${idx + 1} - ${f.title}</h3>
-                        <p><strong>Severidad:</strong> ${t.severityLevels[f.severity]}</p>
-                        <p><strong>CVSS:</strong> ${f.cvss}</p>
-                        ${f.description ? `<p><strong>Descripción:</strong> ${f.description}</p>` : ''}
-                        ${f.poc ? `<p><strong>PoC:</strong> ${f.poc}</p>` : ''}
-                        ${f.impact ? `<p><strong>Impacto:</strong> ${f.impact}</p>` : ''}
+                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="page-break-inside: avoid; margin-bottom: 3rem; background: white; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem;">
+                            <h3 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
+                            <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap; margin-left: 1rem;">
+                                ${t.severityLevels[f.severity]}
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                            <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">CVSS Score</p>
+                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cvss || 'N/A')}</p>
+                            </div>
+                            <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">CVE</p>
+                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cve || 'N/A')}</p>
+                            </div>
+                            <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">URL de Referencia</p>
+                                <p style="font-size: 0.875rem; font-weight: 500; color: #3b82f6; margin: 0; word-break: break-all;">${f.reference ? `<a href="${escapeHTML(f.reference)}" target="_blank" style="color: #3b82f6; text-decoration: none;">${escapeHTML(f.reference)}</a>` : 'N/A'}</p>
+                            </div>
+                        </div>
+                        
+                        ${f.description ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #374151; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                    Descripción
+                                </h4>
+                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.description)}</span></p>
+                            </div>
+                        ` : ''}
+                        
+                        ${f.poc ? `
+                            <div style="margin-bottom: 1.5rem; background: #1e293b; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; border: 1px solid #0f172a;">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: #f8fafc;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                    Pasos para Reproducir (PoC)
+                                </h4>
+                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: #e2e8f0; margin: 0;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
+                            </div>
+                        ` : ''}
+                        
                         ${f.images && f.images.length > 0 ? `
-                            <div class="finding-images">
-                                <p><strong>Evidencias:</strong></p>
-                                <div class="finding-images-grid">
+                            <div style="margin-bottom: 1.5rem;">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #374151; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                    Evidencias
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
                                     ${f.images.map((img, imgIdx) => `
-                                        <img src="${img}" alt="Evidencia ${imgIdx + 1}" class="finding-evidence-img">
+                                        <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; break-inside: avoid; background: #fff; padding: 0.5rem;">
+                                            <img src="${img}" alt="Evidencia ${imgIdx + 1}" style="width: 100%; height: auto; border-radius: 4px; display: block;">
+                                        </div>
                                     `).join('')}
                                 </div>
                             </div>
                         ` : ''}
-                        ${f.remediation ? `<p><strong>Remediación:</strong> ${f.remediation}</p>` : ''}
+                        
+                        ${f.impact ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #dc2626; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    Impacto en el Negocio
+                                </h4>
+                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.impact)}</span></p>
+                            </div>
+                        ` : ''}
+                        
+                        ${f.remediation ? `
+                            <div style="margin-bottom: 0; background: #f0fdf4; padding: 1.5rem; border-radius: 8px; border: 1px solid #bbf7d0;">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #166534; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    Solución y Remediación
+                                </h4>
+                                <p style="color: #15803d; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.remediation)}</span></p>
+                            </div>
+                        ` : ''}
                     </div>
                 `).join('')}
             </div>
-            
-            ${renderCvssSummary()}
         </div>
     `;
 }
+
 
 function renderReportsPage() {
     if (!state.showReportSelector || state.showSplash) return '';
@@ -933,8 +1185,8 @@ function renderReportsPage() {
                     </div>
                 ` : state.savedReports.map(r => `
                     <div class="report-card" onclick="loadReport(${r.id})">
-                        <h3>${r.document_title}</h3>
-                        <p>${r.client_company}</p>
+                        <h3>${escapeHTML(r.document_title)}</h3>
+                        <p>${escapeHTML(r.client_company)}</p>
                         <span>${r.findings_count || 0} hallazgos</span>
                         <button onclick="event.stopPropagation(); deleteReport(${r.id})">Eliminar</button>
                     </div>
@@ -996,6 +1248,22 @@ function updateAuditData(field, value) {
 
 function updateCurrentFinding(field, value) {
     state.currentFinding[field] = value;
+    if (field === 'cvss') {
+        const score = parseFloat(value);
+        if (!isNaN(score)) {
+            let sev = 'info';
+            if (score >= 9.0) sev = 'crit';
+            else if (score >= 7.0) sev = 'high';
+            else if (score >= 4.0) sev = 'med';
+            else if (score > 0.0) sev = 'low';
+            
+            state.currentFinding.severity = sev;
+            const severitySelect = document.getElementById('findingSeverity');
+            if (severitySelect) {
+                severitySelect.value = sev;
+            }
+        }
+    }
 }
 
 function applyTemplate(key) {
@@ -1005,10 +1273,24 @@ function applyTemplate(key) {
     if (!template) return;
 
     const t = template[state.lang] || template.es;
+
+    let calculatedSeverity = state.currentFinding.severity || 'med';
+    if (t.cvss) {
+        const score = parseFloat(t.cvss);
+        if (!isNaN(score)) {
+            if (score >= 9.0) calculatedSeverity = 'crit';
+            else if (score >= 7.0) calculatedSeverity = 'high';
+            else if (score >= 4.0) calculatedSeverity = 'med';
+            else if (score > 0.0) calculatedSeverity = 'low';
+            else calculatedSeverity = 'info';
+        }
+    }
+
     state.currentFinding = {
         ...state.currentFinding,
         templateKey: key,
         title: t.title,
+        severity: calculatedSeverity,
         description: t.description,
         poc: t.poc || '',
         impact: t.impact,
@@ -1039,6 +1321,17 @@ function handleFindingSubmit(e) {
     };
 
     state.findings.push(finding);
+    
+    // Auto-sort by severity
+    const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
+    state.findings.sort((a, b) => {
+        const weightDiff = severityWeights[b.severity] - severityWeights[a.severity];
+        if (weightDiff !== 0) return weightDiff;
+        const cvssA = parseFloat(a.cvss) || 0;
+        const cvssB = parseFloat(b.cvss) || 0;
+        return cvssB - cvssA;
+    });
+
     state.isDirty = true;
     
     if (state.currentReportId) {

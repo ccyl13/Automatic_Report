@@ -708,17 +708,17 @@ const App = () => {
     const renderPreview = () => (
         <div className="preview-container bg-white mx-auto paper-shadow text-gray-800 w-full max-w-[210mm] print-a4-height">
             <div className="flex flex-col relative page-break p-6 sm:p-10 md:p-16 lg:p-[20mm] min-h-auto print-a4-height">
-                <div className="mt-8 sm:mt-12 md:mt-20 mb-8 sm:mb-12 text-brand-900">
-                    <Icons.Shield className="w-12 h-12 sm:w-16 sm:h-16" />
+                <div className="mt-4 sm:mt-6 md:mt-10 mb-4 sm:mb-6 text-brand-900">
+                    <Icons.Shield className="w-24 h-24 sm:w-32 sm:h-32" />
                 </div>
 
                 <div className="flex-grow">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-6 text-brand-950 leading-tight tracking-tight">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-brand-950 leading-tight tracking-tight">
                         {auditData.documentTitle}
                     </h1>
-                    <div className="w-16 sm:w-24 h-1 sm:h-1.5 bg-brand-600 mb-10 sm:mb-16 print-bg-dark"></div>
+                    <div className="w-16 sm:w-24 h-1 sm:h-1.5 bg-brand-600 mb-6 sm:mb-8 print-bg-dark"></div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-8 sm:gap-y-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-5 sm:gap-y-6">
                         <div>
                             <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.prepFor}</p>
                             <p className="text-lg sm:text-xl font-bold text-gray-900">{auditData.clientCompany}</p>
@@ -737,14 +737,14 @@ const App = () => {
                             <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.version}</p>
                             <p className="text-base sm:text-lg font-semibold text-gray-800">v{auditData.version}</p>
                         </div>
-                        <div className="col-span-1 sm:col-span-2 pt-4 border-t border-gray-200">
+                        <div className="col-span-1 sm:col-span-2 pt-3 border-t border-gray-200">
                             <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.globalRisk}</p>
                             <p className={`text-xl sm:text-2xl font-black uppercase ${getSeverityStyles(stats.globalRiskKey).textDark}`}>{severities[stats.globalRiskKey][lang]}</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-12 border-t-2 border-brand-900 pt-4 pb-2 print-border">
+                <div className="mt-8 border-t-2 border-brand-900 pt-4 pb-2 print-border">
                     <p className="text-[10px] sm:text-xs text-gray-400 text-center uppercase tracking-widest">{t.genBy}</p>
                 </div>
             </div>
@@ -908,7 +908,9 @@ const App = () => {
             <header className="bg-brand-950 text-white shadow-md no-print sticky top-0 z-40">
                 <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex justify-between items-center">
                     <div className="flex items-center space-x-2 sm:space-x-3 w-1/3">
-                        <div className="text-brand-500"><Icons.Shield className="w-6 h-6 sm:w-10 sm:h-10 text-brand-500" /></div>
+                        <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-brand-600/30 border border-brand-500/40">
+                            <Icons.Shield className="w-5 h-5 sm:w-6 sm:h-6 text-brand-400" />
+                        </div>
                         <h1 className="hidden sm:block text-base md:text-xl font-bold tracking-tight truncate">{t.appTitle}</h1>
                         {isDirty && <span className="text-xs text-yellow-400 ml-2">•</span>}
                     </div>

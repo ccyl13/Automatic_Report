@@ -1,14 +1,16 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 import os
 import tempfile
+import shutil
+from datetime import datetime
 from playwright.async_api import async_playwright
 import models, schemas, database
-from database import engine, get_db
+from database import engine, get_db, db_path
 
 # Determinar el directorio raíz del proyecto (donde está index.html)
 # Si ejecutamos desde backend/, subimos un nivel
@@ -246,6 +248,96 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
     except Exception as e:
         print(f"Error generando PDF: {e}")
         raise HTTPException(status_code=500, detail="Error de servidor generando el PDF")
+
+
+# ==================== DATABASE IMPORT/EXPORT ====================
+
+@app.get("/api/database/export")
+def export_database():
+    """Exportar la base de datos SQLite como archivo descargable"""
+    if not os.path.exists(db_path):
+        raise HTTPException(status_code=404, detail="Base de datos no encontrada")
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"pentestify_backup_{timestamp}.db"
+    
+    return FileResponse(
+        db_path,
+        media_type="application/x-sqlite3",
+        filename=filename
+    )
+
+
+@app.post("/api/database/import")
+def import_database(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Importar una base de datos SQLite para restaurar reportes"""
+    
+    # Verificar que el archivo es una base de datos SQLite
+    if not file.filename.endswith('.db'):
+        raise HTTPException(status_code=400, detail="El archivo debe tener extensión .db")
+    
+    # Crear backup temporal de la base de datos actual
+    backup_path = None
+    if os.path.exists(db_path):
+        backup_path = f"{db_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy2(db_path, backup_path)
+    
+    try:
+        # Guardar el archivo subido temporalmente
+        temp_path = tempfile.mktemp(suffix=".db")
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Verificar que es una base de datos SQLite válida
+        import sqlite3
+        try:
+            conn = sqlite3.connect(temp_path)
+            cursor = conn.cursor()
+            # Verificar que tiene las tablas esperadas
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            
+            required_tables = {'reports', 'findings'}
+            if not required_tables.issubset(set(tables)):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"La base de datos no tiene las tablas requeridas. Tablas encontradas: {tables}"
+                )
+        except sqlite3.Error as e:
+            raise HTTPException(status_code=400, detail=f"Archivo no es una base de datos SQLite válida: {str(e)}")
+        
+        # Cerrar todas las conexiones actuales antes de reemplazar
+        db.close()
+        
+        # Reemplazar la base de datos actual
+        shutil.copy2(temp_path, db_path)
+        
+        # Limpiar archivo temporal
+        os.remove(temp_path)
+        
+        return JSONResponse(
+            content={
+                "message": "Base de datos importada correctamente",
+                "filename": file.filename,
+                "backup_created": backup_path is not None,
+                "backup_path": backup_path
+            }
+        )
+        
+    except HTTPException:
+        # Restaurar backup si existe
+        if backup_path and os.path.exists(backup_path):
+            shutil.copy2(backup_path, db_path)
+            os.remove(backup_path)
+        raise
+    except Exception as e:
+        # Restaurar backup si existe
+        if backup_path and os.path.exists(backup_path):
+            shutil.copy2(backup_path, db_path)
+            os.remove(backup_path)
+        raise HTTPException(status_code=500, detail=f"Error al importar la base de datos: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

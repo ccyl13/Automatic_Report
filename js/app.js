@@ -22,6 +22,7 @@ const state = {
         incidentsText: ''
     },
     findings: [],
+    editingFindingIndex: null,
     currentFinding: {
         templateKey: 'custom',
         title: '',
@@ -716,7 +717,7 @@ function renderEditor() {
                         </div>
                         
                         <div class="form-actions">
-                            <button type="submit" class="btn-primary">${t.addFinding}</button>
+                            <button type="submit" class="btn-primary">${state.editingFindingIndex !== null ? t.updateFinding : t.addFinding}</button>
                             <button type="button" onclick="resetFindingForm()">${t.cancel}</button>
                         </div>
                     </form>
@@ -849,7 +850,15 @@ function renderFindingsList() {
                         <span class="finding-number">#${idx + 1}</span>
                         <span class="finding-title">${escapeHTML(f.title)}</span>
                         <span class="finding-severity">${t.severityLevels[f.severity]}</span>
-                        <button onclick="deleteFinding(${idx})">×</button>
+                        <div class="finding-actions">
+                            <button class="btn-edit" onclick="editFinding(${idx})" title="${state.lang === 'es' ? 'Editar' : 'Edit'}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-delete" onclick="deleteFinding(${idx})" title="${state.lang === 'es' ? 'Eliminar' : 'Delete'}">×</button>
+                        </div>
                     </div>
                 </div>
             `).join('')}
@@ -1146,11 +1155,43 @@ function renderReportsPage() {
     if (!state.showReportSelector || state.showSplash) return '';
 
     const t = UI[state.lang];
+    const tImpExp = state.lang === 'es' ? {
+        exportDb: 'Exportar BD',
+        importDb: 'Importar BD',
+        importConfirm: '¿Estás seguro? Esto reemplazará todos los reportes actuales.',
+        importSuccess: 'Base de datos importada correctamente. Recargando...',
+        importError: 'Error al importar: '
+    } : {
+        exportDb: 'Export DB',
+        importDb: 'Import DB',
+        importConfirm: 'Are you sure? This will replace all current reports.',
+        importSuccess: 'Database imported successfully. Reloading...',
+        importError: 'Error importing: '
+    };
 
     return `
         <div class="reports-page">
             <div class="reports-header">
                 <h1>${t.myReports}</h1>
+                <div class="reports-actions">
+                    <button class="btn-secondary" onclick="exportDatabase()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        ${tImpExp.exportDb}
+                    </button>
+                    <button class="btn-secondary" onclick="document.getElementById('db-import-input').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        ${tImpExp.importDb}
+                    </button>
+                    <input type="file" id="db-import-input" accept=".db" style="display:none" onchange="importDatabase(this)">
+                </div>
             </div>
 
             <div class="reports-list">
@@ -1333,7 +1374,7 @@ function handleFindingSubmit(e) {
     e.preventDefault();
 
     const finding = {
-        id: Date.now(),
+        id: state.editingFindingIndex !== null ? state.findings[state.editingFindingIndex].id : Date.now(),
         templateKey: state.currentFinding.templateKey,
         title: $('#findingTitle').value,
         severity: $('#findingSeverity').value,
@@ -1347,7 +1388,14 @@ function handleFindingSubmit(e) {
         images: state.currentFinding.images
     };
 
-    state.findings.push(finding);
+    if (state.editingFindingIndex !== null) {
+        // Update existing finding
+        state.findings[state.editingFindingIndex] = finding;
+        state.editingFindingIndex = null;
+    } else {
+        // Add new finding
+        state.findings.push(finding);
+    }
 
     const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
     state.findings.sort((a, b) => {
@@ -1359,16 +1407,17 @@ function handleFindingSubmit(e) {
     });
 
     state.isDirty = true;
-    
+
     if (state.currentReportId) {
         localStorage.removeItem('report_' + state.currentReportId + '_draft');
     }
-    
+
     resetFindingForm();
     renderApp();
 }
 
 function resetFindingForm() {
+    state.editingFindingIndex = null;
     state.currentFinding = {
         templateKey: 'custom',
         title: '',
@@ -1387,6 +1436,37 @@ function resetFindingForm() {
 function deleteFinding(index) {
     state.findings.splice(index, 1);
     state.isDirty = true;
+    renderApp();
+}
+
+function editFinding(index) {
+    const finding = state.findings[index];
+    if (!finding) return;
+
+    // Load finding data into currentFinding
+    state.currentFinding = {
+        templateKey: finding.templateKey || 'custom',
+        title: finding.title || '',
+        severity: finding.severity || 'med',
+        description: finding.description || '',
+        cvss: finding.cvss || '',
+        poc: finding.poc || '',
+        impact: finding.impact || '',
+        remediation: finding.remediation || '',
+        reference: finding.reference || '',
+        cve: finding.cve || '',
+        images: finding.images ? [...finding.images] : []
+    };
+
+    // Store the index we're editing
+    state.editingFindingIndex = index;
+
+    // Scroll to the form
+    const form = document.getElementById('findingForm');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     renderApp();
 }
 
@@ -1537,6 +1617,67 @@ async function deleteReport(id) {
     } catch (err) {
         alert('Error deleting report: ' + err.message);
     }
+}
+
+async function exportDatabase() {
+    try {
+        const response = await fetch('/api/database/export');
+        if (!response.ok) throw new Error('Error al exportar');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'pentestify_backup.db';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        alert(state.lang === 'es' ? 'Error al exportar: ' + err.message : 'Error exporting: ' + err.message);
+    }
+}
+
+async function importDatabase(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const tImpExp = state.lang === 'es' ? {
+        importConfirm: '¿Estás seguro? Esto reemplazará todos los reportes actuales.',
+        importSuccess: 'Base de datos importada correctamente. Recargando...',
+        importError: 'Error al importar: '
+    } : {
+        importConfirm: 'Are you sure? This will replace all current reports.',
+        importSuccess: 'Database imported successfully. Reloading...',
+        importError: 'Error importing: '
+    };
+    
+    if (!confirm(tImpExp.importConfirm)) {
+        input.value = '';
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/database/import', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Error desconocido');
+        }
+        
+        alert(tImpExp.importSuccess);
+        window.location.reload();
+    } catch (err) {
+        alert(tImpExp.importError + err.message);
+    }
+    
+    input.value = '';
 }
 
 async function saveCurrentReport() {

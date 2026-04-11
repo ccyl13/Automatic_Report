@@ -3038,7 +3038,13 @@ button {
     color: #64748b;
 }
 
-.finding-item>.finding-header>button {
+.finding-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.finding-actions .btn-edit,
+.finding-actions .btn-delete {
     background: transparent;
     border: none;
     color: #d1d5db;
@@ -3053,9 +3059,16 @@ button {
     align-items: center;
     justify-content: center;
     box-shadow: none;
+    cursor: pointer;
 }
 
-.finding-item>.finding-header>button:hover {
+.finding-actions .btn-edit:hover {
+    background: #dbeafe;
+    color: #3b82f6;
+    transform: none;
+}
+
+.finding-actions .btn-delete:hover {
     background: #fee2e2;
     color: #ef4444;
     transform: none;
@@ -3079,6 +3092,37 @@ button {
     font-size: 1.625rem;
     font-weight: 800;
     letter-spacing: -0.025em;
+}
+
+.reports-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.reports-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reports-actions .btn-secondary:hover {
+    color: #3b82f6;
+    border-color: #3b82f6;
+    background: #f8fafc;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+.reports-actions .btn-secondary svg {
+    flex-shrink: 0;
 }
 
 .reports-list {

@@ -17,6 +17,7 @@
 
 ## Características
 
+| Característica | Descripción y Valor de UX |
 | :--- | :--- |
 | **📝 Persistencia de datos** | **Cero Pérdida de Información**. <br>Guarda tus reportes en una base de datos SQLite para continuar tu trabajo después. Cada hallazgo y cambio se sincroniza automáticamente. |
 | **🌐 Sistema bilingüe** | **Alcance Global Corporativo**. <br>Configura la herramienta y genera reportes en **Español o Inglés** con un solo clic, adaptándote instantáneamente a las necesidades de tu cliente. |

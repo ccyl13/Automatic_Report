@@ -114,16 +114,16 @@ Los datos se almacenan en `pentestify.db` (SQLite) con dos tablas:
 
 ## Tecnologías
 
-Pentestify está construido sobre un stack moderno y eficiente que equilibra el rendimiento de un backend asíncrono con la ligereza de un frontend sin frameworks, garantizando reportes rápidos y una persistencia de datos robusta.
+Pentestify está construido sobre un stack moderno y eficiente que equilibra el rendimiento de un backend asíncrono con la ligereza de un frontend SPA, garantizando reportes rápidos y una persistencia de datos robusta.
 
 <br>
 
 | Categoría | Tecnologías Clave | Función y UX |
 | :--- | :--- | :--- |
-| **FRONTEND**<br>*SPA Ultraligera* | <ul><li>**Vanilla JavaScript** (ES6+)</li><li>**Pure CSS** (Vanilla)</li><li>**Inter Font Family** (Optimized)</li></ul> | **Experiencia de Usuario Fluida**.<br>Navegación instantánea de página única (Single Page App) sin recargas de página. El diseño limpio y la tipografía optimizada aseguran la legibilidad durante largas sesiones de auditoría. Cero frameworks pesados. |
-| **BACKEND**<br>*API de Alto Rendimiento* | <ul><li>**FastAPI**</li><li>**Python 3.x**</li><li>**Uvicorn** / **Gunicorn**</li></ul> | **Rendimiento Asíncrono**. <br>Manejo eficiente de múltiples peticiones simultáneas, garantizando que el guardado automático de reportes y hallazgos sea imperceptible para el auditor. |
-| **PERSISTENCIA**<br>*Datos Relacionales* | <ul><li>**SQLite**</li><li>**SQLAlchemy** (ORM)</li><li>**Pydantic**</li></ul> | **Tus Datos Seguros y Estructurados**.<br>Persistencia local robusta en `pentestify.db`. SQLAlchemy facilita la gestión de datos, mientras Pydantic asegura que cada vulnerabilidad y reporte cumpla con el esquema corporativo. |
-| **DESPLIEGUE**<br>*Infraestructura* | <ul><li>**Docker**</li><li>**Docker Compose**</li><li>Python `http.server`</li></ul> | **Portabilidad Instantánea**.<br>Ejecuta Pentestify en cualquier entorno (Windows, Linux, macOS) con un solo comando, aislando dependencias y protegiendo la integridad de la base de datos mediante volúmenes. |
+| <img src="https://i.imgur.com/uCjL0S4.png" width="100" alt="Frontend Card"> | <ul><li>**Vanilla JavaScript** (ES6+)</li><li>**Pure CSS** (Vanilla)</li><li>**Inter Font Family** (Optimized)</li></ul> | **SPA Ultraligera**.<br>Navegación instantánea de página única sin recargas. El diseño limpio y la tipografía optimizada aseguran la legibilidad durante largas sesiones de auditoría. Cero frameworks pesados. |
+| <img src="https://i.imgur.com/P1vO2E3.png" width="100" alt="Backend Card"> | <ul><li>**FastAPI**</li><li>**Python 3.x**</li><li>**Uvicorn** / **Gunicorn**</li></ul> | **API Asíncrona**.<br>Manejo eficiente de múltiples peticiones simultáneas, garantizando que el guardado automático de reportes y hallazgos sea imperceptible para el auditor. |
+| <img src="https://i.imgur.com/lE0tO3A.png" width="100" alt="Database Card"> | <ul><li>**SQLite**</li><li>**SQLAlchemy** (ORM)</li><li>**Pydantic**</li></ul> | **Datos Estructurados**.<br>Persistencia local robusta en `pentestify.db`. SQLAlchemy gestiona los datos, mientras Pydantic asegura que cada vulnerabilidad y reporte cumpla con el esquema corporativo. |
+| <img src="https://i.imgur.com/5V3O2E3.png" width="100" alt="Docker Card"> | <ul><li>**Docker**</li><li>**Docker Compose**</li><li>Python `http.server`</li></ul> | **Portabilidad Total**.<br>Ejecuta Pentestify en cualquier entorno (Windows, Linux, macOS) con un solo comando, aislando dependencias y protegiendo la integridad de la base de datos mediante volúmenes. |
 
 <br>
 

@@ -1,0 +1,150 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.env.local
+.env.*.local
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ==========================================
+# IDEs y Editores
+# ==========================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+.#*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================================
+# Proyecto Pentestify
+# ==========================================
+# Base de datos SQLite (se crea automáticamente)
+data/
+*.db
+*.sqlite
+*.sqlite3
+pentestify.db
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+
+# Archivos de uploads/imagenes procesadas (si se implementa)
+uploads/
+
+# Docker
+.dockerignore
+
+# ==========================================
+# Frontend (React/JavaScript)
+# ==========================================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+/build
+/dist
+
+# Local env files
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==========================================
+# Testing
+# ==========================================
+.coverage
+.pytest_cache/
+htmlcov/
+
+# ==========================================
+# Misc
+# ==========================================
+*.bak
+*.orig
+*.rej

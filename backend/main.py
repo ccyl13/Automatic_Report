@@ -1,9 +1,19 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
+import os
 import models, schemas, database
 from database import engine, get_db
+
+# Determinar el directorio raíz del proyecto (donde está index.html)
+# Si ejecutamos desde backend/, subimos un nivel
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.exists(os.path.join(BASE_DIR, "index.html")):
+    # Si no encontramos index.html, asumimos que estamos en la raíz
+    BASE_DIR = os.getcwd()
 
 # Crear tablas
 models.Base.metadata.create_all(bind=engine)
@@ -23,12 +33,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Montar archivos estáticos (CSS, JS) usando paths absolutos
+app.mount("/css", StaticFiles(directory=os.path.join(BASE_DIR, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(BASE_DIR, "js")), name="js")
+app.mount("/assets", StaticFiles(directory=os.path.join(BASE_DIR, "assets")), name="assets")
 
-# ==================== REPORTS ====================
+
+# ==================== API INFO ====================
+
+@app.get("/api")
+def api_info():
+    """Información de la API"""
+    return {"message": "Pentestify API", "version": "1.0.0"}
+
+
+# ==================== FRONTEND ====================
 
 @app.get("/")
 def root():
-    return {"message": "Pentestify API", "version": "1.0.0"}
+    """Servir el frontend (index.html)"""
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
 
 @app.get("/api/reports", response_model=List[schemas.ReportList])

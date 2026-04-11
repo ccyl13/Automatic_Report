@@ -9,7 +9,7 @@ const authorsData = [
         },
         link: "https://www.youtube.com/@ElPinguinoDeMario", 
         icon: <Icons.YouTube className="w-4 h-4 mr-1.5"/>, 
-        img: "https://github.com/ccyl13/Automatic_Report/blob/main/a9flsbyS.jpeg?raw=true",
+        img: "assets/images/el-pinguino-de-mario.webp",
         btnColor: "text-red-400 group-hover:text-red-300 hover:border-red-400/50 hover:shadow-[0_0_15px_rgba(248,113,113,0.4)]"
     },
     { 
@@ -20,7 +20,7 @@ const authorsData = [
         },
         link: "https://curiosidadesdehackers.com/about", 
         icon: <Icons.Web className="w-4 h-4 mr-1.5"/>, 
-        img: "https://github.com/ccyl13/Automatic_Report/blob/main/images.jpeg?raw=true",
+        img: "assets/images/manuel-martinez.webp",
         btnColor: "text-green-400 group-hover:text-green-300 hover:border-green-400/50 hover:shadow-[0_0_15px_rgba(74,222,128,0.4)]"
     },
     { 
@@ -31,7 +31,7 @@ const authorsData = [
         },
         link: "https://www.linkedin.com/in/thomasoneil%C3%A1lvarez", 
         icon: <Icons.LinkedIn className="w-4 h-4 mr-1.5"/>, 
-        img: "https://github.com/ccyl13/Automatic_Report/blob/main/IMG_9275.jpeg?raw=true",
+        img: "assets/images/thomas-oneil.webp",
         btnColor: "text-blue-400 group-hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(96,165,250,0.4)]"
     }
 ];

@@ -1,6 +1,3 @@
-# Dockerfile para Pentestify
-# Construye imagen con backend FastAPI + frontend estático
-
 FROM python:3.11-slim
 
 # Establecer directorio de trabajo
@@ -23,6 +20,7 @@ COPY backend/ ./backend/
 COPY index.html .
 COPY css/ ./css/
 COPY js/ ./js/
+COPY assets/ ./assets/
 
 # Crear directorio para la base de datos SQLite
 RUN mkdir -p /app/data

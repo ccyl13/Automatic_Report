@@ -1,7 +1,5 @@
 # Pentestify
 
-[![Docker Tests](https://img.shields.io/badge/Docker-Tested-success)](test_docker.py)
-
 Generador interactivo de reportes de pentesting que permite registrar vulnerabilidades (con plantillas predefinidas o manualmente), visualizar estadísticas de riesgo en tiempo real, **guardar reportes en base de datos** y exportar informes corporativos estructurados en formato PDF.
 
 ## Características
@@ -73,10 +71,10 @@ Usa cualquier servidor estático para servir los archivos. Por ejemplo:
 
 ```bash
 # Desde la raíz del proyecto
-python -m http.server 8080
+python -m http.server 8000
 ```
 
-Abre en tu navegador: `http://localhost:8080`
+Abre en tu navegador: `http://localhost:8000`
 
 ---
 
@@ -88,122 +86,13 @@ Abre en tu navegador: `http://localhost:8080`
 # 1. Construir imagen
 docker build -t pentestify:latest .
 
-# 2. Crear directorio para persistir datos
-mkdir -p data
-
-# 3. Ejecutar contenedor
+# 2. Ejecutar contenedor
 docker run -d \
   -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
+  -v pentestify_data:/app/data \
   --name pentestify \
   pentestify:latest
 ```
-
-### Comandos útiles
-
-```bash
-# Ver logs
-docker logs -f pentestify
-
-# Detener contenedor
-docker stop pentestify
-
-# Iniciar contenedor detenido
-docker start pentestify
-
-# Eliminar contenedor (datos se mantienen en ./data/)
-docker stop pentestify && docker rm pentestify
-
-# Eliminar todo incluyendo imagen
-docker stop pentestify && docker rm pentestify && docker rmi pentestify:latest
-```
-
-### Persistencia de datos
-
-La base de datos SQLite se guarda en el directorio local `./data/` gracias al volumen montado (`-v $(pwd)/data:/app/data`). Los datos persisten incluso si eliminas y recreas el contenedor.
-
-### Acceder a la aplicación Dockerizada
-
-- API: `http://localhost:8000`
-- API Docs (Swagger): `http://localhost:8000/docs`
-- API Docs (ReDoc): `http://localhost:8000/redoc`
-
-### Test de Docker (Integración)
-
-Para verificar que la dockerización funciona correctamente, ejecuta el test automatizado:
-
-```bash
-# Ejecutar test básico
-python test_docker.py
-
-# Ejecutar con salida detallada
-python test_docker.py --verbose
-```
-
-Este test verifica:
-- ✅ Construcción de imagen Docker
-- ✅ Inicio del contenedor
-- ✅ API endpoints (raíz, docs)
-- ✅ CRUD de reportes y hallazgos
-- ✅ Persistencia de base de datos
-- ✅ Frontend servido correctamente
-
----
-
-## 🧪 Testing
-
-### Ejecutar tests del backend
-
-```bash
-cd backend
-
-# Instalar dependencias (incluye pytest)
-pip install -r requirements.txt
-
-# Ejecutar todos los tests
-pytest tests/
-
-# Ejecutar con verbose
-pytest tests/ -v
-
-# Ejecutar tests específicos
-pytest tests/test_reports.py -v
-pytest tests/test_findings.py -v
-
-# Ver cobertura
-pytest tests/ --cov=.
-```
-
-### Tests incluidos
-
-- **test_reports.py**: 11 tests para CRUD de reportes
-- **test_findings.py**: 15 tests para hallazgos
-
-### Ejecutar tests en Docker
-
-```bash
-# Construir imagen de desarrollo con tests
-docker build -t pentestify:test .
-
-# Ejecutar tests
-docker run --rm pentestify:test pytest backend/tests/ -v
-```
-
----
-
-## API Endpoints
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/api/reports` | Listar todos los reportes |
-| POST | `/api/reports` | Crear nuevo reporte |
-| GET | `/api/reports/{id}` | Obtener reporte con hallazgos |
-| PUT | `/api/reports/{id}` | Actualizar reporte |
-| DELETE | `/api/reports/{id}` | Eliminar reporte |
-| GET | `/api/reports/{id}/findings` | Listar hallazgos del reporte |
-| POST | `/api/reports/{id}/findings` | Agregar hallazgo |
-| PUT | `/api/findings/{id}` | Actualizar hallazgo |
-| DELETE | `/api/findings/{id}` | Eliminar hallazgo |
 
 ## Base de Datos
 

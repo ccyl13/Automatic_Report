@@ -1834,9 +1834,9 @@ button:disabled,
     animation: grid 20s linear infinite;
 }
 
-/* ---- Eliminación de cabeceras/pies de página del navegador en impresión ---- */
+/* ---- Configuración de página para impresión ---- */
 @page {
-    margin: 18mm 20mm; /* Márgenes estilo documento Word */
+    margin: 10mm 20mm 18mm 20mm;
     size: A4;
 }
 
@@ -1958,7 +1958,6 @@ button:disabled,
 
     /* Páginas interiores: fondo blanco */
     .index-page,
-    .findings-preview>div,
     #summary,
     #incidents {
         background: white !important;

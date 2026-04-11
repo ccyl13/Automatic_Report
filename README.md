@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/ccyl13/Pentestify/blob/main/pentestify.png?raw=true" alt="Pentestify Banner" width="100%">
+  <img src="https://github.com/ccyl13/Pentestify/blob/main/assets/images/pentestify.png?raw=true" alt="Pentestify Banner" width="100%">
 </p>
 
 # Pentestify
@@ -29,32 +29,22 @@
 ## Estructura del Proyecto
 
 ```
-Automatic_Report/
-├── index.html              # Frontend
-├── Dockerfile              # Imagen Docker
+Pentestify/
+├── index.html              # Frontend SPA
 ├── run.py                  # Script para iniciar el servidor
 ├── requirements.txt        # Dependencias Python
+├── Dockerfile              # Imagen Docker
 ├── css/
 │   └── styles.css          # Estilos CSS vanilla
 ├── js/
-│   ├── services/
-│   │   └── api.js          # Cliente API
-│   ├── components/
-│   │   ├── Icons.js
-│   │   ├── SplashScreen.js
-│   │   └── App.js          # Componente principal con persistencia
-│   ├── data/
-│   │   ├── i18n.js         # Traducciones
-│   │   ├── templates.js    # Plantillas de vulnerabilidades
-│   │   └── authors.js
-│   └── config/
-│       └── constants.js
+│   └── app.js              # Aplicación Vanilla JavaScript
+├── assets/                 # Imágenes y recursos estáticos
 └── backend/                # API FastAPI
-    ├── main.py
-    ├── models.py
-    ├── schemas.py
-    ├── database.py
-    └── tests/                # Tests pytest
+    ├── main.py             # Endpoints y lógica principal
+    ├── models.py           # Modelos SQLAlchemy
+    ├── schemas.py          # Esquemas Pydantic
+    ├── database.py         # Configuración SQLite
+    └── tests/              # Tests pytest
         ├── conftest.py
         ├── test_reports.py
         └── test_findings.py

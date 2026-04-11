@@ -38,9 +38,6 @@ const state = {
     isDirty: false
 };
 
-// ==========================================
-// TRADUCCIONES
-// ==========================================
 const UI = {
     es: {
         appTitle: 'Pentestify',
@@ -190,9 +187,6 @@ const UI = {
     }
 };
 
-// ==========================================
-// TEMPLATES DE VULNERABILIDADES
-// ==========================================
 const templates = {
     sqli: {
         key: 'sqli',
@@ -511,9 +505,6 @@ const templates = {
     }
 };
 
-// ==========================================
-// FUNCIONES DE UTILIDAD
-// ==========================================
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
@@ -536,9 +527,6 @@ const createEl = (tag, className, html) => {
     return el;
 };
 
-// ==========================================
-// API SERVICE
-// ==========================================
 const API = {
     baseUrl: '',
 
@@ -569,10 +557,6 @@ const API = {
         delete: (findingId) => API.request('DELETE', `/api/findings/${findingId}`)
     }
 };
-
-// ==========================================
-// RENDERIZADO DE COMPONENTES
-// ==========================================
 
 function renderSplashScreen() {
     if (!state.showSplash) return '';
@@ -623,7 +607,7 @@ function renderNavbar() {
                 <button class="${state.showReportSelector ? 'active' : ''}" onclick="showReports()">${t.myReports}</button>
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
-                <button class="btn-primary" onclick="triggerPrint()">${t.generatePdf}</button>
+                <button class="btn-primary" onclick="printReport()">${t.generatePdf}</button>
             </div>
         </header>
     `;
@@ -948,21 +932,19 @@ function renderPreview() {
                 page-break-inside: avoid;
                 background: #ffffff;
                 color: #111827;
-                padding: 1rem 3rem;
+                padding: 0 3rem 0.25rem 3rem;
             ">
                 
                 <!-- PARTE SUPERIOR Y MEDIA CENTRALIZADA -->
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex: 1;">
                     
-                    <!-- CABECERA: clasificación (esquina superior derecha) -->
-                    <div style="width: 100%; display:flex; justify-content:flex-end; margin-bottom: 2rem;">
+                    <div style="width: 100%; display:flex; justify-content:flex-end; margin-bottom: 0.25rem;">
                         <span style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:999px; padding:0.4rem 1.2rem; font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.1em; text-transform:uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                             ${t.classifications[d.classification] || d.classification}
                         </span>
                     </div>
 
-                    <!-- LOGO DEL CLIENTE GIGANTE -->
-                    <div style="margin-bottom: 2rem; width: 100%; display: flex; justify-content: center;">
+                    <div style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;">
                         ${d.clientLogo ? `
                             <img src="${d.clientLogo}" alt="Logo Cliente" style="max-height: 380px; width: 100%; max-width: 700px; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                         ` : `
@@ -972,20 +954,8 @@ function renderPreview() {
                         `}
                     </div>
 
-                    <!-- SEPARADOR DECORATIVO -->
-                    <div style="display:flex; align-items:center; gap:1.5rem; width: 60%; margin-bottom:4rem;">
-                        <div style="flex:1; height:2px; background:linear-gradient(90deg, transparent, #e2e8f0);"></div>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        <div style="flex:1; height:2px; background:linear-gradient(-90deg, transparent, #e2e8f0);"></div>
-                    </div>
-
-                    <!-- BADGE + TÍTULO + RED TEAM INFO -->
+                    <!-- TÍTULO + RED TEAM INFO -->
                     <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
-                        <span style="display:inline-flex; align-items:center; gap:0.5rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:999px; padding:0.4rem 1.25rem; font-size:0.85rem; font-weight:800; color:#1d4ed8; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:1.5rem;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            ${t.auditTypes[d.auditType] || escapeHTML(d.auditType)}
-                        </span>
-
                         <h1 style="font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; margin: 0 0 1.25rem; color: #0f172a; line-height:1.1; max-width: 800px;">
                             ${escapeHTML(d.documentTitle)}
                         </h1>
@@ -1211,10 +1181,6 @@ function renderApp() {
     `;
 }
 
-// ==========================================
-// ACCIONES
-// ==========================================
-
 function enterApp() {
     state.showSplash = false;
     renderApp();
@@ -1229,6 +1195,44 @@ function setLang(lang) {
 function setTab(tab) {
     state.activeTab = tab;
     renderApp();
+}
+
+function printReport() {
+    const printWindow = window.open('', '_blank');
+    const printContent = document.querySelector('.preview-container');
+    if (!printContent) {
+        alert(state.lang === 'es' ? 'Primero ve a la vista previa' : 'Go to preview first');
+        return;
+    }
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${state.auditData.documentTitle}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="${window.location.origin}/css/styles.css">
+            <style>
+                @page { margin: 10mm 20mm 18mm 20mm; size: A4; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .navbar, .no-print { display: none !important; }
+                }
+            </style>
+        </head>
+        <body style="margin:0; padding:0; background:white;">
+            ${printContent.outerHTML}
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
 }
 
 async function showReports() {
@@ -1322,8 +1326,7 @@ function handleFindingSubmit(e) {
     };
 
     state.findings.push(finding);
-    
-    // Auto-sort by severity
+
     const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
     state.findings.sort((a, b) => {
         const weightDiff = severityWeights[b.severity] - severityWeights[a.severity];
@@ -1379,8 +1382,6 @@ function handleImageUpload(event) {
         };
         reader.readAsDataURL(file);
     });
-
-    // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
     event.target.value = '';
 }
 
@@ -1546,22 +1547,17 @@ async function saveCurrentReport() {
                 lang: state.auditData.lang || state.lang
             });
         }
-
-        // Sync findings
-        // Get existing to find which to delete
         const remoteReport = await API.reports.getById(state.currentReportId);
         const existingFindings = remoteReport.findings || [];
         const existingIds = existingFindings.map(f => f.id);
         const currentIds = state.findings.filter(f => f.id && typeof f.id !== 'string' && f.id < 1000000000000).map(f => f.id);
 
-        // Remove deleted findings
         for (const id of existingIds) {
             if (!currentIds.includes(id)) {
                 await API.findings.delete(id);
             }
         }
 
-        // Upsert findings
         for (let i = 0; i < state.findings.length; i++) {
             const finding = state.findings[i];
             const payload = {
@@ -1587,7 +1583,6 @@ async function saveCurrentReport() {
             }
         }
 
-        // Guardar estado del editor actual (borrador de hallazgo a medias)
         if (state.currentReportId) {
             localStorage.setItem('report_' + state.currentReportId + '_draft', JSON.stringify(state.currentFinding));
         }
@@ -1601,43 +1596,6 @@ async function saveCurrentReport() {
     }
 }
 
-async function triggerPrint() {
-    state.isLoading = true;
-    renderApp();
-
-    try {
-        if (!state.currentReportId) {
-            await saveCurrentReport();
-        }
-        
-        let idToPrint = state.currentReportId;
-        if (!idToPrint) {
-            alert("No se pudo guardar el reporte para generar PDF");
-            return;
-        }
-        
-        const response = await fetch(`/api/reports/${idToPrint}/pdf`);
-        if (!response.ok) throw new Error("Error generando PDF en el servidor");
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Reporte_${idToPrint}.pdf`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        alert('Error descargando el PDF: ' + error.message);
-    } finally {
-        state.isLoading = false;
-        renderApp();
-    }
-}
-
-// ==========================================
-// INICIALIZACIÓN
-// ==========================================
-
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const printMode = params.get('print_mode');
@@ -1650,8 +1608,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         try {
             const remoteReport = await API.reports.getById(state.currentReportId);
-            
-            // Map the data
             Object.keys(remoteReport).forEach(key => {
                 const camelKey = key.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
                 if (state.auditData.hasOwnProperty(camelKey)) {

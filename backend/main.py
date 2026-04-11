@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from typing import List
 import os
 import tempfile
-from fastapi.responses import FileResponse, Response
 from playwright.async_api import async_playwright
 import models, schemas, database
 from database import engine, get_db
@@ -220,8 +219,8 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
             # Vamos a la url
             await page.goto(target_url, wait_until="networkidle")
             
-            # Esperamos un pequeño tiempo extra para garantizar que las gráficas y componentes React
-            # se hayan renderizado completamente. También útil por fuentes.
+            # Esperamos un pequeño tiempo extra para garantizar que las gráficas
+            # y contenido dinámico se hayan renderizado completamente.
             await page.wait_for_timeout(1000) 
 
             # Generar PDF en un archivo temporal

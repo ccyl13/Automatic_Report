@@ -3,6 +3,7 @@ uvicorn[standard]==0.27.1
 sqlalchemy==2.0.27
 pydantic==2.6.1
 python-multipart==0.0.9
+playwright==1.58.0
 
 # Testing
 pytest==8.0.2

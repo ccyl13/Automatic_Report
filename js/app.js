@@ -623,7 +623,7 @@ function renderNavbar() {
                 <button class="${state.showReportSelector ? 'active' : ''}" onclick="showReports()">${t.myReports}</button>
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
-                <button class="btn-primary" onclick="window.print()">${t.generatePdf}</button>
+                <button class="btn-primary" onclick="triggerPrint()">${t.generatePdf}</button>
             </div>
         </header>
     `;
@@ -945,9 +945,10 @@ function renderPreview() {
                 justify-content: space-between;
                 min-height: 100vh;
                 page-break-after: always;
+                page-break-inside: avoid;
                 background: #ffffff;
                 color: #111827;
-                padding: 3rem 4rem;
+                padding: 1rem 3rem;
             ">
                 
                 <!-- PARTE SUPERIOR Y MEDIA CENTRALIZADA -->
@@ -961,7 +962,7 @@ function renderPreview() {
                     </div>
 
                     <!-- LOGO DEL CLIENTE GIGANTE -->
-                    <div style="margin-bottom: 4rem; width: 100%; display: flex; justify-content: center;">
+                    <div style="margin-bottom: 2rem; width: 100%; display: flex; justify-content: center;">
                         ${d.clientLogo ? `
                             <img src="${d.clientLogo}" alt="Logo Cliente" style="max-height: 380px; width: 100%; max-width: 700px; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                         ` : `
@@ -1080,8 +1081,8 @@ function renderPreview() {
             <!-- HALLAZGOS TÉCNICOS -->
             <div class="findings-preview">
                 ${state.findings.map((f, idx) => `
-                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="page-break-inside: avoid; margin-bottom: 3rem; background: white; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem;">
+                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: white; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; page-break-after: avoid;">
                             <h3 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
                             <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap; margin-left: 1rem;">
                                 ${t.severityLevels[f.severity]}
@@ -1600,10 +1601,73 @@ async function saveCurrentReport() {
     }
 }
 
+async function triggerPrint() {
+    state.isLoading = true;
+    renderApp();
+
+    try {
+        if (!state.currentReportId) {
+            await saveCurrentReport();
+        }
+        
+        let idToPrint = state.currentReportId;
+        if (!idToPrint) {
+            alert("No se pudo guardar el reporte para generar PDF");
+            return;
+        }
+        
+        const response = await fetch(`/api/reports/${idToPrint}/pdf`);
+        if (!response.ok) throw new Error("Error generando PDF en el servidor");
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Reporte_${idToPrint}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('Error descargando el PDF: ' + error.message);
+    } finally {
+        state.isLoading = false;
+        renderApp();
+    }
+}
+
 // ==========================================
 // INICIALIZACIÓN
 // ==========================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    renderApp();
+document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const printMode = params.get('print_mode');
+    const reportId = params.get('report_id');
+
+    if (printMode === 'true' && reportId) {
+        state.showSplash = false;
+        state.activeTab = 'preview';
+        state.currentReportId = parseInt(reportId);
+        
+        try {
+            const remoteReport = await API.reports.getById(state.currentReportId);
+            
+            // Map the data
+            Object.keys(remoteReport).forEach(key => {
+                const camelKey = key.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
+                if (state.auditData.hasOwnProperty(camelKey)) {
+                    state.auditData[camelKey] = remoteReport[key];
+                }
+            });
+
+            state.hasIncidents = remoteReport.has_incidents || false;
+            state.auditData.incidentsText = remoteReport.incidents_text || '';
+
+            state.findings = remoteReport.findings ? remoteReport.findings.sort((a,b)=>a.order_index-b.order_index) : [];
+        } catch (e) {
+            console.error("Error cargando reporte para imprimir", e);
+        }
+        renderApp();
+    } else {
+        renderApp();
+    }
 });

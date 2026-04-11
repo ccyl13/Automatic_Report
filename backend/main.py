@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 import os
+import tempfile
+from fastapi.responses import FileResponse, Response
+from playwright.async_api import async_playwright
 import models, schemas, database
 from database import engine, get_db
 
@@ -194,6 +197,56 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
     db.commit()
     return {"message": "Orden actualizado"}
 
+
+@app.get("/api/reports/{report_id}/pdf")
+async def generate_pdf(report_id: int, request: Request, db: Session = Depends(get_db)):
+    """Generar PDF del reporte usando Playwright"""
+    # Verificar que existe
+    report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    try:
+        # Usamos el path dinámicamente según donde corre el server, por normal general host + port
+        # o localhost:8000
+        base_url = str(request.base_url).rstrip("/")
+        # URL en modo especial "print" para que el frontend vaya directo al reporte y la vista previa
+        target_url = f"{base_url}/?report_id={report_id}&print_mode=true"
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(args=['--no-sandbox', '--disable-setuid-sandbox'])
+            page = await browser.new_page()
+            
+            # Vamos a la url
+            await page.goto(target_url, wait_until="networkidle")
+            
+            # Esperamos un pequeño tiempo extra para garantizar que las gráficas y componentes React
+            # se hayan renderizado completamente. También útil por fuentes.
+            await page.wait_for_timeout(1000) 
+
+            # Generar PDF en un archivo temporal
+            fd, path = tempfile.mkstemp(suffix=".pdf")
+            os.close(fd)
+            
+            await page.pdf(
+                path=path,
+                format="A4",
+                print_background=True,
+                margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                scale=0.95  # Reducir levemente la escala para evitar recortes inesperados
+            )
+            
+            await browser.close()
+            
+            return FileResponse(
+                path, 
+                media_type="application/pdf", 
+                filename=f"Report_{report_id}.pdf"
+            )
+            
+    except Exception as e:
+        print(f"Error generando PDF: {e}")
+        raise HTTPException(status_code=500, detail="Error de servidor generando el PDF")
 
 if __name__ == "__main__":
     import uvicorn

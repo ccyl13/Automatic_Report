@@ -1913,7 +1913,8 @@ button:disabled,
     }
 
     .print-a4-height {
-        min-height: calc(100vh - 36mm) !important;
+        min-height: auto !important;
+        height: auto !important;
     }
 
     .print-p-20mm {
@@ -1933,20 +1934,26 @@ button:disabled,
         border: 1px solid #e5e7eb !important;
     }
 
+    .print-overflow-visible {
+        overflow: visible !important;
+    }
+
     /* Portada: fondo blanco limpio en impresión */
     .cover-page {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         background: #ffffff !important;
-        min-height: calc(100vh - 36mm) !important; /* Total de la página descontando márgenes */
-        padding: 0 !important; /* Desactiva el padding hardcodeado ahora que hay @page margin */
-        justify-content: center !important;
+        min-height: auto !important;
+        padding: 5mm !important; /* Dar un mínimo de margen orgánico */
+        justify-content: flex-start !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
-    /* Ajuste para que los elementos dentro de la portada se distribuyan bien sin desbordar */
-    .cover-page > div {
-        transform: scale(0.95); /* Cede un poco de espacio para evitar saltos */
-        transform-origin: center center;
+    /* Reducir márgenes masivos de la cabecera (escudo) para asegurar espacio */
+    .cover-page > div:first-child {
+        margin-top: 10px !important;
+        margin-bottom: 10px !important;
     }
 
     /* Páginas interiores: fondo blanco */

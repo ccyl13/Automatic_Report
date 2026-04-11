@@ -17,12 +17,19 @@
 
 ## Características
 
-- 📝 **Persistencia de datos** - Guarda tus reportes en SQLite para continuar después
-- 🌐 **Sistema bilingüe** - Español/Inglés
-- 📊 **Estadísticas de riesgo** - Visualización en tiempo real de criticidad
-- 🎯 **14 plantillas de vulnerabilidades** - SQLi, XSS, IDOR, SSRF, CSRF, XXE, RCE, LFI, CORS, etc.
-- 📄 **Exportación PDF** - Genera reportes profesionales
-- 🖼️ **Evidencias gráficas** - Soporta múltiples imágenes en base64
+
+<br>
+
+| Innovación | Capacidades Clave | Función y Valor de UX |
+| :--- | :--- | :--- |
+| <img src="https://i.imgur.com/uCjL0S4.png" width="90" alt="Database Card"> **DATOS SEGUROS**<br>*Persistencia Local* | <ul><li>**SQLite** Integrado</li><li>Tablas: Reports / Findings</li><li>**Guardado Automático (2s)**</li></ul> | **Cero Pérdida de Información**.<br>Tus reportes y hallazgos se guardan inmediatamente en una base de datos local blindada. Continúa tu auditoría después, sin perder ni un solo dato de vulnerabilidad. |
+| <img src="https://i.imgur.com/P1vO2E3.png" width="90" alt="Risk Stats Card"> **RIESGO VISUAL**<br>*Dashboard de Criticidad* | <ul><li>**Estadísticas Asíncronas** (API)</li><li>Distribución de Gravedad</li><li>Actualización en Tiempo Real</li></ul> | **Entiende tu Auditoría de un Vistazo**.<br>Controla el perfil de riesgo global de tu pentest con gráficos dinámicos que muestran la distribución de criticidad (Critica, Alta, Media, Baja). |
+| <img src="https://i.imgur.com/lE0tO3A.png" width="90" alt="Bilingual Card"> **INTERNACIONAL**<br>*Sistema Bilingüe* | <ul><li>**Español / Inglés**</li><li>Localización Completa</li><li>Cambio Instantáneo</li></ul> | **Alcance Global Corporativo**.<br>Configura la herramienta y tus reportes en el idioma que mejor se adapte a tu cliente, garantizando la máxima claridad profesional. |
+| <img src="https://i.imgur.com/5V3O2E3.png" width="90" alt="Vulnerability Card"> **PLANTILLAS DE VULNS**<br>*Auditoría Quirúrgica* | <ul><li>**14 Plantillas Profesionales**</li><li>**SQLi, XSS, IDOR, RCE**, etc.</li><li>**Carga de Datos Automatizada**</li></ul> | **Auditoría Veloz y Consistente**.<br>Carga descripciones detalladas, pasos de reproducción y recomendaciones para vulnerabilidades comunes al instante. Solo ajusta los detalles específicos. |
+| <img src="https://i.imgur.com/uCjL0S4.png" width="90" alt="PDF Export Card"> **REPORTES PRO**<br>*Exportación PDF* | <ul><li>Generación PDF **Corporativo**</li><li>Estructura Profesional</li><li>Listo para Entregar</li></ul> | **La Última Impresión es la que Cuenta**.<br>Genera informes de pentesting impecables, estructurados de forma lógica y con un diseño sobrio, listos para enviar directamente al cliente. |
+| <img src="https://i.imgur.com/P1vO2E3.png" width="90" alt="Graphical Evidence Card"> **EVIDENCIAS**<br>*Soporte Gráfico* | <ul><li>**Evidencias en Base64**</li><li>Múltiples Imágenes por Hallazgo</li><li>Incrustación en Base de Datos</li></ul> | **Verificabilidad y Claridad**.<br>Añade capturas de pantalla, pruebas de concepto y evidencias gráficas a tus hallazgos, guardándolas de forma segura junto a la descripción de la vulnerabilidad. |
+
+<br>
 
 ## Estructura del Proyecto
 

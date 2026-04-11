@@ -114,10 +114,18 @@ Los datos se almacenan en `pentestify.db` (SQLite) con dos tablas:
 
 ## Tecnologías
 
-- **Frontend**: JavaScript Vanilla, CSS, Inter Font
-- **Backend**: FastAPI, SQLAlchemy, Pydantic
-- **Base de datos**: SQLite
-- **Build**: Python http.server (frontend), Uvicorn (backend)
+Pentestify está construido sobre un stack moderno que equilibra el rendimiento del backend con la ligereza del frontend, garantizando reportes rápidos y una persistencia de datos robusta.
+
+<br>
+
+| Categoría | Tecnologías Clave | Función y UX |
+| :--- | :--- | :--- |
+| <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Client.svg" height="40" alt="Frontend Icon"> **FRONTEND**<br>*Lightweight Single Page App* | <ul><li>**Vanilla JavaScript** (ES6+)</li><li>**Pure CSS**</li><li>**Inter Font Family**</li></ul> | **Experiencia Fluida y Rápida**.<br>Navegación instantánea sin recargas de página. Diseño limpio y tipografía optimizada para la legibilidad durante largas sesiones de auditoría. Sin frameworks pesados. |
+| <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/FastAPI.svg" height="40" alt="Backend Icon"> **BACKEND**<br>*High-Performance API* | <ul><li>**FastAPI**</li><li>**Python 3.x**</li><li>**Uvicorn** / **Gunicorn**</li></ul> | **Rendimiento Asíncrono**. <br>Manejo eficiente de múltiples peticiones simultáneas, garantizando que el guardado automático de reportes y hallazgos sea imperceptible para el usuario. |
+| <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/SQLite.svg" height="40" alt="Database Icon"> **PERSISTENCIA**<br>*Relational Database* | <ul><li>**SQLite**</li><li>**SQLAlchemy** (ORM)</li><li>**Pydantic**</li></ul> | **Tus Datos Seguros y Estructurados**.<br>Persistencia local robusta en `pentestify.db`. SQLAlchemy facilita la gestión de datos, mientras Pydantic asegura que cada vulnerabilidad y reporte cumpla con el esquema corporativo. |
+| <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Docker.svg" height="40" alt="DevOps Icon"> **DESPLIEGUE**<br>*Infrastructure* | <ul><li>**Docker**</li><li>**Docker Compose**</li><li>Python `http.server`</li></ul> | **Portabilidad Instantánea**.<br>Ejecuta Pentestify en cualquier entorno (Windows, Linux, macOS) con un solo comando, aislando dependencias y protegiendo la integridad de la base de datos mediante volúmenes. |
+
+<br>
 
 ## Autores
 

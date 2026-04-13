@@ -1066,13 +1066,32 @@ function setTab(tab) {
     renderApp();
 }
 
-function printReport() {
+async function printReport() {
     const printContent = document.querySelector('.preview-container');
     if (!printContent) {
         alert(state.lang === 'es' ? 'Primero ve a la vista previa' : 'Go to preview first');
         return;
     }
-    
+
+    // Preload all images from the original content first
+    const originalImages = printContent.querySelectorAll('img');
+    const preloadPromises = Array.from(originalImages).map(img => {
+        return new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+                resolve();
+            } else {
+                const tempImg = new Image();
+                tempImg.onload = resolve;
+                tempImg.onerror = resolve;
+                tempImg.src = img.src;
+                // Timeout fallback
+                setTimeout(resolve, 2000);
+            }
+        });
+    });
+
+    await Promise.all(preloadPromises);
+
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
@@ -1082,7 +1101,7 @@ function printReport() {
     iframe.style.border = '0';
     iframe.style.visibility = 'hidden';
     document.body.appendChild(iframe);
-    
+
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(`
@@ -1093,32 +1112,98 @@ function printReport() {
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="${window.location.origin}/css/styles.css">
             <style>
-                @page { margin: 10mm 20mm 18mm 20mm; size: A4; }
+                @page {
+                    margin: 10mm 20mm 25mm 20mm;
+                    size: A4;
+                    @bottom-center {
+                        content: counter(page);
+                        font-family: 'Inter', sans-serif;
+                        font-size: 10pt;
+                        color: #6b7280;
+                    }
+                }
                 @media print {
                     body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     .navbar, .no-print { display: none !important; }
                 }
+                .page-number {
+                    position: fixed;
+                    bottom: 10mm;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-family: 'Inter', sans-serif;
+                    font-size: 10pt;
+                    color: #6b7280;
+                }
+                img {
+                    max-width: 100% !important;
+                    page-break-inside: avoid !important;
+                }
             </style>
         </head>
         <body style="margin:0; padding:0; background:white;">
-            ${printContent.outerHTML}
         </body>
         </html>
     `);
     doc.close();
-    
-    iframe.onload = () => {
+
+    // Clone the content and append to iframe body
+    const clonedContent = printContent.cloneNode(true);
+    doc.body.appendChild(clonedContent);
+
+    // Wait for iframe to be ready and images to load
+    setTimeout(() => {
+        const images = doc.querySelectorAll('img');
+        let loadedCount = 0;
+        const totalImages = images.length;
+
+        if (totalImages === 0) {
+            triggerPrint(iframe);
+            return;
+        }
+
+        images.forEach(img => {
+            if (img.complete && img.naturalWidth > 0) {
+                loadedCount++;
+                if (loadedCount === totalImages) {
+                    triggerPrint(iframe);
+                }
+            } else {
+                img.onload = () => {
+                    loadedCount++;
+                    if (loadedCount === totalImages) {
+                        triggerPrint(iframe);
+                    }
+                };
+                img.onerror = () => {
+                    loadedCount++;
+                    if (loadedCount === totalImages) {
+                        triggerPrint(iframe);
+                    }
+                };
+                // Force reload image in iframe context
+                const currentSrc = img.src;
+                img.src = '';
+                img.src = currentSrc;
+            }
+        });
+
+        // Fallback: print anyway after 3 seconds
         setTimeout(() => {
-            iframe.contentWindow.print();
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 1000);
-        }, 500);
-    };
-    
-    if (iframe.contentDocument.readyState === 'complete') {
-        iframe.onload();
-    }
+            triggerPrint(iframe);
+        }, 3000);
+    }, 500);
+}
+
+function triggerPrint(iframe) {
+    if (iframe._printed) return;
+    iframe._printed = true;
+    iframe.contentWindow.print();
+    setTimeout(() => {
+        if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+        }
+    }, 1000);
 }
 
 async function showReports() {
@@ -1588,6 +1673,8 @@ async function saveCurrentReport() {
                 version: state.auditData.version,
                 date: state.auditData.date,
                 lang: state.auditData.lang || state.lang,
+                has_incidents: state.auditData.hasIncidents || false,
+                incidents_text: state.auditData.incidentsText || '',
                 audit_summary: state.auditData.auditSummary || '',
                 tests_performed: state.auditData.testsPerformed || '',
                 recommended_solutions: state.auditData.recommendedSolutions || ''
@@ -1605,6 +1692,8 @@ async function saveCurrentReport() {
                 version: state.auditData.version,
                 date: state.auditData.date,
                 lang: state.auditData.lang || state.lang,
+                has_incidents: state.auditData.hasIncidents || false,
+                incidents_text: state.auditData.incidentsText || '',
                 audit_summary: state.auditData.auditSummary || '',
                 tests_performed: state.auditData.testsPerformed || '',
                 recommended_solutions: state.auditData.recommendedSolutions || ''

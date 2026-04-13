@@ -47,6 +47,8 @@ class ReportBase(BaseModel):
     date: str = ""
     lang: str = "es"
     client_logo: List[str] = []
+    has_incidents: bool = False
+    incidents_text: str = ""
     audit_summary: str = ""
     tests_performed: str = ""
     recommended_solutions: str = ""

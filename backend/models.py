@@ -18,6 +18,8 @@ class Report(Base):
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")
     client_logo = Column(JSON, default=list)
+    has_incidents = Column(Integer, default=0)  # 0 = false, 1 = true
+    incidents_text = Column(Text, default="")
     audit_summary = Column(Text, default="")
     tests_performed = Column(Text, default="")
     recommended_solutions = Column(Text, default="")

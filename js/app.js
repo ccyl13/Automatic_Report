@@ -1549,6 +1549,8 @@ async function createNewReport() {
 async function loadReport(id) {
     try {
         const report = await API.reports.getById(id);
+        console.log('[DEBUG] Reporte recibido del backend:', report);
+        console.log('[DEBUG] has_incidents raw value:', report.has_incidents, 'tipo:', typeof report.has_incidents);
         state.currentReportId = report.id;
         state.auditData = {
             documentTitle: report.document_title,
@@ -1561,12 +1563,14 @@ async function loadReport(id) {
             version: report.version,
             date: report.date,
             lang: report.lang,
-            hasIncidents: report.has_incidents || false,
+            hasIncidents: report.has_incidents === true || report.has_incidents === 'true' || report.has_incidents === 1,
             incidentsText: report.incidents_text || '',
+            _debugHasIncidents: report.has_incidents, // campo temporal para debug
             auditSummary: report.audit_summary || '',
             testsPerformed: report.tests_performed || '',
             recommendedSolutions: report.recommended_solutions || ''
         };
+        console.log('[DEBUG] auditData después de asignar:', state.auditData);
         state.lang = report.lang;
         state.findings = sortFindingsBySeverity(report.findings || []);
 
@@ -1666,43 +1670,31 @@ async function importDatabase(input) {
 
 async function saveCurrentReport() {
     try {
+        const payload = {
+            document_title: state.auditData.documentTitle,
+            client_company: state.auditData.clientCompany,
+            client_logo: state.auditData.clientLogo || ['', ''],
+            target_asset: state.auditData.targetAsset,
+            auditor_company: state.auditData.auditorCompany,
+            auditor_name: state.auditData.auditorName,
+            classification: parseInt(state.auditData.classification) || 2,
+            version: state.auditData.version,
+            date: state.auditData.date,
+            lang: state.auditData.lang || state.lang,
+            has_incidents: state.auditData.hasIncidents || false,
+            incidents_text: state.auditData.incidentsText || '',
+            audit_summary: state.auditData.auditSummary || '',
+            tests_performed: state.auditData.testsPerformed || '',
+            recommended_solutions: state.auditData.recommendedSolutions || ''
+        };
+        console.log('[DEBUG] Payload enviado al backend:', payload);
+        console.log('[DEBUG] has_incidents enviado:', payload.has_incidents, 'tipo:', typeof payload.has_incidents);
+        
         if (!state.currentReportId) {
-            const report = await API.reports.create({
-                document_title: state.auditData.documentTitle,
-                client_company: state.auditData.clientCompany,
-                client_logo: state.auditData.clientLogo || ['', ''],
-                target_asset: state.auditData.targetAsset,
-                auditor_company: state.auditData.auditorCompany,
-                auditor_name: state.auditData.auditorName,
-                classification: parseInt(state.auditData.classification) || 2,
-                version: state.auditData.version,
-                date: state.auditData.date,
-                lang: state.auditData.lang || state.lang,
-                has_incidents: state.auditData.hasIncidents || false,
-                incidents_text: state.auditData.incidentsText || '',
-                audit_summary: state.auditData.auditSummary || '',
-                tests_performed: state.auditData.testsPerformed || '',
-                recommended_solutions: state.auditData.recommendedSolutions || ''
-            });
+            const report = await API.reports.create(payload);
             state.currentReportId = report.id;
         } else {
-            await API.reports.update(state.currentReportId, {
-                document_title: state.auditData.documentTitle,
-                client_company: state.auditData.clientCompany,
-                client_logo: state.auditData.clientLogo || ['', ''],
-                target_asset: state.auditData.targetAsset,
-                auditor_company: state.auditData.auditorCompany,
-                auditor_name: state.auditData.auditorName,
-                classification: parseInt(state.auditData.classification) || 2,
-                version: state.auditData.version,
-                date: state.auditData.date,
-                lang: state.auditData.lang || state.lang,
-                has_incidents: state.auditData.hasIncidents || false,
-                incidents_text: state.auditData.incidentsText || '',
-                audit_summary: state.auditData.auditSummary || '',
-                tests_performed: state.auditData.testsPerformed || '',
-                recommended_solutions: state.auditData.recommendedSolutions || ''
-            });
+            await API.reports.update(state.currentReportId, payload);
         }
         const remoteReport = await API.reports.getById(state.currentReportId);
         const existingFindings = remoteReport.findings || [];
@@ -1772,8 +1764,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            state.hasIncidents = remoteReport.has_incidents || false;
-            state.auditData.incidentsText = remoteReport.incidents_text || '';
+            // Ensure incidents fields are properly set (handle both snake_case and direct assignment)
+            if (remoteReport.has_incidents !== undefined) {
+                state.auditData.hasIncidents = remoteReport.has_incidents === true || remoteReport.has_incidents === 'true' || remoteReport.has_incidents === 1;
+            }
+            if (remoteReport.incidents_text !== undefined) {
+                state.auditData.incidentsText = remoteReport.incidents_text;
+            }
 
             state.findings = remoteReport.findings ? sortFindingsBySeverity(remoteReport.findings) : [];
         } catch (e) {

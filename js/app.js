@@ -938,7 +938,7 @@ function renderPreview() {
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                         ${t.auditSummary}
                     </h3>
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151; text-align: justify;">
                         <span style="white-space: pre-wrap;">${formatMultiline(d.auditSummary)}</span>
                     </div>
                 </div>
@@ -950,7 +950,7 @@ function renderPreview() {
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
                         ${t.testsPerformed}
                     </h3>
-                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151;">
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151; text-align: justify;">
                         <span style="white-space: pre-wrap;">${formatMultiline(d.testsPerformed)}</span>
                     </div>
                 </div>
@@ -962,7 +962,7 @@ function renderPreview() {
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
                         ${t.recommendedSolutions}
                     </h3>
-                    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151;">
+                    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: #374151; text-align: justify;">
                         <span style="white-space: pre-wrap;">${formatMultiline(d.recommendedSolutions)}</span>
                     </div>
                 </div>

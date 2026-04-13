@@ -238,6 +238,18 @@ const escapeHTML = (str) => {
 
 const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
 
+const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
+
+function sortFindingsBySeverity(findings) {
+    return findings.sort((a, b) => {
+        const weightDiff = severityWeights[b.severity] - severityWeights[a.severity];
+        if (weightDiff !== 0) return weightDiff;
+        const cvssA = parseFloat(a.cvss) || 0;
+        const cvssB = parseFloat(b.cvss) || 0;
+        return cvssB - cvssA;
+    });
+}
+
 const createEl = (tag, className, html) => {
     const el = document.createElement(tag);
     if (className) el.className = className;
@@ -830,7 +842,7 @@ function renderPreview() {
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             Se registraron incidencias durante la auditoría
                         </p>
-                        <p style="color:#9a3412; line-height:1.7; white-space:pre-wrap;">${formatMultiline(d.incidentsText || '')}</p>
+                        <p style="color:#9a3412; line-height:1.7; white-space:pre-wrap; text-align: justify;">${formatMultiline(d.incidentsText || '')}</p>
                     </div>
                 ` : `
                     <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-left:6px solid #22c55e; border-radius:10px; padding:1.5rem 2rem; display:flex; align-items:center; gap:1rem;">
@@ -872,7 +884,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                                     Descripción
                                 </h4>
-                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.description)}</span></p>
+                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.description)}</span></p>
                             </div>
                         ` : ''}
                         
@@ -882,7 +894,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                                     Pasos para Reproducir (PoC)
                                 </h4>
-                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: #e2e8f0; margin: 0;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
+                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: #e2e8f0; margin: 0; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
                             </div>
                         ` : ''}
                         
@@ -908,7 +920,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                                     Impacto en el Negocio
                                 </h4>
-                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.impact)}</span></p>
+                                <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.impact)}</span></p>
                             </div>
                         ` : ''}
                         
@@ -918,7 +930,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                                     Solución y Remediación
                                 </h4>
-                                <p style="color: #15803d; line-height: 1.6; word-wrap: break-word;"><span style="white-space: pre-wrap;">${formatMultiline(f.remediation)}</span></p>
+                                <p style="color: #15803d; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.remediation)}</span></p>
                             </div>
                         ` : ''}
                     </div>
@@ -1367,14 +1379,7 @@ function handleFindingSubmit(e) {
         state.findings.push(finding);
     }
 
-    const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
-    state.findings.sort((a, b) => {
-        const weightDiff = severityWeights[b.severity] - severityWeights[a.severity];
-        if (weightDiff !== 0) return weightDiff;
-        const cvssA = parseFloat(a.cvss) || 0;
-        const cvssB = parseFloat(b.cvss) || 0;
-        return cvssB - cvssA;
-    });
+    sortFindingsBySeverity(state.findings);
 
     state.isDirty = true;
 
@@ -1563,8 +1568,8 @@ async function loadReport(id) {
             recommendedSolutions: report.recommended_solutions || ''
         };
         state.lang = report.lang;
-        state.findings = report.findings || [];
-        
+        state.findings = sortFindingsBySeverity(report.findings || []);
+
         const draft = localStorage.getItem('report_' + report.id + '_draft');
         if (draft) {
             try {
@@ -1770,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.hasIncidents = remoteReport.has_incidents || false;
             state.auditData.incidentsText = remoteReport.incidents_text || '';
 
-            state.findings = remoteReport.findings ? remoteReport.findings.sort((a,b)=>a.order_index-b.order_index) : [];
+            state.findings = remoteReport.findings ? sortFindingsBySeverity(remoteReport.findings) : [];
         } catch (e) {
             console.error("Error cargando reporte para imprimir", e);
         }

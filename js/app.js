@@ -688,6 +688,153 @@ const templates = {
             cvss: '5.0',
             reference: 'OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism'
         }
+    },
+    wordpress_login_brute: {
+        key: 'wordpress_login_brute',
+        es: {
+            title: 'WordPress Fuerza Bruta en Login (/wp-login.php)',
+            description: 'El formulario de login de WordPress no implementa protecciones adecuadas contra ataques de fuerza bruta, permitiendo intentos ilimitados de autenticación.',
+            poc: '1. Identificar formulario de login: /wp-login.php o /wp-admin\n2. Usar herramienta como Burp Intruder, Hydra o WPScan:\n   wpscan --url https://sitio.com --passwords passwords.txt --usernames admin\n3. Probar múltiples combinaciones usuario/contraseña sin bloqueo\n4. Verificar ausencia de CAPTCHA, rate limiting o bloqueo de cuentas',
+            impact: 'Un atacante puede realizar ataques de fuerza bruta automatizados para obtener credenciales válidas, comprometiendo cuentas de administrador o usuarios.',
+            remediation: 'Implementar limitación de intentos de login: usar plugins como "Login Lockdown", "Limit Login Attempts Reloaded" o "Wordfence". Añadir CAPTCHA (reCAPTCHA v3) y autenticación de dos factores (2FA).',
+            cvss: '7.2',
+            reference: 'OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack'
+        },
+        en: {
+            title: 'WordPress Brute Force on Login (/wp-login.php)',
+            description: 'The WordPress login form does not implement adequate protections against brute force attacks, allowing unlimited authentication attempts.',
+            poc: '1. Identify login form: /wp-login.php or /wp-admin\n2. Use tools like Burp Intruder, Hydra or WPScan:\n   wpscan --url https://site.com --passwords passwords.txt --usernames admin\n3. Try multiple username/password combinations without lockout\n4. Verify absence of CAPTCHA, rate limiting or account lockout',
+            impact: 'An attacker can perform automated brute force attacks to obtain valid credentials, compromising administrator or user accounts.',
+            remediation: 'Implement login attempt limiting: use plugins like "Login Lockdown", "Limit Login Attempts Reloaded" or "Wordfence". Add CAPTCHA (reCAPTCHA v3) and two-factor authentication (2FA).',
+            cvss: '7.2',
+            reference: 'OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack'
+        }
+    },
+    wordpress_plugin_enum: {
+        key: 'wordpress_plugin_enum',
+        es: {
+            title: 'WordPress Enumeración de Plugins',
+            description: 'Los plugins de WordPress pueden ser enumerados mediante análisis de rutas específicas, archivos CSS/JS únicos o errores diferenciales, revelando plugins instalados y sus versiones.',
+            poc: '1. Analizar fuente HTML en busca de rutas de plugins: /wp-content/plugins/nombre-plugin/\n2. Probar rutas comunes: /wp-content/plugins/akismet/, /wp-content/plugins/woocommerce/\n3. Verificar archivo readme.txt: /wp-content/plugins/nombre-plugin/readme.txt\n4. Usar WPScan: wpscan --url https://sitio.com --enumerate p',
+            impact: 'Un atacante puede identificar plugins vulnerables, versiones desactualizadas o plugins personalizados con vulnerabilidades conocidas para explotación posterior.',
+            remediation: 'Ocultar información de plugins: usar plugins de seguridad como "Sucuri" o "iThemes Security", eliminar readme.txt de plugins, y mantener todos los plugins actualizados.',
+            cvss: '5.3',
+            reference: 'WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers'
+        },
+        en: {
+            title: 'WordPress Plugin Enumeration',
+            description: 'WordPress plugins can be enumerated through analysis of specific paths, unique CSS/JS files or differential errors, revealing installed plugins and their versions.',
+            poc: '1. Analyze HTML source for plugin paths: /wp-content/plugins/plugin-name/\n2. Test common paths: /wp-content/plugins/akismet/, /wp-content/plugins/woocommerce/\n3. Check readme.txt file: /wp-content/plugins/plugin-name/readme.txt\n4. Use WPScan: wpscan --url https://site.com --enumerate p',
+            impact: 'An attacker can identify vulnerable plugins, outdated versions or custom plugins with known vulnerabilities for subsequent exploitation.',
+            remediation: 'Hide plugin information: use security plugins like "Sucuri" or "iThemes Security", remove readme.txt from plugins, and keep all plugins updated.',
+            cvss: '5.3',
+            reference: 'WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers'
+        }
+    },
+    wordpress_theme_enum: {
+        key: 'wordpress_theme_enum',
+        es: {
+            title: 'WordPress Enumeración de Temas',
+            description: 'Los temas de WordPress pueden ser enumerados mediante análisis de la fuente HTML, rutas de CSS/JS específicas o errores diferenciales, revelando el tema activo y temas instalados.',
+            poc: '1. Analizar fuente HTML en busca de rutas de temas: /wp-content/themes/nombre-tema/\n2. Verificar style.css del tema: /wp-content/themes/nombre-tema/style.css\n3. Probar temas comunes: /wp-content/themes/twentytwentyfour/, /wp-content/themes/astra/\n4. Usar WPScan: wpscan --url https://sitio.com --enumerate t',
+            impact: 'Un atacante puede identificar temas vulnerables, versiones desactualizadas o temas personalizados con vulnerabilidades para explotación posterior.',
+            remediation: 'Ocultar información de temas: usar plugins de seguridad, eliminar style.css público si es posible, y mantener todos los temas actualizados.',
+            cvss: '5.3',
+            reference: 'WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers'
+        },
+        en: {
+            title: 'WordPress Theme Enumeration',
+            description: 'WordPress themes can be enumerated through HTML source analysis, specific CSS/JS paths or differential errors, revealing the active theme and installed themes.',
+            poc: '1. Analyze HTML source for theme paths: /wp-content/themes/theme-name/\n2. Check theme style.css: /wp-content/themes/theme-name/style.css\n3. Test common themes: /wp-content/themes/twentytwentyfour/, /wp-content/themes/astra/\n4. Use WPScan: wpscan --url https://site.com --enumerate t',
+            impact: 'An attacker can identify vulnerable themes, outdated versions or custom themes with vulnerabilities for subsequent exploitation.',
+            remediation: 'Hide theme information: use security plugins, remove public style.css if possible, and keep all themes updated.',
+            cvss: '5.3',
+            reference: 'WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers'
+        }
+    },
+    wordpress_config_exposure: {
+        key: 'wordpress_config_exposure',
+        es: {
+            title: 'WordPress wp-config.php Expuesto',
+            description: 'El archivo wp-config.php, que contiene credenciales de base de datos y claves de seguridad, puede ser accesible debido a configuraciones incorrectas del servidor web o copias de respaldo.',
+            poc: '1. Intentar acceder a wp-config.php directamente: https://sitio.com/wp-config.php\n2. Buscar copias de respaldo: wp-config.php.bak, wp-config.php~, wp-config.old\n3. Verificar wp-config.php en directorios de backup: /backup/wp-config.php\n4. Probar acceso mediante LFI: ?file=../../wp-config.php',
+            impact: 'Exposición de credenciales de base de datos, claves de cifrado y configuración sensible, permitiendo acceso completo a la base de datos y potencial compromiso del sitio.',
+            remediation: 'Asegurar wp-config.php: moverlo fuera del directorio web si es posible, configurar reglas .htaccess para denegar acceso, y eliminar copias de respaldo de directorios accesibles.',
+            cvss: '9.1',
+            reference: 'OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure'
+        },
+        en: {
+            title: 'WordPress wp-config.php Exposed',
+            description: 'The wp-config.php file, which contains database credentials and security keys, may be accessible due to incorrect web server configurations or backup copies.',
+            poc: '1. Try accessing wp-config.php directly: https://site.com/wp-config.php\n2. Look for backup copies: wp-config.php.bak, wp-config.php~, wp-config.old\n3. Check backup directories: /backup/wp-config.php\n4. Try LFI access: ?file=../../wp-config.php',
+            impact: 'Exposure of database credentials, encryption keys and sensitive configuration, allowing full database access and potential site compromise.',
+            remediation: 'Secure wp-config.php: move it outside web directory if possible, configure .htaccess rules to deny access, and remove backup copies from accessible directories.',
+            cvss: '9.1',
+            reference: 'OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure'
+        }
+    },
+    wordpress_uploads_directory: {
+        key: 'wordpress_uploads_directory',
+        es: {
+            title: 'WordPress Listado de Directorio /wp-content/uploads/',
+            description: 'El directorio de uploads de WordPress permite el listado de archivos y directorios, exponiendo información sensible sobre la estructura del sitio y archivos subidos.',
+            poc: '1. Acceder a /wp-content/uploads/ y verificar si muestra listado de directorios\n2. Navegar subdirectorios: /wp-content/uploads/2024/, /wp-content/uploads/2023/\n3. Buscar archivos sensibles subidos: .zip, .sql, .bak, archivos de backup\n4. Enumerar estructura de carpetas por año/mes para encontrar contenido',
+            impact: 'Un atacante puede descubrir archivos sensibles subidos, estructura de contenido, plugins/temas a través de uploads, y usar esta información para ataques dirigidos.',
+            remediation: 'Deshabilitar listado de directorios: añadir Options -Indexes al .htaccess, o crear archivos index.php vacíos en directorios de uploads. Configurar permisos apropiados.',
+            cvss: '4.3',
+            reference: 'OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage'
+        },
+        en: {
+            title: 'WordPress /wp-content/uploads/ Directory Listing',
+            description: 'The WordPress uploads directory allows file and directory listing, exposing sensitive information about site structure and uploaded files.',
+            poc: '1. Access /wp-content/uploads/ and verify if directory listing is enabled\n2. Navigate subdirectories: /wp-content/uploads/2024/, /wp-content/uploads/2023/\n3. Search for sensitive uploaded files: .zip, .sql, .bak, backup files\n4. Enumerate year/month folder structure to find content',
+            impact: 'An attacker can discover sensitive uploaded files, content structure, plugins/themes through uploads, and use this information for targeted attacks.',
+            remediation: 'Disable directory listing: add Options -Indexes to .htaccess, or create empty index.php files in upload directories. Configure appropriate permissions.',
+            cvss: '4.3',
+            reference: 'OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage'
+        }
+    },
+    wordpress_version_leak: {
+        key: 'wordpress_version_leak',
+        es: {
+            title: 'WordPress Filtrado de Versión',
+            description: 'La versión de WordPress instalada se filtra a través de múltiples vectores: meta tags, feeds, archivos CSS/JS, y readme.html, facilitando ataques dirigidos a vulnerabilidades específicas.',
+            poc: '1. Verificar meta tag generator: <meta name="generator" content="WordPress 6.4.2" />\n2. Consultar feed RSS: /feed/ buscando <generator>https://wordpress.org/?v=6.4.2</generator>\n3. Verificar query string en recursos: ?ver=6.4.2 en CSS/JS\n4. Acceder a readme.html: /readme.html muestra versión instalada',
+            impact: 'Un atacante puede identificar vulnerabilidades específicas de la versión instalada y usar exploits conocidos para comprometer el sitio.',
+            remediation: 'Ocultar versión de WordPress: añadir código al functions.php para remover el meta generator, usar plugins de seguridad que oculten la versión, y eliminar readme.html.',
+            cvss: '5.3',
+            reference: 'WPScan WordPress Version: https://wpscan.com/wordpress-security-headers'
+        },
+        en: {
+            title: 'WordPress Version Leakage',
+            description: 'The installed WordPress version is leaked through multiple vectors: meta tags, feeds, CSS/JS files, and readme.html, facilitating targeted attacks on specific vulnerabilities.',
+            poc: '1. Check generator meta tag: <meta name="generator" content="WordPress 6.4.2" />\n2. Query RSS feed: /feed/ looking for <generator>https://wordpress.org/?v=6.4.2</generator>\n3. Check query string in resources: ?ver=6.4.2 in CSS/JS\n4. Access readme.html: /readme.html shows installed version',
+            impact: 'An attacker can identify specific vulnerabilities of the installed version and use known exploits to compromise the site.',
+            remediation: 'Hide WordPress version: add code to functions.php to remove meta generator, use security plugins that hide the version, and remove readme.html.',
+            cvss: '5.3',
+            reference: 'WPScan WordPress Version: https://wpscan.com/wordpress-security-headers'
+        }
+    },
+    wordpress_db_backup: {
+        key: 'wordpress_db_backup',
+        es: {
+            title: 'WordPress Backups de Base de Datos Expuestos',
+            description: 'Archivos de backup de la base de datos (.sql, .sql.gz, .zip) se encuentran accesibles en directorios públicos, exponiendo todo el contenido de la base de datos.',
+            poc: '1. Buscar archivos de backup comunes: /backup/, /backups/, /wp-content/backup-db/\n2. Probar nombres de archivo: backup.sql, database.sql, sitio.sql.gz\n3. Verificar archivos con timestamp: backup_20240115.sql, db_backup.zip\n4. Usar fuzzing para encontrar archivos de backup olvidados',
+            impact: 'Exposición completa de la base de datos incluyendo usuarios, contraseñas hasheadas, contenido privado y configuración sensible, permitiendo compromiso total del sitio.',
+            remediation: 'Mover backups fuera del directorio web: almacenar en ubicación no accesible públicamente, implementar autenticación para descargas de backup, y usar extensiones no ejecutables.',
+            cvss: '9.1',
+            reference: 'OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure'
+        },
+        en: {
+            title: 'WordPress Database Backups Exposed',
+            description: 'Database backup files (.sql, .sql.gz, .zip) are accessible in public directories, exposing the entire database contents.',
+            poc: '1. Search for common backup files: /backup/, /backups/, /wp-content/backup-db/\n2. Try filenames: backup.sql, database.sql, site.sql.gz\n3. Check timestamped files: backup_20240115.sql, db_backup.zip\n4. Use fuzzing to find forgotten backup files',
+            impact: 'Complete exposure of database including users, hashed passwords, private content and sensitive configuration, allowing total site compromise.',
+            remediation: 'Move backups outside web directory: store in non-publicly accessible location, implement authentication for backup downloads, and use non-executable extensions.',
+            cvss: '9.1',
+            reference: 'OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure'
+        }
     }
 };
 
@@ -813,9 +960,16 @@ function renderEditor() {
                     <p class="text-muted">${t.newFindingDesc}</p>
                     
                     <form id="findingForm" onsubmit="handleFindingSubmit(event)">
-                        <div class="form-group">
+                        <div class="form-group template-search-container">
                             <label>${t.quickTemplate}</label>
-                            <select onchange="applyTemplate(this.value)">
+                            <input type="text"
+                                   id="templateSearch"
+                                   class="template-search-input"
+                                   placeholder="${state.lang === 'es' ? 'Buscar plantilla...' : 'Search template...'}"
+                                   oninput="filterTemplates(this.value)"
+                                   onfocus="showTemplateDropdown()"
+                                   autocomplete="off">
+                            <select id="templateSelect" onchange="applyTemplate(this.value); hideTemplateDropdown();" size="8" class="template-filtered-select" style="display:none;">
                                 <option value="custom" ${state.currentFinding.templateKey === 'custom' ? 'selected' : ''}>${t.customOther}</option>
                                 <option value="sqli" ${state.currentFinding.templateKey === 'sqli' ? 'selected' : ''}>SQL Injection</option>
                                 <option value="xss" ${state.currentFinding.templateKey === 'xss' ? 'selected' : ''}>XSS</option>
@@ -841,6 +995,13 @@ function renderEditor() {
                                     <option value="wordpress_xmlrpc" ${state.currentFinding.templateKey === 'wordpress_xmlrpc' ? 'selected' : ''}>WP XML-RPC Enabled</option>
                                     <option value="wordpress_rest_enum" ${state.currentFinding.templateKey === 'wordpress_rest_enum' ? 'selected' : ''}>WP User Enum via REST API</option>
                                     <option value="wordpress_error_enum" ${state.currentFinding.templateKey === 'wordpress_error_enum' ? 'selected' : ''}>WP User Enum via Errors</option>
+                                    <option value="wordpress_login_brute" ${state.currentFinding.templateKey === 'wordpress_login_brute' ? 'selected' : ''}>WP Brute Force Login</option>
+                                    <option value="wordpress_plugin_enum" ${state.currentFinding.templateKey === 'wordpress_plugin_enum' ? 'selected' : ''}>WP Plugin Enumeration</option>
+                                    <option value="wordpress_theme_enum" ${state.currentFinding.templateKey === 'wordpress_theme_enum' ? 'selected' : ''}>WP Theme Enumeration</option>
+                                    <option value="wordpress_config_exposure" ${state.currentFinding.templateKey === 'wordpress_config_exposure' ? 'selected' : ''}>WP wp-config.php Exposed</option>
+                                    <option value="wordpress_uploads_directory" ${state.currentFinding.templateKey === 'wordpress_uploads_directory' ? 'selected' : ''}>WP Uploads Dir Listing</option>
+                                    <option value="wordpress_version_leak" ${state.currentFinding.templateKey === 'wordpress_version_leak' ? 'selected' : ''}>WP Version Leak</option>
+                                    <option value="wordpress_db_backup" ${state.currentFinding.templateKey === 'wordpress_db_backup' ? 'selected' : ''}>WP Database Backup Exposed</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -1646,6 +1807,68 @@ function applyTemplate(key) {
 
     renderApp();
 }
+
+function filterTemplates(query) {
+    const select = document.getElementById('templateSelect');
+    const filter = query.toLowerCase();
+
+    if (!select) return;
+
+    // Show dropdown when filtering
+    select.style.display = 'block';
+
+    // Get all options and optgroups
+    const options = select.querySelectorAll('option');
+    const optgroups = select.querySelectorAll('optgroup');
+
+    // Filter options
+    options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        const value = option.value.toLowerCase();
+        if (text.includes(filter) || value.includes(filter) || filter === '') {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+
+    // Show/hide optgroups based on visible children
+    optgroups.forEach(group => {
+        const visibleOptions = group.querySelectorAll('option:not([style*="display: none"])');
+        group.style.display = visibleOptions.length > 0 ? '' : 'none';
+    });
+}
+
+function showTemplateDropdown() {
+    const select = document.getElementById('templateSelect');
+    const searchInput = document.getElementById('templateSearch');
+    if (select) {
+        select.style.display = 'block';
+        // Reset filter when showing
+        const options = select.querySelectorAll('option');
+        const optgroups = select.querySelectorAll('optgroup');
+        options.forEach(option => option.style.display = '');
+        optgroups.forEach(group => group.style.display = '');
+    }
+    // Clear search input
+    if (searchInput) searchInput.value = '';
+}
+
+function hideTemplateDropdown() {
+    const select = document.getElementById('templateSelect');
+    if (select) {
+        select.style.display = 'none';
+    }
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const container = document.querySelector('.template-search-container');
+    const select = document.getElementById('templateSelect');
+    if (container && !container.contains(e.target) && select) {
+        select.style.display = 'none';
+    }
+});
 
 function handleFindingSubmit(e) {
     e.preventDefault();

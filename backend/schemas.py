@@ -42,10 +42,13 @@ class ReportBase(BaseModel):
     target_asset: str = "Aplicación Principal"
     auditor_company: str = "Empresa Auditora LLC"
     auditor_name: str = "Juan Pérez"
+    auditor_phone: str = ""
+    auditor_email: str = ""
     classification: int = 2
     version: str = "1.0"
     date: str = ""
     lang: str = "es"
+    theme: str = "corporate"  # corporate, ctf, certification
     client_logo: List[str] = []
     has_incidents: bool = False
     incidents_text: str = ""

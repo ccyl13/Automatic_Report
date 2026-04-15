@@ -22,6 +22,31 @@ if not os.path.exists(os.path.join(BASE_DIR, "index.html")):
 # Crear tablas
 models.Base.metadata.create_all(bind=engine)
 
+# Migración: agregar columnas nuevas si no existen (para compatibilidad con DBs antiguas)
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        # Verificar si existe la columna auditor_phone
+        result = conn.execute(text("PRAGMA table_info(reports)"))
+        columns = [row[1] for row in result]
+        
+        if 'auditor_phone' not in columns:
+            conn.execute(text("ALTER TABLE reports ADD COLUMN auditor_phone VARCHAR"))
+            conn.commit()
+            print("✅ Columna auditor_phone agregada")
+        
+        if 'auditor_email' not in columns:
+            conn.execute(text("ALTER TABLE reports ADD COLUMN auditor_email VARCHAR"))
+            conn.commit()
+            print("✅ Columna auditor_email agregada")
+        
+        if 'theme' not in columns:
+            conn.execute(text("ALTER TABLE reports ADD COLUMN theme VARCHAR DEFAULT 'corporate'"))
+            conn.commit()
+            print("✅ Columna theme agregada")
+except Exception as e:
+    print(f"⚠️  Nota: {e}")
+
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
@@ -38,9 +63,22 @@ app.add_middleware(
 )
 
 # Montar archivos estáticos (CSS, JS) usando paths absolutos
-app.mount("/css", StaticFiles(directory=os.path.join(BASE_DIR, "css")), name="css")
-app.mount("/js", StaticFiles(directory=os.path.join(BASE_DIR, "js")), name="js")
-app.mount("/assets", StaticFiles(directory=os.path.join(BASE_DIR, "assets")), name="assets")
+# Agregamos headers para evitar caché durante desarrollo
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
+from starlette.responses import FileResponse as StarletteFileResponse
+
+class NoCacheStaticFiles(StarletteStaticFiles):
+    """StaticFiles que agrega headers anti-caché"""
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+app.mount("/css", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "css")), name="css")
+app.mount("/js", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "js")), name="js")
+app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets")), name="assets")
 
 
 # ==================== API INFO ====================
@@ -233,8 +271,15 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
                 path=path,
                 format="A4",
                 print_background=True,
-                margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-                scale=0.95  # Reducir levemente la escala para evitar recortes inesperados
+                margin={"top": "20mm", "right": "18mm", "bottom": "25mm", "left": "18mm"},
+                scale=0.92,  # Reducir escala para mejor legibilidad y evitar cortes
+                display_header_footer=True,
+                header_template="<div></div>",  # Header vacío
+                footer_template="""
+                    <div style="font-size: 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #6b7280; width: 100%; text-align: center; padding: 15px 0; border-top: 1px solid #e5e7eb; margin: 0 20mm;">
+                        <span class="pageNumber" style="font-weight: 600;"></span>
+                    </div>
+                """
             )
             
             await browser.close()

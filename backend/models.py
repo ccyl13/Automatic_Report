@@ -13,10 +13,13 @@ class Report(Base):
     target_asset = Column(String, default="Aplicación Principal")
     auditor_company = Column(String, default="Empresa Auditora LLC")
     auditor_name = Column(String, default="Juan Pérez")
+    auditor_phone = Column(String, default="")
+    auditor_email = Column(String, default="")
     classification = Column(Integer, default=2)
     version = Column(String, default="1.0")
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")
+    theme = Column(String, default="corporate")  # corporate, ctf, certification
     client_logo = Column(JSON, default=list)
     has_incidents = Column(Integer, default=0)  # 0 = false, 1 = true
     incidents_text = Column(Text, default="")

@@ -2704,6 +2704,40 @@ button:disabled,
     background: #2563eb;
 }
 
+/* Language toggle in navbar editor */
+.lang-toggle-editor {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lang-toggle-editor button {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 32px;
+}
+
+.lang-toggle-editor button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #e2e8f0;
+}
+
+.lang-toggle-editor button.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
 /* ---- Main Content ---- */
 .main-content {
     background: #f1f5f9;

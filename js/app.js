@@ -121,7 +121,24 @@ const UI = {
         testsPerformed: 'Pruebas Realizadas',
         testsPerformedDesc: 'Descripción detallada de las pruebas y técnicas utilizadas durante la auditoría.',
         recommendedSolutions: 'Soluciones Recomendadas',
-        recommendedSolutionsDesc: 'Plan de remediación con prioridades y recomendaciones generales.'
+        recommendedSolutionsDesc: 'Plan de remediación con prioridades y recomendaciones generales.',
+        // Preview/PDF translations
+        index: 'Índice',
+        executiveSummary: 'Resumen Ejecutivo',
+        executiveSummaryWithCVSS: 'Resumen Ejecutivo (CVSS)',
+        technicalFindings: 'Hallazgos Técnicos',
+        incidentsRecorded: 'Se registraron incidencias durante la auditoría',
+        cvssScore: 'CVSS Score',
+        cveId: 'CVE',
+        referenceUrl: 'URL de Referencia',
+        pocSteps: 'Pasos para Reproducir (PoC)',
+        evidence: 'Evidencias',
+        businessImpact: 'Impacto en el Negocio',
+        solutionRemediation: 'Solución y Remediación',
+        na: 'N/A',
+        auditConclusions: 'Conclusiones y Resumen de la Auditoría',
+        logoClient: 'Logo Cliente',
+        logoClientAlt: 'Logo Cliente'
     },
     en: {
         appTitle: 'Pentestify',
@@ -201,7 +218,24 @@ const UI = {
         testsPerformed: 'Tests Performed',
         testsPerformedDesc: 'Detailed description of tests and techniques used during the audit.',
         recommendedSolutions: 'Recommended Solutions',
-        recommendedSolutionsDesc: 'Remediation plan with priorities and general recommendations.'
+        recommendedSolutionsDesc: 'Remediation plan with priorities and general recommendations.',
+        // Preview/PDF translations
+        index: 'Index',
+        executiveSummary: 'Executive Summary',
+        executiveSummaryWithCVSS: 'Executive Summary (CVSS)',
+        technicalFindings: 'Technical Findings',
+        incidentsRecorded: 'Incidents were recorded during the audit',
+        cvssScore: 'CVSS Score',
+        cveId: 'CVE',
+        referenceUrl: 'Reference URL',
+        pocSteps: 'Steps to Reproduce (PoC)',
+        evidence: 'Evidence',
+        businessImpact: 'Business Impact',
+        solutionRemediation: 'Solution and Remediation',
+        na: 'N/A',
+        auditConclusions: 'Audit Conclusions and Summary',
+        logoClient: 'Client Logo',
+        logoClientAlt: 'Client Logo'
     }
 };
 
@@ -338,8 +372,12 @@ function renderNavbar() {
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
                 <button class="btn-primary" onclick="printReport()">${t.generatePdf}</button>
+                <div class="lang-toggle-editor">
+                    <button class="${state.lang === 'es' ? 'active' : ''}" onclick="setLang('es')" title="Español">ES</button>
+                    <button class="${state.lang === 'en' ? 'active' : ''}" onclick="setLang('en')" title="English">EN</button>
+                </div>
             </div>
-        </header>
+        </header>vf
     `;
 }
 
@@ -735,10 +773,10 @@ function renderPreview() {
                     <div style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                         ${d.clientLogo[0] || d.clientLogo[1] ? `
                             ${d.clientLogo[0] ? `
-                                <img src="${d.clientLogo[0]}" alt="Logo Cliente 1" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
+                                <img src="${d.clientLogo[0]}" alt="${t.logoClient} 1" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                             ` : ''}
                             ${d.clientLogo[1] ? `
-                                <img src="${d.clientLogo[1]}" alt="Logo Cliente 2" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
+                                <img src="${d.clientLogo[1]}" alt="${t.logoClient} 2" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                             ` : ''}
                         ` : `
                             <div style="width:160px; height:160px; background:linear-gradient(135deg,#2563eb,#1e40af); border-radius:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 15px 40px rgba(37,99,235,0.3);">
@@ -798,17 +836,17 @@ function renderPreview() {
             
             <!-- ÍNDICE -->
             <div class="index-page" style="padding: 4rem 2rem; min-height: 100vh; page-break-after: always; max-width: 900px; margin: 0 auto;">
-                <h2 style="font-size: 2.25rem; color: #111827; margin-bottom: 2.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">Índice</h2>
+                <h2 style="font-size: 2.25rem; color: #111827; margin-bottom: 2.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">${t.index}</h2>
                 
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <a href="#summary" style="display: flex; justify-content: space-between; text-decoration: none; color: #374151; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; font-size: 1.125rem; transition: color 0.2s;">
-                        <span>Resumen Ejecutivo (CVSS)</span>
+                        <span>${t.executiveSummaryWithCVSS}</span>
                     </a>
                     <a href="#incidents" style="display: flex; justify-content: space-between; text-decoration: none; color: #374151; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; font-size: 1.125rem; transition: color 0.2s;">
                         <span>${t.incidentsSectionTitle}</span>
                     </a>
                     
-                    ${state.findings.length > 0 ? `<h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #4b5563; font-size: 1.5rem; font-weight: 700;">Hallazgos Técnicos</h3>` : ''}
+                    ${state.findings.length > 0 ? `<h3 style="margin-top: 2rem; margin-bottom: 1rem; color: #4b5563; font-size: 1.5rem; font-weight: 700;">${t.technicalFindings}</h3>` : ''}
                     
                     ${state.findings.map((f, idx) => `
                         <a href="#finding-${idx}" style="display: flex; justify-content: space-between; text-decoration: none; color: #111827; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; align-items: center; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
@@ -830,7 +868,7 @@ function renderPreview() {
             <!-- RESUMEN EJECUTIVO + INCIDENCIAS (misma página) -->
             <div style="padding: 2rem 0; page-break-inside: avoid;">
                 <div id="summary" style="margin-bottom: 3rem;">
-                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">Resumen Ejecutivo</h2>
+                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">${t.executiveSummary}</h2>
                     ${renderCvssSummary()}
                 </div>
                 
@@ -840,7 +878,7 @@ function renderPreview() {
                     <div style="background:#fff7ed; border:1px solid #fed7aa; border-left:6px solid #f97316; border-radius:10px; padding:1.5rem 2rem;">
                         <p style="font-weight:700; color:#c2410c; margin-bottom:0.75rem; font-size:1rem; display:flex; align-items:center; gap:0.5rem;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                            Se registraron incidencias durante la auditoría
+                            ${t.incidentsRecorded}
                         </p>
                         <p style="color:#9a3412; line-height:1.7; white-space:pre-wrap; text-align: justify;">${formatMultiline(d.incidentsText || '')}</p>
                     </div>
@@ -865,16 +903,16 @@ function renderPreview() {
                         
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                             <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">CVSS Score</p>
-                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cvss || 'N/A')}</p>
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">${t.cvssScore}</p>
+                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cvss || t.na)}</p>
                             </div>
                             <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">CVE</p>
-                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cve || 'N/A')}</p>
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">${t.cveId}</p>
+                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cve || t.na)}</p>
                             </div>
                             <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">URL de Referencia</p>
-                                <p style="font-size: 0.875rem; font-weight: 500; color: #3b82f6; margin: 0; word-break: break-all;">${f.reference ? `<a href="${escapeHTML(f.reference)}" target="_blank" style="color: #3b82f6; text-decoration: none;">${escapeHTML(f.reference)}</a>` : 'N/A'}</p>
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">${t.referenceUrl}</p>
+                                <p style="font-size: 0.875rem; font-weight: 500; color: #3b82f6; margin: 0; word-break: break-all;">${f.reference ? `<a href="${escapeHTML(f.reference)}" target="_blank" style="color: #3b82f6; text-decoration: none;">${escapeHTML(f.reference)}</a>` : t.na}</p>
                             </div>
                         </div>
                         
@@ -882,7 +920,7 @@ function renderPreview() {
                             <div style="margin-bottom: 1.5rem;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: #374151; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                    Descripción
+                                    ${t.description}
                                 </h4>
                                 <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.description)}</span></p>
                             </div>
@@ -892,7 +930,7 @@ function renderPreview() {
                             <div style="margin-bottom: 1.5rem; background: #1e293b; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; border: 1px solid #0f172a;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: #f8fafc;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                                    Pasos para Reproducir (PoC)
+                                    ${t.pocSteps}
                                 </h4>
                                 <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: #e2e8f0; margin: 0; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
                             </div>
@@ -902,12 +940,12 @@ function renderPreview() {
                             <div style="margin-bottom: 1.5rem;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: #374151; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                    Evidencias
+                                    ${t.evidence}
                                 </h4>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
                                     ${f.images.map((img, imgIdx) => `
                                         <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; break-inside: avoid; background: #fff; padding: 0.5rem;">
-                                            <img src="${img}" alt="Evidencia ${imgIdx + 1}" style="width: 100%; height: auto; border-radius: 4px; display: block;">
+                                            <img src="${img}" alt="${t.evidence} ${imgIdx + 1}" style="width: 100%; height: auto; border-radius: 4px; display: block;">
                                         </div>
                                     `).join('')}
                                 </div>
@@ -918,7 +956,7 @@ function renderPreview() {
                             <div style="margin-bottom: 1.5rem;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: #dc2626; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                    Impacto en el Negocio
+                                    ${t.businessImpact}
                                 </h4>
                                 <p style="color: #4b5563; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.impact)}</span></p>
                             </div>
@@ -928,7 +966,7 @@ function renderPreview() {
                             <div style="margin-bottom: 0; background: #f0fdf4; padding: 1.5rem; border-radius: 8px; border: 1px solid #bbf7d0;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: #166534; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                    Solución y Remediación
+                                    ${t.solutionRemediation}
                                 </h4>
                                 <p style="color: #15803d; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.remediation)}</span></p>
                             </div>
@@ -941,7 +979,7 @@ function renderPreview() {
             ${d.auditSummary || d.testsPerformed || d.recommendedSolutions ? `
             <div style="padding: 2rem 0; page-break-before: always;">
                 <h2 style="font-size: 2rem; color: #111827; margin-bottom: 2rem; border-bottom: 3px solid #2563eb; padding-bottom: 0.75rem; font-weight: 800;">
-                    ${state.lang === 'es' ? 'Conclusiones y Resumen de la Auditoría' : 'Audit Conclusions and Summary'}
+                    ${t.auditConclusions}
                 </h2>
                 
                 ${d.auditSummary ? `
@@ -1070,6 +1108,13 @@ function enterApp() {
 function setLang(lang) {
     state.lang = lang;
     state.auditData.lang = lang;
+
+    // Si hay una plantilla seleccionada (no custom), recargarla en el nuevo idioma
+    if (state.currentFinding.templateKey && state.currentFinding.templateKey !== 'custom') {
+        applyTemplate(state.currentFinding.templateKey);
+        return; // applyTemplate ya llama a renderApp()
+    }
+
     renderApp();
 }
 

@@ -33,10 +33,17 @@ Pentestify/
     ├── models.py           # Modelos SQLAlchemy
     ├── schemas.py          # Esquemas Pydantic
     ├── database.py         # Configuración SQLite
+    ├── migrations.py       # Migraciones de base de datos
     └── tests/              # Tests pytest
         ├── conftest.py
+        ├── test_api_info.py
         ├── test_reports.py
-        └── test_findings.py
+        ├── test_findings.py
+        ├── test_findings_reorder.py
+        ├── test_findings_delete_reorder.py
+        ├── test_pdf_export.py
+        ├── test_database_io.py
+        └── test_static_files.py
 ```
 
 ## Instalación y Uso
@@ -92,6 +99,51 @@ Los datos se almacenan en `pentestify.db` (SQLite) con dos tablas:
 ### Nuevo Reporte
 - Desde "Mis Reportes" puedes crear reportes nuevos
 - Cada reporte es independiente con sus propios hallazgos
+
+## Testing
+
+Pentestify incluye una suite completa de tests para garantizar que todas las funcionalidades funcionen correctamente.
+
+### Ejecutar todos los tests
+
+```bash
+# Desde la raíz del proyecto
+python -m pytest backend/tests/ -v
+
+# O desde el directorio backend
+cd backend
+python -m pytest tests/ -v
+```
+
+### Tests específicos
+
+```bash
+# Solo tests de reportes
+python -m pytest backend/tests/test_reports.py -v
+
+# Solo tests de hallazgos
+python -m pytest backend/tests/test_findings.py -v
+
+# Tests con cobertura
+python -m pytest backend/tests/ -v --cov=backend --cov-report=html
+```
+
+### Antes de hacer git push
+
+**Recomendación:** Ejecutar siempre los tests antes de subir cambios:
+
+```bash
+python -m pytest backend/tests/ -v
+```
+
+La suite de tests incluye:
+- **API Info**: Verificación de endpoints básicos
+- **Reportes**: CRUD completo de reportes
+- **Hallazgos**: CRUD y reordenamiento de hallazgos
+- **Reordenamiento**: Tests específicos para orden de hallazgos
+- **PDF**: Generación de reportes PDF
+- **Base de Datos**: Import/export de backups SQLite
+- **Archivos Estáticos**: CSS, JS y assets
 
 ## Tecnologías
 

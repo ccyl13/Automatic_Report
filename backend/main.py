@@ -22,30 +22,9 @@ if not os.path.exists(os.path.join(BASE_DIR, "index.html")):
 # Crear tablas
 models.Base.metadata.create_all(bind=engine)
 
-# Migración: agregar columnas nuevas si no existen (para compatibilidad con DBs antiguas)
-from sqlalchemy import text
-try:
-    with engine.connect() as conn:
-        # Verificar si existe la columna auditor_phone
-        result = conn.execute(text("PRAGMA table_info(reports)"))
-        columns = [row[1] for row in result]
-        
-        if 'auditor_phone' not in columns:
-            conn.execute(text("ALTER TABLE reports ADD COLUMN auditor_phone VARCHAR"))
-            conn.commit()
-            print("✅ Columna auditor_phone agregada")
-        
-        if 'auditor_email' not in columns:
-            conn.execute(text("ALTER TABLE reports ADD COLUMN auditor_email VARCHAR"))
-            conn.commit()
-            print("✅ Columna auditor_email agregada")
-        
-        if 'theme' not in columns:
-            conn.execute(text("ALTER TABLE reports ADD COLUMN theme VARCHAR DEFAULT 'corporate'"))
-            conn.commit()
-            print("✅ Columna theme agregada")
-except Exception as e:
-    print(f"⚠️  Nota: {e}")
+# Ejecutar migraciones
+from migrations import run_migrations
+run_migrations(engine)
 
 app = FastAPI(
     title="Pentestify API",
@@ -207,18 +186,19 @@ def delete_finding(finding_id: int, db: Session = Depends(get_db)):
     db_finding = db.query(models.Finding).filter(models.Finding.id == finding_id).first()
     if not db_finding:
         raise HTTPException(status_code=404, detail="Hallazgo no encontrado")
-    
+
     report_id = db_finding.report_id
     db.delete(db_finding)
-    
+    db.flush()  # Aplicar delete inmediatamente
+
     # Reordenar los hallazgos restantes
     remaining = db.query(models.Finding).filter(
         models.Finding.report_id == report_id
     ).order_by(models.Finding.order_index).all()
-    
+
     for idx, f in enumerate(remaining):
         f.order_index = idx
-    
+
     db.commit()
     return {"message": "Hallazgo eliminado correctamente"}
 

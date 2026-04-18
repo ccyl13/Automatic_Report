@@ -4,9 +4,9 @@
 class TestReportsAPI:
     """Test suite para la API de Reportes"""
     
-    def test_root_endpoint(self, client):
-        """Test: GET / debe retornar mensaje de bienvenida"""
-        response = client.get("/")
+    def test_api_info_endpoint(self, client):
+        """Test: GET /api retorna información de la API"""
+        response = client.get("/api")
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Pentestify API"

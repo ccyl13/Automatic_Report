@@ -138,7 +138,9 @@ const UI = {
         na: 'N/A',
         auditConclusions: 'Conclusiones y Resumen de la Auditoría',
         logoClient: 'Logo Cliente',
-        logoClientAlt: 'Logo Cliente'
+        logoClientAlt: 'Logo Cliente',
+        cvssSummaryTitle: 'Resumen de Vulnerabilidades (CVSS)',
+        noFindings: 'No hay hallazgos registrados'
     },
     en: {
         appTitle: 'Pentestify',
@@ -235,7 +237,9 @@ const UI = {
         na: 'N/A',
         auditConclusions: 'Audit Conclusions and Summary',
         logoClient: 'Client Logo',
-        logoClientAlt: 'Client Logo'
+        logoClientAlt: 'Client Logo',
+        cvssSummaryTitle: 'Vulnerabilities Summary (CVSS)',
+        noFindings: 'No findings registered'
     }
 };
 
@@ -284,11 +288,22 @@ function sortFindingsBySeverity(findings) {
     });
 }
 
-const createEl = (tag, className, html) => {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (html) el.innerHTML = html;
-    return el;
+// Helper: Leer archivo como Data URL
+const readFileAsDataURL = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+});
+
+// Helper: Calcular severidad desde CVSS
+const calculateSeverityFromCvss = (cvss) => {
+    const score = parseFloat(cvss);
+    if (isNaN(score)) return null;
+    if (score >= 9.0) return 'crit';
+    if (score >= 7.0) return 'high';
+    if (score >= 4.0) return 'med';
+    if (score > 0.0) return 'low';
+    return 'info';
 };
 
 const API = {
@@ -377,7 +392,7 @@ function renderNavbar() {
                     <button class="${state.lang === 'en' ? 'active' : ''}" onclick="setLang('en')" title="English">EN</button>
                 </div>
             </div>
-        </header>vf
+        </header>
     `;
 }
 
@@ -662,7 +677,7 @@ function renderFindingsList() {
     const t = UI[state.lang];
 
     if (state.findings.length === 0) {
-        return `<div class="card"><p class="text-muted">No hay hallazgos registrados</p></div>`;
+        return `<div class="card"><p class="text-muted">${t.noFindings}</p></div>`;
     }
 
     return `
@@ -729,11 +744,9 @@ function renderCvssSummary() {
         `;
     }
 
-    const title = state.lang === 'es' ? 'Resumen de Vulnerabilidades (CVSS)' : 'Vulnerabilities Summary (CVSS)';
-
     return `
         <div class="cvss-summary card" style="margin: 2rem 0; padding: 1.5rem; page-break-inside: avoid;">
-            <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.75rem; color: #111827;">${title}</h3>
+            <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.75rem; color: #111827;">${t.cvssSummaryTitle}</h3>
             
             <div style="display: flex; height: 28px; width: 100%; border-radius: 6px; overflow: hidden; margin-bottom: 1.5rem; box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06);">
                 ${barSegments}
@@ -977,7 +990,7 @@ function renderPreview() {
 
             <!-- RESUMEN FINAL DE LA AUDITORÍA -->
             ${d.auditSummary || d.testsPerformed || d.recommendedSolutions ? `
-            <div style="padding: 2rem 0; page-break-before: always;">
+            <div style="padding: 2rem 0; page-break-before: auto;">
                 <h2 style="font-size: 2rem; color: #111827; margin-bottom: 2rem; border-bottom: 3px solid #2563eb; padding-bottom: 0.75rem; font-weight: 800;">
                     ${t.auditConclusions}
                 </h2>
@@ -1123,40 +1136,26 @@ function setTab(tab) {
     renderApp();
 }
 
-async function printReport() {
-    const printContent = document.querySelector('.preview-container');
-    if (!printContent) {
-        alert(state.lang === 'es' ? 'Primero ve a la vista previa' : 'Go to preview first');
-        return;
-    }
+// Helpers para impresión
+const preloadImages = (container) => {
+    const images = container.querySelectorAll('img');
+    const promises = Array.from(images).map(img => new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) {
+            resolve();
+        } else {
+            const tempImg = new Image();
+            tempImg.onload = resolve;
+            tempImg.onerror = resolve;
+            tempImg.src = img.src;
+            setTimeout(resolve, 2000);
+        }
+    }));
+    return Promise.all(promises);
+};
 
-    // Preload all images from the original content first
-    const originalImages = printContent.querySelectorAll('img');
-    const preloadPromises = Array.from(originalImages).map(img => {
-        return new Promise((resolve) => {
-            if (img.complete && img.naturalWidth > 0) {
-                resolve();
-            } else {
-                const tempImg = new Image();
-                tempImg.onload = resolve;
-                tempImg.onerror = resolve;
-                tempImg.src = img.src;
-                // Timeout fallback
-                setTimeout(resolve, 2000);
-            }
-        });
-    });
-
-    await Promise.all(preloadPromises);
-
+const createPrintIframe = (content) => {
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow.document;
@@ -1169,86 +1168,54 @@ async function printReport() {
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="${window.location.origin}/css/styles.css">
             <style>
-                @page {
-                    margin: 10mm 20mm 25mm 20mm;
-                    size: A4;
-                    @bottom-center {
-                        content: counter(page);
-                        font-family: 'Inter', sans-serif;
-                        font-size: 10pt;
-                        color: #6b7280;
-                    }
-                }
-                @media print {
-                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    .navbar, .no-print { display: none !important; }
-                }
-                .page-number {
-                    position: fixed;
-                    bottom: 10mm;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-family: 'Inter', sans-serif;
-                    font-size: 10pt;
-                    color: #6b7280;
-                }
-                img {
-                    max-width: 100% !important;
-                    page-break-inside: avoid !important;
-                }
+                @page { margin: 10mm 20mm 25mm 20mm; size: A4; @bottom-center { content: counter(page); font-family: 'Inter', sans-serif; font-size: 10pt; color: #6b7280; } }
+                @media print { body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .navbar, .no-print { display: none !important; } }
+                img { max-width: 100% !important; page-break-inside: avoid !important; }
             </style>
         </head>
-        <body style="margin:0; padding:0; background:white;">
-        </body>
+        <body style="margin:0;padding:0;background:white;">${content}</body>
         </html>
     `);
     doc.close();
+    return iframe;
+};
 
-    // Clone the content and append to iframe body
-    const clonedContent = printContent.cloneNode(true);
-    doc.body.appendChild(clonedContent);
+const waitForImagesInIframe = (doc, timeout = 3000) => new Promise((resolve) => {
+    const images = doc.querySelectorAll('img');
+    if (images.length === 0) { resolve(); return; }
 
-    // Wait for iframe to be ready and images to load
-    setTimeout(() => {
-        const images = doc.querySelectorAll('img');
-        let loadedCount = 0;
-        const totalImages = images.length;
+    let loadedCount = 0;
+    const total = images.length;
+    const checkComplete = () => { if (++loadedCount >= total) resolve(); };
 
-        if (totalImages === 0) {
-            triggerPrint(iframe);
-            return;
+    images.forEach(img => {
+        if (img.complete && img.naturalWidth > 0) {
+            checkComplete();
+        } else {
+            img.onload = checkComplete;
+            img.onerror = checkComplete;
+            const src = img.src;
+            img.src = '';
+            img.src = src;
         }
+    });
 
-        images.forEach(img => {
-            if (img.complete && img.naturalWidth > 0) {
-                loadedCount++;
-                if (loadedCount === totalImages) {
-                    triggerPrint(iframe);
-                }
-            } else {
-                img.onload = () => {
-                    loadedCount++;
-                    if (loadedCount === totalImages) {
-                        triggerPrint(iframe);
-                    }
-                };
-                img.onerror = () => {
-                    loadedCount++;
-                    if (loadedCount === totalImages) {
-                        triggerPrint(iframe);
-                    }
-                };
-                // Force reload image in iframe context
-                const currentSrc = img.src;
-                img.src = '';
-                img.src = currentSrc;
-            }
-        });
+    setTimeout(resolve, timeout);
+});
 
-        // Fallback: print anyway after 3 seconds
-        setTimeout(() => {
-            triggerPrint(iframe);
-        }, 3000);
+async function printReport() {
+    const printContent = document.querySelector('.preview-container');
+    if (!printContent) {
+        alert(state.lang === 'es' ? 'Primero ve a la vista previa' : 'Go to preview first');
+        return;
+    }
+
+    await preloadImages(printContent);
+    const iframe = createPrintIframe(printContent.innerHTML);
+
+    setTimeout(async () => {
+        await waitForImagesInIframe(iframe.contentWindow.document);
+        triggerPrint(iframe);
     }, 500);
 }
 
@@ -1282,14 +1249,8 @@ function updateAuditData(field, value) {
 function updateCurrentFinding(field, value) {
     state.currentFinding[field] = value;
     if (field === 'cvss') {
-        const score = parseFloat(value);
-        if (!isNaN(score)) {
-            let sev = 'info';
-            if (score >= 9.0) sev = 'crit';
-            else if (score >= 7.0) sev = 'high';
-            else if (score >= 4.0) sev = 'med';
-            else if (score > 0.0) sev = 'low';
-            
+        const sev = calculateSeverityFromCvss(value);
+        if (sev) {
             state.currentFinding.severity = sev;
             const severitySelect = document.getElementById('findingSeverity');
             if (severitySelect) {
@@ -1307,17 +1268,7 @@ function applyTemplate(key) {
 
     const t = template[state.lang] || template.es;
 
-    let calculatedSeverity = state.currentFinding.severity || 'med';
-    if (t.cvss) {
-        const score = parseFloat(t.cvss);
-        if (!isNaN(score)) {
-            if (score >= 9.0) calculatedSeverity = 'crit';
-            else if (score >= 7.0) calculatedSeverity = 'high';
-            else if (score >= 4.0) calculatedSeverity = 'med';
-            else if (score > 0.0) calculatedSeverity = 'low';
-            else calculatedSeverity = 'info';
-        }
-    }
+    const calculatedSeverity = t.cvss ? (calculateSeverityFromCvss(t.cvss) || 'info') : (state.currentFinding.severity || 'med');
 
     state.currentFinding = {
         ...state.currentFinding,
@@ -1490,20 +1441,18 @@ function editFinding(index) {
     renderApp();
 }
 
-function handleImageUpload(event) {
+async function handleImageUpload(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
-        if (!file.type.startsWith('image/')) return;
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    const dataUrls = await Promise.all(imageFiles.map(readFileAsDataURL));
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            state.currentFinding.images.push(e.target.result);
-            renderApp();
-        };
-        reader.readAsDataURL(file);
+    dataUrls.forEach(url => {
+        if (url) state.currentFinding.images.push(url);
     });
+
+    if (dataUrls.length > 0) renderApp();
     event.target.value = '';
 }
 
@@ -1512,44 +1461,36 @@ function removeImage(index) {
     renderApp();
 }
 
-function handleImagePaste(event) {
+async function handleImagePaste(event) {
     event.preventDefault();
     const items = event.clipboardData?.items;
     if (!items) return;
 
-    let hasImages = false;
+    const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+    const blobs = imageItems.map(item => item.getAsFile()).filter(Boolean);
+    const dataUrls = await Promise.all(blobs.map(readFileAsDataURL));
 
-    Array.from(items).forEach(item => {
-        if (item.type.startsWith('image/')) {
-            hasImages = true;
-            const blob = item.getAsFile();
-            if (blob) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    state.currentFinding.images.push(e.target.result);
-                    renderApp();
-                };
-                reader.readAsDataURL(blob);
-            }
-        }
+    dataUrls.forEach(url => {
+        if (url) state.currentFinding.images.push(url);
     });
 
-    if (hasImages) {
+    if (dataUrls.length > 0) {
+        renderApp();
         event.stopPropagation();
     }
 }
 
-function handleClientLogoUpload(event, index) {
+async function handleClientLogoUpload(event, index) {
     const file = event.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
+
+    const dataUrl = await readFileAsDataURL(file);
+    if (dataUrl) {
         const newLogos = [...state.auditData.clientLogo];
-        newLogos[index] = e.target.result;
+        newLogos[index] = dataUrl;
         updateAuditData('clientLogo', newLogos);
         renderApp();
-    };
-    reader.readAsDataURL(file);
+    }
 }
 
 function removeClientLogo(index) {
@@ -1594,8 +1535,6 @@ async function createNewReport() {
 async function loadReport(id) {
     try {
         const report = await API.reports.getById(id);
-        console.log('[DEBUG] Reporte recibido del backend:', report);
-        console.log('[DEBUG] has_incidents raw value:', report.has_incidents, 'tipo:', typeof report.has_incidents);
         state.currentReportId = report.id;
         state.auditData = {
             documentTitle: report.document_title,
@@ -1610,12 +1549,10 @@ async function loadReport(id) {
             lang: report.lang,
             hasIncidents: report.has_incidents === true || report.has_incidents === 'true' || report.has_incidents === 1,
             incidentsText: report.incidents_text || '',
-            _debugHasIncidents: report.has_incidents, // campo temporal para debug
             auditSummary: report.audit_summary || '',
             testsPerformed: report.tests_performed || '',
             recommendedSolutions: report.recommended_solutions || ''
         };
-        console.log('[DEBUG] auditData después de asignar:', state.auditData);
         state.lang = report.lang;
         state.findings = sortFindingsBySeverity(report.findings || []);
 
@@ -1732,9 +1669,7 @@ async function saveCurrentReport() {
             tests_performed: state.auditData.testsPerformed || '',
             recommended_solutions: state.auditData.recommendedSolutions || ''
         };
-        console.log('[DEBUG] Payload enviado al backend:', payload);
-        console.log('[DEBUG] has_incidents enviado:', payload.has_incidents, 'tipo:', typeof payload.has_incidents);
-        
+
         if (!state.currentReportId) {
             const report = await API.reports.create(payload);
             state.currentReportId = report.id;

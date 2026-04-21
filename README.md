@@ -165,3 +165,4 @@ Pentestify está construido sobre un stack moderno y eficiente que equilibra el 
 - El Pingüino de Mario
 - Manuel Martínez
 - Thomas O'neil Álvarez
+- Damián Carillo Arjones

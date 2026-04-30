@@ -386,7 +386,7 @@ function renderNavbar() {
                 <button class="${state.showReportSelector ? 'active' : ''}" onclick="showReports()">${t.myReports}</button>
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
-                <button class="btn-primary" onclick="printReport()">${t.generatePdf}</button>
+                <button class="btn-primary" onclick="generatePdfFromBackend()">${t.generatePdf}</button>
                 <div class="lang-toggle-editor">
                     <button class="${state.lang === 'es' ? 'active' : ''}" onclick="setLang('es')" title="Español">ES</button>
                     <button class="${state.lang === 'en' ? 'active' : ''}" onclick="setLang('en')" title="English">EN</button>
@@ -1202,6 +1202,26 @@ const waitForImagesInIframe = (doc, timeout = 3000) => new Promise((resolve) => 
 
     setTimeout(resolve, timeout);
 });
+
+async function generatePdfFromBackend() {
+    if (!state.currentReportId) {
+        alert(state.lang === 'es' ? 'Guarda el reporte primero' : 'Save the report first');
+        return;
+    }
+    try {
+        const response = await fetch(`/api/reports/${state.currentReportId}/pdf`);
+        if (!response.ok) throw new Error('Error generando PDF');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Report_${state.currentReportId}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        alert(state.lang === 'es' ? 'Error: ' + e.message : 'Error: ' + e.message);
+    }
+}
 
 async function printReport() {
     const printContent = document.querySelector('.preview-container');

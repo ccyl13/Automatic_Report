@@ -251,15 +251,11 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
                 path=path,
                 format="A4",
                 print_background=True,
-                margin={"top": "20mm", "right": "18mm", "bottom": "25mm", "left": "18mm"},
-                scale=0.92,  # Reducir escala para mejor legibilidad y evitar cortes
+                margin={"top": "15mm", "right": "18mm", "bottom": "15mm", "left": "18mm"},
+                scale=0.92,
                 display_header_footer=True,
-                header_template="<div></div>",  # Header vacío
-                footer_template="""
-                    <div style="font-size: 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #6b7280; width: 100%; text-align: center; padding: 15px 0; border-top: 1px solid #e5e7eb; margin: 0 20mm;">
-                        <span class="pageNumber" style="font-weight: 600;"></span>
-                    </div>
-                """
+                header_template="<span></span>",
+                footer_template="<div style=\"font-size:10px;font-family:sans-serif;color:#6b7280;width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
             )
             
             await browser.close()

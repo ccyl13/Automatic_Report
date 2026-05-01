@@ -4,6 +4,7 @@ const state = {
     activeTab: 'editor',
     isLoading: false,
     currentReportId: null,
+    reportTheme: 'light',
     savedReports: [],
     showReportSelector: false,
     auditData: {
@@ -386,7 +387,12 @@ function renderNavbar() {
                 <button class="${state.showReportSelector ? 'active' : ''}" onclick="showReports()">${t.myReports}</button>
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
-                <button class="btn-primary" onclick="generatePdfFromBackend()">${t.generatePdf}</button>
+                ${state.activeTab === 'preview' && !state.showReportSelector ? `
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button onclick="setReportTheme('light')" title="Tema claro" style="padding:0.4rem 0.75rem;border-radius:6px;border:2px solid ${state.reportTheme === 'light' ? '#3b82f6' : '#e2e8f0'};background:${state.reportTheme === 'light' ? '#eff6ff' : 'white'};cursor:pointer;font-size:0.8rem;font-weight:600;">Claro</button>
+                    <button onclick="setReportTheme('dark')" title="Tema oscuro" style="padding:0.4rem 0.75rem;border-radius:6px;border:2px solid ${state.reportTheme === 'dark' ? '#3b82f6' : '#e2e8f0'};background:${state.reportTheme === 'dark' ? '#1e293b' : 'white'};color:${state.reportTheme === 'dark' ? '#f1f5f9' : '#374151'};cursor:pointer;font-size:0.8rem;font-weight:600;">Oscuro</button>
+                    <button class="btn-primary" onclick="generatePdfFromBackend()">${t.generatePdf}</button>
+                </div>` : ''}
                 <div class="lang-toggle-editor">
                     <button class="${state.lang === 'es' ? 'active' : ''}" onclick="setLang('es')" title="Español">ES</button>
                     <button class="${state.lang === 'en' ? 'active' : ''}" onclick="setLang('en')" title="English">EN</button>
@@ -906,7 +912,7 @@ function renderPreview() {
             <!-- HALLAZGOS TÉCNICOS -->
             <div class="findings-preview">
                 ${state.findings.map((f, idx) => `
-                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: white; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: ${state.reportTheme === 'dark' ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; page-break-after: avoid;">
                             <h3 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
                             <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap; margin-left: 1rem;">
@@ -1173,7 +1179,7 @@ const createPrintIframe = (content) => {
                 img { max-width: 100% !important; page-break-inside: avoid !important; }
             </style>
         </head>
-        <body style="margin:0;padding:0;background:white;">${content}</body>
+        <body style="margin:0;padding:0;background:${state.reportTheme === 'dark' ? '#0f172a' : 'white'};">${content}</body>
         </html>
     `);
     doc.close();
@@ -1203,13 +1209,23 @@ const waitForImagesInIframe = (doc, timeout = 3000) => new Promise((resolve) => 
     setTimeout(resolve, timeout);
 });
 
+function setReportTheme(theme) {
+    state.reportTheme = theme;
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    render();
+}
+
 async function generatePdfFromBackend() {
     if (!state.currentReportId) {
         alert(state.lang === 'es' ? 'Guarda el reporte primero' : 'Save the report first');
         return;
     }
     try {
-        const response = await fetch(`/api/reports/${state.currentReportId}/pdf`);
+        const response = await fetch(`/api/reports/${state.currentReportId}/pdf?theme=${state.reportTheme}`);
         if (!response.ok) throw new Error('Error generando PDF');
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -1750,10 +1766,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const printMode = params.get('print_mode');
     const reportId = params.get('report_id');
 
+    const themeParam = params.get('theme');
     if (printMode === 'true' && reportId) {
         state.showSplash = false;
         state.activeTab = 'preview';
         state.currentReportId = parseInt(reportId);
+        if (themeParam === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
         
         try {
             const remoteReport = await API.reports.getById(state.currentReportId);

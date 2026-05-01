@@ -3283,6 +3283,11 @@ button {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
+[data-theme="dark"] .preview-container {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    box-shadow: none !important;
+}
 
 .report-header {
     padding-bottom: 2rem;
@@ -3633,4 +3638,113 @@ button {
     font-weight: 400;
     text-transform: none;
     padding-left: 0.75rem;
+}
+
+
+
+
+/* ==================== TEMA OSCURO MEJORADO ==================== */
+[data-theme="dark"] body,
+[data-theme="dark"] .preview-container {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .preview-container div,
+[data-theme="dark"] .preview-container p,
+[data-theme="dark"] .preview-container span,
+[data-theme="dark"] .preview-container li {
+    color: #cbd5e1 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .preview-container h1,
+[data-theme="dark"] .preview-container h2,
+[data-theme="dark"] .preview-container h3,
+[data-theme="dark"] .preview-container h4 {
+    color: #f1f5f9 !important;
+    background-color: transparent !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="background:#f0fdf4"],
+[data-theme="dark"] .preview-container [style*="background: #f0fdf4"] {
+    background: #052e16 !important;
+    border-color: #166534 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="background:#fff7ed"],
+[data-theme="dark"] .preview-container [style*="background: #fff7ed"] {
+    background: #431407 !important;
+    border-color: #c2410c !important;
+}
+
+[data-theme="dark"] .preview-container [style*="background: #f9fafb"],
+[data-theme="dark"] .preview-container [style*="background:#f9fafb"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="background: linear-gradient(135deg, #f8fafc"],
+[data-theme="dark"] .preview-container [style*="background:linear-gradient(135deg,#f8fafc"] {
+    background: #1e293b !important;
+}
+
+[data-theme="dark"] .preview-container .finding-preview {
+    background: #1e293b !important;
+}
+
+[data-theme="dark"] .preview-container hr,
+[data-theme="dark"] .preview-container [style*="border-bottom: 2px solid #e5e7eb"],
+[data-theme="dark"] .preview-container [style*="border-bottom: 1px solid #e5e7eb"] {
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="color: #111827"],
+[data-theme="dark"] .preview-container [style*="color:#111827"] {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="color: #374151"],
+[data-theme="dark"] .preview-container [style*="color:#374151"] {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="color: #6b7280"],
+[data-theme="dark"] .preview-container [style*="color:#6b7280"] {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="color: #166534"] {
+    color: #4ade80 !important;
+}
+
+[data-theme="dark"] .preview-container [style*="color: #c2410c"],
+[data-theme="dark"] .preview-container [style*="color:#9a3412"] {
+    color: #fb923c !important;
+}
+
+[data-theme="dark"] .preview-container svg {
+    stroke: currentColor;
+}
+[data-theme="dark"] #summary,
+[data-theme="dark"] #incidents,
+[data-theme="dark"] .preview-container > div {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+[data-theme="dark"] #summary,
+[data-theme="dark"] #incidents,
+[data-theme="dark"] .preview-container > div {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+[data-theme="dark"] body {
+    background: #0f172a !important;
+}
+[data-theme="dark"] body,
+[data-theme="dark"] .app-wrapper,
+[data-theme="dark"] main,
+[data-theme="dark"] #app {
+    background: #0f172a !important;
 }

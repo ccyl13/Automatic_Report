@@ -218,7 +218,7 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
 
 
 @app.get("/api/reports/{report_id}/pdf")
-async def generate_pdf(report_id: int, request: Request, db: Session = Depends(get_db)):
+async def generate_pdf(report_id: int, request: Request, db: Session = Depends(get_db), theme: str = "light"):
     """Generar PDF del reporte usando Playwright"""
     # Verificar que existe
     report = db.query(models.Report).filter(models.Report.id == report_id).first()
@@ -230,7 +230,7 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
         # o localhost:8000
         base_url = str(request.base_url).rstrip("/")
         # URL en modo especial "print" para que el frontend vaya directo al reporte y la vista previa
-        target_url = f"{base_url}/?report_id={report_id}&print_mode=true"
+        target_url = f"{base_url}/?report_id={report_id}&print_mode=true&theme={theme}"
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(args=['--no-sandbox', '--disable-setuid-sandbox'])
@@ -241,7 +241,20 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
             
             # Esperamos un pequeño tiempo extra para garantizar que las gráficas
             # y contenido dinámico se hayan renderizado completamente.
-            await page.wait_for_timeout(1000) 
+            await page.wait_for_timeout(2000)
+            
+            # Aplicar tema si es oscuro
+            if theme == 'dark':
+                await page.evaluate("""
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    document.documentElement.style.background = '#0f172a';
+                    document.body.style.background = '#0f172a';
+                    document.body.style.margin = '0';
+                    var style = document.createElement('style');
+                    style.textContent = 'html, body { background: #0f172a !important; } @page { background: #0f172a; }';
+                    document.head.appendChild(style);
+                """)
+                await page.wait_for_timeout(500) 
 
             # Generar PDF en un archivo temporal
             fd, path = tempfile.mkstemp(suffix=".pdf")
@@ -255,7 +268,7 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
                 scale=0.92,
                 display_header_footer=True,
                 header_template="<span></span>",
-                footer_template="<div style=\"font-size:10px;font-family:sans-serif;color:#6b7280;width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
+                footer_template=f"<div style=\"font-size:14px;font-weight:700;font-family:sans-serif;color:{'#ffffff' if theme == 'dark' else '#6b7280'};width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
             )
             
             await browser.close()

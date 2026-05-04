@@ -15,6 +15,39 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
+## Autores
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://www.linkedin.com/in/maalfer1/" target="_blank">
+          <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario">
+        </a><br>
+        <strong>El Pingüino de Mario</strong>
+      </td>
+      <td align="center">
+        <a href="https://www.linkedin.com/in/manuel-mart%C3%ADnez-casasola/" target="_blank">
+          <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez">
+        </a><br>
+        <strong>Manuel Martínez</strong>
+      </td>
+      <td align="center">
+        <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
+          <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil">
+        </a><br>
+        <strong>Thomas O'neil Álvarez</strong>
+      </td>
+      <td align="center">
+        <a href="https://www.linkedin.com/in/dami%C3%A1n-carrillo-aa5540340/" target="_blank">
+          <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo">
+        </a><br>
+        <strong>Damián Carrillo Arjones</strong>
+      </td>
+    </tr>
+  </table>
+</p>
+
 ## Estructura del Proyecto
 
 ```
@@ -167,37 +200,3 @@ Pentestify está construido sobre un stack moderno y eficiente que equilibra el 
 | <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/SQLite.svg" height="60" alt="Database Icon"> **PERSISTENCIA**<br>*Datos Relacionales* | <ul><li>**SQLite**</li><li>**SQLAlchemy** (ORM)</li><li>**Pydantic**</li></ul> | **Tus Datos Seguros y Estructurados**.<br>Persistencia local robusta en `pentestify.db`. SQLAlchemy gestiona los datos, mientras Pydantic asegura que cada vulnerabilidad y reporte cumpla con el esquema corporativo. |
 | <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Docker.svg" height="60" alt="Docker Icon"> **DESPLIEGUE**<br>*Infraestructura* | <ul><li>**Docker**</li><li>**Docker Compose**</li><li>Python `http.server`</li></ul> | **Portabilidad Instantánea**.<br>Ejecuta Pentestify en cualquier entorno (Windows, Linux, macOS) con un solo comando, aislando dependencias y protegiendo la integridad de la base de datos mediante volúmenes. |
 
-<br>
-
-## Autores
-
-<p align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <a href="https://www.linkedin.com/in/maalfer1/" target="_blank">
-          <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario">
-        </a><br>
-        <strong>El Pingüino de Mario</strong>
-      </td>
-      <td align="center">
-        <a href="https://www.linkedin.com/in/manuel-mart%C3%ADnez-casasola/" target="_blank">
-          <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez">
-        </a><br>
-        <strong>Manuel Martínez</strong>
-      </td>
-      <td align="center">
-        <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
-          <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil">
-        </a><br>
-        <strong>Thomas O'neil Álvarez</strong>
-      </td>
-      <td align="center">
-        <a href="https://www.linkedin.com/in/dami%C3%A1n-carrillo-aa5540340/" target="_blank">
-          <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo">
-        </a><br>
-        <strong>Damián Carrillo Arjones</strong>
-      </td>
-    </tr>
-  </table>
-</p>

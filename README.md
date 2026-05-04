@@ -46,22 +46,9 @@ Pentestify/
         └── test_static_files.py
 ```
 
-## Instalación y Uso
+## 🐳 Instalación y Uso (Docker - Recomendado)
 
-### 1. Instalar dependencias del backend
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python3 run.py
-```
-
-El servidor estará disponible en: `http://localhost:8000`
-
----
-
-## 🐳 Docker (Recomendado)
+Docker es la forma **más rápida y sencilla** de ejecutar Pentestify. La imagen incluye todas las dependencias incluyendo los navegadores necesarios para la generación de PDFs.
 
 ### Comando rápido (copiar y pegar)
 
@@ -76,6 +63,28 @@ docker run -d \
   --name pentestify \
   pentestify:latest
 ```
+
+El servidor estará disponible en: `http://localhost:8000`
+
+---
+
+## 🖥️ Instalación Manual (Sin Docker)
+
+Si prefieres no usar Docker, puedes instalar manualmente:
+
+### 1. Instalar dependencias del backend
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium  # Necesario para generación de PDFs
+python3 run.py
+```
+
+El servidor estará disponible en: `http://localhost:8000`
+
+---
 
 ## Base de Datos
 
@@ -162,7 +171,27 @@ Pentestify está construido sobre un stack moderno y eficiente que equilibra el 
 
 ## Autores
 
-- El Pingüino de Mario
-- Manuel Martínez
-- Thomas O'neil Álvarez
-- Damián Carillo Arjones
+<p align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario"><br>
+        <strong>El Pingüino de Mario</strong>
+      </td>
+      <td align="center">
+        <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez"><br>
+        <strong>Manuel Martínez</strong>
+      </td>
+      <td align="center">
+        <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil"><br>
+        <strong>Thomas O'neil Álvarez</strong>
+      </td>
+      <td align="center">
+        <div style="width:100px;height:100px;background:#e2e8f0;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <span style="font-size:40px;">🐺</span>
+        </div><br>
+        <strong>Damián Carillo Arjones</strong>
+      </td>
+    </tr>
+  </table>
+</p>

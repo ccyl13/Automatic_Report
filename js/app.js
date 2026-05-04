@@ -1226,7 +1226,31 @@ async function generatePdfFromBackend() {
     }
     try {
         const response = await fetch(`/api/reports/${state.currentReportId}/pdf?theme=${state.reportTheme}`);
-        if (!response.ok) throw new Error('Error generando PDF');
+        if (!response.ok) {
+            // Intentar obtener detalles del error
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = null;
+            }
+            
+            // Si es el error de Playwright no instalado, mostrar opciones al usuario
+            if (response.status === 503 && errorData?.detail?.error === "Playwright browsers not installed") {
+                const useFallback = confirm(
+                    (state.lang === 'es' 
+                        ? `⚠️ ${errorData.detail.message}\n\n${errorData.detail.solution}\n${errorData.detail.command}\n\n¿Quieres usar el método alternativo (impresión del navegador) para generar el PDF?`
+                        : `⚠️ ${errorData.detail.message}\n\n${errorData.detail.solution}\n${errorData.detail.command}\n\nDo you want to use the alternative method (browser print) to generate the PDF?`
+                    )
+                );
+                if (useFallback) {
+                    printReport();
+                }
+                return;
+            }
+            
+            throw new Error(errorData?.detail?.message || errorData?.detail || `Error ${response.status}`);
+        }
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

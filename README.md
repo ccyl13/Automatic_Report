@@ -193,7 +193,9 @@ Pentestify está construido sobre un stack moderno y eficiente que equilibra el 
         <strong>Thomas O'neil Álvarez</strong>
       </td>
       <td align="center">
-        <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo"><br>
+        <a href="https://www.linkedin.com/in/dami%C3%A1n-carrillo-aa5540340/" target="_blank">
+          <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo">
+        </a><br>
         <strong>Damián Carrillo Arjones</strong>
       </td>
     </tr>

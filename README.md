@@ -175,22 +175,26 @@ Pentestify está construido sobre un stack moderno y eficiente que equilibra el 
   <table>
     <tr>
       <td align="center">
-        <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario"><br>
+        <a href="https://www.linkedin.com/in/maalfer1/" target="_blank">
+          <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario">
+        </a><br>
         <strong>El Pingüino de Mario</strong>
       </td>
       <td align="center">
-        <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez"><br>
+        <a href="https://www.linkedin.com/in/manuel-mart%C3%ADnez-casasola/" target="_blank">
+          <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez">
+        </a><br>
         <strong>Manuel Martínez</strong>
       </td>
       <td align="center">
-        <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil"><br>
+        <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
+          <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil">
+        </a><br>
         <strong>Thomas O'neil Álvarez</strong>
       </td>
       <td align="center">
-        <div style="width:100px;height:100px;background:#e2e8f0;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;">
-          <span style="font-size:40px;">🐺</span>
-        </div><br>
-        <strong>Damián Carillo Arjones</strong>
+        <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo"><br>
+        <strong>Damián Carrillo Arjones</strong>
       </td>
     </tr>
   </table>

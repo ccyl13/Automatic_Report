@@ -51,6 +51,7 @@ class Finding(Base):
     remediation = Column(Text, default="")
     reference = Column(String, default="")
     cve = Column(String, default="")
+    cwe = Column(String, default="")  # Ej: "CWE-89" o "CWE-89, CWE-564"
     
     # Imágenes se guardan como JSON array de URLs/data URLs
     images = Column(JSON, default=list)

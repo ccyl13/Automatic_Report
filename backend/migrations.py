@@ -10,6 +10,7 @@ def run_migrations(engine):
     _migrate_add_auditor_contact_fields(engine)
     _migrate_add_theme_field(engine)
     _migrate_add_tlp_fields(engine)
+    _migrate_add_cwe_field(engine)
 
 
 def _migrate_add_auditor_contact_fields(engine):
@@ -65,3 +66,18 @@ def _migrate_add_tlp_fields(engine):
                 print("✅ Columna classification_mode agregada")
     except Exception as e:
         print(f"⚠️  Migración de TLP: {e}")
+
+
+def _migrate_add_cwe_field(engine):
+    """Migration: Add cwe column to findings table (MITRE CWE reference)."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(findings)"))
+            columns = [row[1] for row in result]
+
+            if 'cwe' not in columns:
+                conn.execute(text("ALTER TABLE findings ADD COLUMN cwe VARCHAR DEFAULT ''"))
+                conn.commit()
+                print("✅ Columna cwe agregada a findings")
+    except Exception as e:
+        print(f"⚠️  Migración de CWE: {e}")

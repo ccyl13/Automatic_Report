@@ -40,6 +40,7 @@ const state = {
         remediation: '',
         reference: '',
         cve: '',
+        cwe: '',
         images: []
     },
     isDirty: false
@@ -66,6 +67,7 @@ const UI = {
         remediation: 'Solución y Remediación',
         reference: 'Referencias (URLs)',
         cve: 'Identificador CVE',
+        cwe: 'Identificador CWE (MITRE)',
         images: 'Evidencias (Imágenes)',
         addImages: 'Agregar Imágenes',
         addFinding: 'Agregar Hallazgo',
@@ -148,6 +150,7 @@ const UI = {
         incidentsRecorded: 'Se registraron incidencias durante la auditoría',
         cvssScore: 'CVSS Score',
         cveId: 'CVE',
+        cweId: 'CWE',
         referenceUrl: 'URL de Referencia',
         pocSteps: 'Pasos para Reproducir (PoC)',
         evidence: 'Evidencias',
@@ -180,6 +183,7 @@ const UI = {
         remediation: 'Solution and Remediation',
         reference: 'References (URLs)',
         cve: 'CVE Identifier',
+        cwe: 'CWE Identifier (MITRE)',
         images: 'Evidence (Images)',
         addImages: 'Add Images',
         addFinding: 'Add Finding',
@@ -262,6 +266,7 @@ const UI = {
         incidentsRecorded: 'Incidents were recorded during the audit',
         cvssScore: 'CVSS Score',
         cveId: 'CVE',
+        cweId: 'CWE',
         referenceUrl: 'Reference URL',
         pocSteps: 'Steps to Reproduce (PoC)',
         evidence: 'Evidence',
@@ -573,11 +578,17 @@ function renderEditor() {
                             <input type="text" id="findingReference" value="${escapeHTML(state.currentFinding.reference)}" oninput="updateCurrentFinding('reference', this.value)">
                         </div>
 
-                        <div class="form-group">
-                            <label>${t.cve}</label>
-                            <input type="text" id="findingCve" value="${escapeHTML(state.currentFinding.cve)}" oninput="updateCurrentFinding('cve', this.value)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${t.cve}</label>
+                                <input type="text" id="findingCve" placeholder="CVE-2024-XXXXX" value="${escapeHTML(state.currentFinding.cve)}" oninput="updateCurrentFinding('cve', this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label>${t.cwe}</label>
+                                <input type="text" id="findingCwe" placeholder="CWE-89" value="${escapeHTML(state.currentFinding.cwe || '')}" oninput="updateCurrentFinding('cwe', this.value)">
+                            </div>
                         </div>
-                        
+
                         <div class="form-actions">
                             <button type="submit" class="btn-primary">${state.editingFindingIndex !== null ? t.updateFinding : t.addFinding}</button>
                             <button type="button" onclick="resetFindingForm()">${t.cancel}</button>
@@ -1032,6 +1043,10 @@ function renderPreview() {
                                 <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${escapeHTML(f.cve || t.na)}</p>
                             </div>
                             <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">${t.cweId}</p>
+                                <p style="font-size: 1.25rem; font-weight: 800; color: #111827; margin: 0;">${f.cwe ? `<a href="https://cwe.mitre.org/data/definitions/${escapeHTML(String(f.cwe).replace(/[^0-9]/g,''))}.html" target="_blank" style="color:#111827; text-decoration:none;">${escapeHTML(f.cwe)}</a>` : t.na}</p>
+                            </div>
+                            <div style="background: #f9fafb; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e5e7eb;">
                                 <p style="font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 0.25rem;">${t.referenceUrl}</p>
                                 <p style="font-size: 0.875rem; font-weight: 500; color: #3b82f6; margin: 0; word-break: break-all;">${f.reference ? `<a href="${escapeHTML(f.reference)}" target="_blank" style="color: #3b82f6; text-decoration: none;">${escapeHTML(f.reference)}</a>` : t.na}</p>
                             </div>
@@ -1443,7 +1458,8 @@ function applyTemplate(key) {
         impact: t.impact,
         remediation: t.remediation,
         cvss: t.cvss,
-        reference: t.reference
+        reference: t.reference,
+        cwe: t.cwe || state.currentFinding.cwe || ''
     };
 
     renderApp();
@@ -1526,6 +1542,7 @@ function handleFindingSubmit(e) {
         remediation: $('#findingRemediation').value,
         reference: $('#findingReference').value,
         cve: $('#findingCve').value,
+        cwe: $('#findingCwe') ? $('#findingCwe').value : (state.currentFinding.cwe || ''),
         images: state.currentFinding.images
     };
 
@@ -1563,6 +1580,7 @@ function resetFindingForm() {
         remediation: '',
         reference: '',
         cve: '',
+        cwe: '',
         images: []
     };
 }
@@ -1589,6 +1607,7 @@ function editFinding(index) {
         remediation: finding.remediation || '',
         reference: finding.reference || '',
         cve: finding.cve || '',
+        cwe: finding.cwe || '',
         images: finding.images ? [...finding.images] : []
     };
 
@@ -1867,6 +1886,7 @@ async function saveCurrentReport() {
                 remediation: finding.remediation || '',
                 reference: finding.reference || '',
                 cve: finding.cve || '',
+                cwe: finding.cwe || '',
                 images: finding.images || [],
                 order_index: i
             };

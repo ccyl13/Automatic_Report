@@ -14,6 +14,7 @@ class FindingBase(BaseModel):
     remediation: str = ""
     reference: str = ""
     cve: str = ""
+    cwe: str = ""
     images: List[str] = []
     order_index: int = 0
 

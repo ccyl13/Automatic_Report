@@ -16,6 +16,8 @@ class Report(Base):
     auditor_phone = Column(String, default="")
     auditor_email = Column(String, default="")
     classification = Column(Integer, default=2)
+    tlp_level = Column(String, default="amber")             # clear, green, amber, amber+strict, red
+    classification_mode = Column(String, default="internal") # internal, tlp, both
     version = Column(String, default="1.0")
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")

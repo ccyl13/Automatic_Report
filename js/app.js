@@ -15,6 +15,8 @@ const state = {
         auditorCompany: 'Empresa Auditora LLC',
         auditorName: 'Juan Pérez',
         classification: '2',
+        tlpLevel: 'amber',
+        classificationMode: 'internal',
         version: '1.0',
         date: new Date().toISOString().split('T')[0],
         lang: 'es',
@@ -93,7 +95,7 @@ const UI = {
         auditorName: 'Nombre del Auditor',
         documentTitle: 'Título del Documento',
         date: 'Fecha del Reporte',
-        classification: 'Clasificación',
+        classification: 'Clasificación Interna',
         version: 'Versión',
         classifications: {
             '1': 'Público',
@@ -101,6 +103,21 @@ const UI = {
             '3': 'Confidencial',
             '4': 'Restringido'
         },
+        classificationMode: 'Modo de Clasificación',
+        classificationModes: {
+            'internal': 'Solo Clasificación Interna',
+            'tlp': 'Solo TLP 2.0 (CISA/FIRST)',
+            'both': 'Ambos (Clasificación + TLP)'
+        },
+        tlp: 'Nivel TLP',
+        tlpLevels: {
+            'clear':        'TLP:CLEAR — Sin restricción',
+            'green':        'TLP:GREEN — Comunidad de seguridad',
+            'amber':        'TLP:AMBER — Organización y clientes',
+            'amber+strict': 'TLP:AMBER+STRICT — Solo organización',
+            'red':          'TLP:RED — Solo destinatarios explícitos'
+        },
+        tlpSource: 'Fuente: CISA / FIRST TLP v2.0',
         auditType: 'Tipo de Auditoría',
         auditTypes: {
             'pentesting_web': 'Pentesting Web',
@@ -192,7 +209,7 @@ const UI = {
         auditorName: 'Auditor Name',
         documentTitle: 'Document Title',
         date: 'Report Date',
-        classification: 'Classification',
+        classification: 'Internal Classification',
         version: 'Version',
         classifications: {
             '1': 'Public',
@@ -200,6 +217,21 @@ const UI = {
             '3': 'Confidential',
             '4': 'Restricted'
         },
+        classificationMode: 'Classification Mode',
+        classificationModes: {
+            'internal': 'Internal Classification Only',
+            'tlp': 'TLP 2.0 Only (CISA/FIRST)',
+            'both': 'Both (Classification + TLP)'
+        },
+        tlp: 'TLP Level',
+        tlpLevels: {
+            'clear':        'TLP:CLEAR — Unrestricted',
+            'green':        'TLP:GREEN — Security community',
+            'amber':        'TLP:AMBER — Organization and clients',
+            'amber+strict': 'TLP:AMBER+STRICT — Organization only',
+            'red':          'TLP:RED — Named recipients only'
+        },
+        tlpSource: 'Source: CISA / FIRST TLP v2.0',
         auditType: 'Audit Type',
         auditTypes: {
             'pentesting_web': 'Web Pentesting',
@@ -278,6 +310,24 @@ const escapeHTML = (str) => {
 const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
 
 const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
+
+function getTlpStyle(level) {
+    const map = {
+        'clear':        { bg: '#e5e7eb', text: '#374151', label: 'TLP:CLEAR' },
+        'green':        { bg: '#33FF00', text: '#000000', label: 'TLP:GREEN' },
+        'amber':        { bg: '#FFC000', text: '#000000', label: 'TLP:AMBER' },
+        'amber+strict': { bg: '#FF8C00', text: '#000000', label: 'TLP:AMBER+STRICT' },
+        'red':          { bg: '#FF2B2B', text: '#ffffff', label: 'TLP:RED' },
+    };
+    return map[level] || map['amber'];
+}
+
+function renderTlpPageBadge(auditData) {
+    const mode = auditData.classificationMode || 'internal';
+    if (mode === 'internal') return '';
+    const tlp = getTlpStyle(auditData.tlpLevel || 'amber');
+    return `<span style="display:inline-block; background:${tlp.bg}; color:${tlp.text}; font-size:0.65rem; font-weight:900; padding:0.2rem 0.6rem; border-radius:4px; letter-spacing:0.06em; vertical-align:middle;">${escapeHTML(tlp.label)}</span>`;
+}
 
 function sortFindingsBySeverity(findings) {
     return findings.sort((a, b) => {
@@ -611,10 +661,30 @@ function renderAuditData() {
                     <input type="text" value="${escapeHTML(d.auditorName)}" onchange="updateAuditData('auditorName', this.value)">
                 </div>
                 <div class="form-group">
+                    <label>${t.classificationMode}</label>
+                    <select onchange="updateAuditData('classificationMode', this.value); renderApp();">
+                        ${Object.entries(t.classificationModes).map(([key, label]) =>
+        `<option value="${key}" ${d.classificationMode === key ? 'selected' : ''}>${label}</option>`
+    ).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row" style="${d.classificationMode === 'tlp' ? 'display:none;' : ''}">
+                <div class="form-group">
                     <label>${t.classification}</label>
                     <select onchange="updateAuditData('classification', this.value)">
                         ${Object.entries(t.classifications).map(([key, label]) =>
         `<option value="${key}" ${d.classification === key ? 'selected' : ''}>${label}</option>`
+    ).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row" style="${d.classificationMode === 'internal' ? 'display:none;' : ''}">
+                <div class="form-group">
+                    <label>${t.tlp}</label>
+                    <select onchange="updateAuditData('tlpLevel', this.value)">
+                        ${Object.entries(t.tlpLevels).map(([key, label]) =>
+        `<option value="${key}" ${d.tlpLevel === key ? 'selected' : ''}>${label}</option>`
     ).join('')}
                     </select>
                 </div>
@@ -818,7 +888,30 @@ function renderPreview() {
                     </div>
                 </div>
 
-                <div style="margin-top: 2rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                ${(() => {
+                    const mode = d.classificationMode || 'internal';
+                    const tlp = getTlpStyle(d.tlpLevel || 'amber');
+                    const classLabels = { '1': 'Público', '2': 'Interno', '3': 'Confidencial', '4': 'Restringido' };
+                    const classLabel = classLabels[d.classification] || 'Interno';
+                    const showInternal = mode === 'internal' || mode === 'both';
+                    const showTlp = mode === 'tlp' || mode === 'both';
+                    return `
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        ${showInternal ? `
+                            <span style="display:inline-flex; align-items:center; gap:0.4rem; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; padding:0.4rem 1rem; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.08em;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                ${escapeHTML(classLabel)}
+                            </span>
+                        ` : ''}
+                        ${showTlp ? `
+                            <div style="display:inline-flex; align-items:center; background:${tlp.bg}; border-radius:6px; padding:0.4rem 1rem;">
+                                <span style="font-size:0.8rem; font-weight:900; color:${tlp.text}; letter-spacing:0.04em;">${escapeHTML(tlp.label)}</span>
+                            </div>
+                        ` : ''}
+                    </div>`;
+                })()}
+
+                <div style="margin-top: 1.5rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; gap: 0;">
                         <div style="flex: 1; padding: 0 1rem; border-right: 1px solid #cbd5e1;">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -855,7 +948,10 @@ function renderPreview() {
             
             <!-- ÍNDICE -->
             <div class="index-page" style="padding: 4rem 2rem; min-height: 100vh; page-break-after: always; max-width: 900px; margin: 0 auto;">
-                <h2 style="font-size: 2.25rem; color: #111827; margin-bottom: 2.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; font-weight: 800;">${t.index}</h2>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2.5rem;">
+                    <h2 style="font-size: 2.25rem; color: #111827; margin: 0; font-weight: 800;">${t.index}</h2>
+                    ${renderTlpPageBadge(d)}
+                </div>
                 
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <a href="#summary" style="display: flex; justify-content: space-between; text-decoration: none; color: #374151; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted #d1d5db; font-size: 1.125rem; transition: color 0.2s;">
@@ -887,12 +983,18 @@ function renderPreview() {
             <!-- RESUMEN EJECUTIVO + INCIDENCIAS (misma página) -->
             <div style="padding: 2rem 0; page-break-inside: avoid;">
                 <div id="summary" style="margin-bottom: 3rem;">
-                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">${t.executiveSummary}</h2>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.75rem; color: #111827; margin: 0; font-weight: 800;">${t.executiveSummary}</h2>
+                        ${renderTlpPageBadge(d)}
+                    </div>
                     ${renderCvssSummary()}
                 </div>
-                
+
                 <div id="incidents">
-                    <h2 style="font-size: 1.75rem; color: #111827; margin-bottom: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; font-weight: 800;">${t.incidentsSectionTitle}</h2>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.75rem; color: #111827; margin: 0; font-weight: 800;">${t.incidentsSectionTitle}</h2>
+                        ${renderTlpPageBadge(d)}
+                    </div>
                 ${d.hasIncidents ? `
                     <div style="background:#fff7ed; border:1px solid #fed7aa; border-left:6px solid #f97316; border-radius:10px; padding:1.5rem 2rem;">
                         <p style="font-weight:700; color:#c2410c; margin-bottom:0.75rem; font-size:1rem; display:flex; align-items:center; gap:0.5rem;">
@@ -997,9 +1099,10 @@ function renderPreview() {
             <!-- RESUMEN FINAL DE LA AUDITORÍA -->
             ${d.auditSummary || d.testsPerformed || d.recommendedSolutions ? `
             <div style="padding: 2rem 0; page-break-before: auto;">
-                <h2 style="font-size: 2rem; color: #111827; margin-bottom: 2rem; border-bottom: 3px solid #2563eb; padding-bottom: 0.75rem; font-weight: 800;">
-                    ${t.auditConclusions}
-                </h2>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 3px solid #2563eb; padding-bottom: 0.75rem; margin-bottom: 2rem;">
+                    <h2 style="font-size: 2rem; color: #111827; margin: 0; font-weight: 800;">${t.auditConclusions}</h2>
+                    ${renderTlpPageBadge(d)}
+                </div>
                 
                 ${d.auditSummary ? `
                 <div id="audit-summary" style="margin-bottom: 2.5rem;">
@@ -1604,6 +1707,8 @@ async function loadReport(id) {
             auditorCompany: report.auditor_company,
             auditorName: report.auditor_name,
             classification: report.classification.toString(),
+            tlpLevel: report.tlp_level || 'amber',
+            classificationMode: report.classification_mode || 'internal',
             version: report.version,
             date: report.date,
             lang: report.lang,
@@ -1720,6 +1825,8 @@ async function saveCurrentReport() {
             auditor_company: state.auditData.auditorCompany,
             auditor_name: state.auditData.auditorName,
             classification: parseInt(state.auditData.classification) || 2,
+            tlp_level: state.auditData.tlpLevel || 'amber',
+            classification_mode: state.auditData.classificationMode || 'internal',
             version: state.auditData.version,
             date: state.auditData.date,
             lang: state.auditData.lang || state.lang,
@@ -1814,6 +1921,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (remoteReport.incidents_text !== undefined) {
                 state.auditData.incidentsText = remoteReport.incidents_text;
+            }
+            if (remoteReport.tlp_level !== undefined) {
+                state.auditData.tlpLevel = remoteReport.tlp_level;
+            }
+            if (remoteReport.classification_mode !== undefined) {
+                state.auditData.classificationMode = remoteReport.classification_mode;
             }
 
             state.findings = remoteReport.findings ? sortFindingsBySeverity(remoteReport.findings) : [];

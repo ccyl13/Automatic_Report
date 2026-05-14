@@ -174,3 +174,136 @@ class TestReportsAPI:
         """Test: DELETE /api/reports/999 retorna 404"""
         response = client.delete("/api/reports/999")
         assert response.status_code == 404
+
+    # --- TLP 2.0 ---
+
+    def test_create_report_with_tlp(self, client):
+        """Test: POST /api/reports acepta tlp_level y classification_mode"""
+        report_data = {
+            "document_title": "TLP Report",
+            "client_company": "Client",
+            "target_asset": "App",
+            "auditor_company": "Auditor",
+            "auditor_name": "User",
+            "classification": 2,
+            "tlp_level": "red",
+            "classification_mode": "tlp",
+            "version": "1.0",
+            "date": "2024-01-15",
+            "lang": "es"
+        }
+        response = client.post("/api/reports", json=report_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["tlp_level"] == "red"
+        assert data["classification_mode"] == "tlp"
+
+    def test_report_tlp_defaults(self, client):
+        """Test: Reporte sin TLP usa defaults amber / internal"""
+        report_data = {
+            "document_title": "Default TLP",
+            "client_company": "Client",
+            "target_asset": "App",
+            "auditor_company": "Auditor",
+            "auditor_name": "User",
+            "classification": 2,
+            "version": "1.0",
+            "date": "2024-01-15",
+            "lang": "es"
+        }
+        response = client.post("/api/reports", json=report_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["tlp_level"] == "amber"
+        assert data["classification_mode"] == "internal"
+
+    def test_update_report_tlp_fields(self, client):
+        """Test: PUT /api/reports/{id} actualiza tlp_level y classification_mode"""
+        create_data = {
+            "document_title": "TLP Update Test",
+            "client_company": "Client",
+            "target_asset": "App",
+            "auditor_company": "Auditor",
+            "auditor_name": "User",
+            "classification": 2,
+            "tlp_level": "green",
+            "classification_mode": "internal",
+            "version": "1.0",
+            "date": "2024-01-15",
+            "lang": "es"
+        }
+        report_id = client.post("/api/reports", json=create_data).json()["id"]
+
+        update_data = {**create_data, "tlp_level": "amber+strict", "classification_mode": "both"}
+        response = client.put(f"/api/reports/{report_id}", json=update_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["tlp_level"] == "amber+strict"
+        assert data["classification_mode"] == "both"
+
+    def test_all_tlp_levels_accepted(self, client):
+        """Test: Todos los niveles TLP 2.0 son aceptados"""
+        for level in ["clear", "green", "amber", "amber+strict", "red"]:
+            report_data = {
+                "document_title": f"TLP {level}",
+                "client_company": "Client",
+                "target_asset": "App",
+                "auditor_company": "Auditor",
+                "auditor_name": "User",
+                "classification": 2,
+                "tlp_level": level,
+                "classification_mode": "tlp",
+                "version": "1.0",
+                "date": "2024-01-15",
+                "lang": "es"
+            }
+            response = client.post("/api/reports", json=report_data)
+            assert response.status_code == 200
+            assert response.json()["tlp_level"] == level
+
+    def test_all_classification_modes_accepted(self, client):
+        """Test: Los tres modos de clasificación son aceptados"""
+        for mode in ["internal", "tlp", "both"]:
+            report_data = {
+                "document_title": f"Mode {mode}",
+                "client_company": "Client",
+                "target_asset": "App",
+                "auditor_company": "Auditor",
+                "auditor_name": "User",
+                "classification": 2,
+                "tlp_level": "amber",
+                "classification_mode": mode,
+                "version": "1.0",
+                "date": "2024-01-15",
+                "lang": "es"
+            }
+            response = client.post("/api/reports", json=report_data)
+            assert response.status_code == 200
+            assert response.json()["classification_mode"] == mode
+
+    def test_tlp_persists_after_get(self, client):
+        """Test: Los campos TLP se conservan al recuperar el reporte por ID"""
+        report_data = {
+            "document_title": "TLP Persist",
+            "client_company": "Client",
+            "target_asset": "App",
+            "auditor_company": "Auditor",
+            "auditor_name": "User",
+            "classification": 3,
+            "tlp_level": "red",
+            "classification_mode": "both",
+            "version": "1.0",
+            "date": "2024-01-15",
+            "lang": "es"
+        }
+        report_id = client.post("/api/reports", json=report_data).json()["id"]
+
+        response = client.get(f"/api/reports/{report_id}")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["tlp_level"] == "red"
+        assert data["classification_mode"] == "both"

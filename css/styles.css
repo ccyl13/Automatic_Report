@@ -4321,3 +4321,169 @@ button {
 /* ---- HR dividers in dark/htb editor ---- */
 [data-theme="dark"] hr { border-top-color: #334155 !important; }
 [data-theme="htb"] hr { border-top-color: #2d3f55 !important; }
+
+/* ==================== NAVBAR BUTTONS — THEME INTEGRATION ==================== */
+
+/* Dark theme: subtle separator so navbar stands out from #0f172a page */
+[data-theme="dark"] .navbar {
+    background: #080f1e !important;
+    border-bottom: 1px solid #1e293b !important;
+}
+[data-theme="dark"] .navbar-actions button {
+    border-color: rgba(99,102,241,0.2) !important;
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .navbar-actions button:hover,
+[data-theme="dark"] .navbar-actions button.active {
+    background: rgba(99,102,241,0.15) !important;
+    border-color: #6366f1 !important;
+    color: #a5b4fc !important;
+}
+[data-theme="dark"] .navbar-actions button.btn-primary {
+    background: #6366f1 !important;
+    border-color: #6366f1 !important;
+    color: #fff !important;
+}
+[data-theme="dark"] .navbar-actions button.btn-primary:hover {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+}
+
+/* HTB theme: black navbar + green accents */
+[data-theme="htb"] .navbar {
+    background: #0d1117 !important;
+    border-bottom: 1px solid #1a2332 !important;
+}
+[data-theme="htb"] .navbar-actions button {
+    border-color: rgba(159,239,0,0.15) !important;
+    color: #a0aec0 !important;
+}
+[data-theme="htb"] .navbar-actions button:hover,
+[data-theme="htb"] .navbar-actions button.active {
+    background: rgba(159,239,0,0.1) !important;
+    border-color: #9fef00 !important;
+    color: #9fef00 !important;
+}
+[data-theme="htb"] .navbar-actions button.btn-primary {
+    background: rgba(159,239,0,0.12) !important;
+    border-color: #9fef00 !important;
+    color: #9fef00 !important;
+}
+[data-theme="htb"] .navbar-actions button.btn-primary:hover {
+    background: rgba(159,239,0,0.22) !important;
+    border-color: #9fef00 !important;
+    color: #fff !important;
+}
+
+/* ==================== DARK THEME — PREVIEW / REPORT SECTION ==================== */
+
+/* Report header */
+[data-theme="dark"] .report-header {
+    border-bottom-color: #1e293b !important;
+}
+[data-theme="dark"] .report-header h1 {
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] .report-meta p {
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .report-meta p strong {
+    color: #e2e8f0 !important;
+}
+
+/* Finding preview boxes */
+[data-theme="dark"] .finding-preview {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] .finding-preview.severity-crit {
+    background: linear-gradient(135deg, #2d1515, #1e293b) !important;
+}
+[data-theme="dark"] .finding-preview.severity-high {
+    background: linear-gradient(135deg, #2d1e0f, #1e293b) !important;
+}
+[data-theme="dark"] .finding-preview.severity-med {
+    background: linear-gradient(135deg, #2b2610, #1e293b) !important;
+}
+[data-theme="dark"] .finding-preview.severity-low {
+    background: linear-gradient(135deg, #0d2318, #1e293b) !important;
+}
+[data-theme="dark"] .finding-preview.severity-info {
+    background: #1e293b !important;
+}
+[data-theme="dark"] .finding-preview h3 {
+    color: #f1f5f9 !important;
+    border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] .finding-preview p {
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .finding-preview p strong {
+    color: #e2e8f0 !important;
+}
+
+/* Evidence images in preview */
+[data-theme="dark"] .finding-images {
+    border-top-color: #334155 !important;
+}
+[data-theme="dark"] .finding-evidence-img {
+    border-color: #334155 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+
+/* Scrollbar in dark */
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #334155 !important; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #475569 !important; }
+
+/* ==================== HTB THEME — PREVIEW / REPORT SECTION ==================== */
+
+[data-theme="htb"] .report-header {
+    border-bottom-color: #2d3f55 !important;
+}
+[data-theme="htb"] .report-header h1 {
+    color: #9fef00 !important;
+}
+[data-theme="htb"] .report-meta p {
+    color: #a0aec0 !important;
+}
+[data-theme="htb"] .report-meta p strong {
+    color: #e2e8f0 !important;
+}
+[data-theme="htb"] .finding-preview {
+    background: #0d1117 !important;
+    border-color: #2d3f55 !important;
+}
+[data-theme="htb"] .finding-preview.severity-crit {
+    background: linear-gradient(135deg, #1a0d0d, #0d1117) !important;
+}
+[data-theme="htb"] .finding-preview.severity-high {
+    background: linear-gradient(135deg, #1a110d, #0d1117) !important;
+}
+[data-theme="htb"] .finding-preview.severity-med {
+    background: linear-gradient(135deg, #191600, #0d1117) !important;
+}
+[data-theme="htb"] .finding-preview.severity-low {
+    background: linear-gradient(135deg, #071a0e, #0d1117) !important;
+}
+[data-theme="htb"] .finding-preview.severity-info {
+    background: #0d1117 !important;
+}
+[data-theme="htb"] .finding-preview h3 {
+    color: #9fef00 !important;
+    border-bottom-color: #2d3f55 !important;
+}
+[data-theme="htb"] .finding-preview p {
+    color: #a0aec0 !important;
+}
+[data-theme="htb"] .finding-preview p strong {
+    color: #e2e8f0 !important;
+}
+[data-theme="htb"] .finding-images {
+    border-top-color: #2d3f55 !important;
+}
+[data-theme="htb"] .finding-evidence-img {
+    border-color: #2d3f55 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+}
+[data-theme="htb"] ::-webkit-scrollbar-thumb { background: #2d3f55 !important; }
+[data-theme="htb"] ::-webkit-scrollbar-thumb:hover { background: #3d5570 !important; }

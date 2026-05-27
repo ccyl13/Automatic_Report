@@ -31,22 +31,10 @@
         <strong>El Pingüino de Mario</strong>
       </td>
       <td align="center">
-        <a href="https://www.linkedin.com/in/manuel-mart%C3%ADnez-casasola/" target="_blank">
-          <img src="assets/images/manuel-martinez.webp" width="100" height="100" style="border-radius: 50%;" alt="Manuel Martínez">
-        </a><br>
-        <strong>Manuel Martínez</strong>
-      </td>
-      <td align="center">
         <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
           <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil">
         </a><br>
         <strong>Thomas O'neil Álvarez</strong>
-      </td>
-      <td align="center">
-        <a href="https://www.linkedin.com/in/dami%C3%A1n-carrillo-aa5540340/" target="_blank">
-          <img src="assets/images/damian.jpeg" width="100" height="100" style="border-radius: 50%;" alt="Damián Carrillo">
-        </a><br>
-        <strong>Damián Carrillo Arjones</strong>
       </td>
     </tr>
   </table>

@@ -1397,8 +1397,8 @@ function renderDemoModal() {
     const isEs = state.lang === 'es';
 
     return `
-        <div class="settings-overlay" onclick="closeDemoModal()">
-            <div class="settings-modal" style="max-width:520px;" onclick="event.stopPropagation()">
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeDemoModal()">
+            <div class="settings-modal" style="width:100%;max-width:520px;transform-origin:center center;" onclick="event.stopPropagation()">
                 <div class="settings-modal-header">
                     <span>${t.demoModalTitle}</span>
                     <button class="settings-close-btn" onclick="closeDemoModal()">

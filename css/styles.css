@@ -4394,7 +4394,6 @@ button {
 /* Finding preview boxes */
 [data-theme="dark"] .finding-preview {
     background: #1e293b !important;
-    border-color: #334155 !important;
 }
 [data-theme="dark"] .finding-preview.severity-crit {
     background: linear-gradient(135deg, #2d1515, #1e293b) !important;
@@ -4451,7 +4450,6 @@ button {
 }
 [data-theme="htb"] .finding-preview {
     background: #0d1117 !important;
-    border-color: #2d3f55 !important;
 }
 [data-theme="htb"] .finding-preview.severity-crit {
     background: linear-gradient(135deg, #1a0d0d, #0d1117) !important;

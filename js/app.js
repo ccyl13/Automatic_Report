@@ -1976,10 +1976,7 @@ async function createNewReport() {
             lang: state.lang
         });
 
-        state.currentReportId = report.id;
-        state.findings = [];
-        state.isDirty = false;
-        hideReports();
+        await loadReport(report.id);
     } catch (err) {
         alert('Error creating report: ' + err.message);
     }

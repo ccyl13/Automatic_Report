@@ -2,11 +2,15 @@
   <img src="https://github.com/ccyl13/Pentestify/blob/main/assets/images/pentestify.png?raw=true" alt="Pentestify Banner" width="100%">
 </p>
 
-# Pentestify
+<p align="center">
+  <img src="logo.png" alt="Pentestify Logo" width="110" height="110" style="border-radius: 20px;">
+</p>
+
+<h1 align="center">Pentestify</h1>
 
 <p align="center">
   <strong>Generador interactivo de reportes de pentesting.</strong><br>
-  Registra vulnerabilidades, visualiza estadísticas de riesgo en tiempo real y exporta informes corporativos estruturados en PDF.
+  Registra vulnerabilidades, visualiza estadísticas de riesgo en tiempo real y exporta informes corporativos estructurados en PDF.
 </p>
 
 <p align="center">

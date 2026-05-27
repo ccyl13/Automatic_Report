@@ -36,7 +36,6 @@ app.add_middleware(
 )
 
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
-from starlette.responses import FileResponse as StarletteFileResponse
 
 class NoCacheStaticFiles(StarletteStaticFiles):
     def file_response(self, *args, **kwargs):
@@ -295,7 +294,7 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
 
 @app.post("/api/demo/create")
 def create_demo_report(db: Session = Depends(get_db)):
-    import base64, mimetypes
+    import base64
 
     demo_dir = os.path.join(BASE_DIR, "demo")
 
@@ -308,7 +307,6 @@ def create_demo_report(db: Session = Depends(get_db)):
         with open(path, "rb") as f:
             return f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
 
-    # Create report
     report_data = schemas.ReportCreate(
         document_title="Informe de Pentesting Web — AcmeShop Platform",
         client_company="AcmeShop Solutions S.L.",

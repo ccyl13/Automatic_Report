@@ -319,11 +319,9 @@ async function loadTemplates() {
     }
 }
 
-// Load templates on startup
 document.addEventListener('DOMContentLoaded', loadTemplates);
 
 const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
 
 const escapeHTML = (str) => {
     if (str === null || str === undefined) return '';
@@ -367,14 +365,12 @@ function sortFindingsBySeverity(findings) {
     });
 }
 
-// Helper: Leer archivo como Data URL
 const readFileAsDataURL = (file) => new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve(e.target.result);
     reader.readAsDataURL(file);
 });
 
-// Helper: Calcular severidad desde CVSS
 const calculateSeverityFromCvss = (cvss) => {
     const score = parseFloat(cvss);
     if (isNaN(score)) return null;
@@ -1523,99 +1519,6 @@ function setTab(tab) {
     renderApp();
 }
 
-// Helpers para impresión
-const preloadImages = (container) => {
-    const images = container.querySelectorAll('img');
-    const promises = Array.from(images).map(img => new Promise((resolve) => {
-        if (img.complete && img.naturalWidth > 0) {
-            resolve();
-        } else {
-            const tempImg = new Image();
-            tempImg.onload = resolve;
-            tempImg.onerror = resolve;
-            tempImg.src = img.src;
-            setTimeout(resolve, 2000);
-        }
-    }));
-    return Promise.all(promises);
-};
-
-const createPrintIframe = (content) => {
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-    document.body.appendChild(iframe);
-
-    const isDark = state.reportTheme === 'dark';
-    const isHtb  = state.reportTheme === 'htb';
-    const themeAttr = isDark ? 'data-theme="dark"' : isHtb ? 'data-theme="htb"' : '';
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(`
-        <!DOCTYPE html>
-        <html ${themeAttr}>
-        <head>
-            <title>${state.auditData.documentTitle}</title>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="${window.location.origin}/css/styles.css">
-            <style>
-                @page { margin: 10mm 20mm 25mm 20mm; size: A4; ${isDark ? 'background: #0f172a;' : isHtb ? 'background: #1a2332;' : ''} }
-                *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-                .navbar, .no-print { display: none !important; }
-                img { max-width: 100% !important; page-break-inside: avoid !important; }
-                ${isDark ? `
-                html, body, div, section {
-                    background-color: #0f172a;
-                }
-                html, body, .preview-container, .cover-page, .index-page, .findings-preview {
-                    background: #0f172a !important; color: #e2e8f0 !important;
-                }
-                @media print {
-                    html, body { background: #0f172a !important; }
-                    @page { background: #0f172a; }
-                }
-                ` : isHtb ? `
-                html, body, div, section {
-                    background-color: #1a2332;
-                }
-                html, body, .preview-container, .cover-page, .index-page, .findings-preview {
-                    background: #1a2332 !important; color: #e2e8f0 !important;
-                }
-                @media print {
-                    html, body { background: #1a2332 !important; }
-                    @page { background: #1a2332; }
-                }
-                ` : ''}
-            </style>
-        </head>
-        <body style="margin:0;padding:0;background:${isDark ? '#0f172a' : isHtb ? '#1a2332' : 'white'};">${content}</body>
-        </html>
-    `);
-    doc.close();
-    return iframe;
-};
-
-const waitForImagesInIframe = (doc, timeout = 3000) => new Promise((resolve) => {
-    const images = doc.querySelectorAll('img');
-    if (images.length === 0) { resolve(); return; }
-
-    let loadedCount = 0;
-    const total = images.length;
-    const checkComplete = () => { if (++loadedCount >= total) resolve(); };
-
-    images.forEach(img => {
-        if (img.complete && img.naturalWidth > 0) {
-            checkComplete();
-        } else {
-            img.onload = checkComplete;
-            img.onerror = checkComplete;
-            const src = img.src;
-            img.src = '';
-            img.src = src;
-        }
-    });
-
-    setTimeout(resolve, timeout);
-});
 
 function setReportTheme(theme) {
     state.reportTheme = theme;
@@ -1634,7 +1537,6 @@ async function generatePdf() {
     renderApp();
 
     try {
-        // Auto-save silently before generating
         await saveCurrentReport(true);
 
         if (!state.currentReportId) {
@@ -1742,14 +1644,11 @@ function filterTemplates(query) {
 
     if (!select) return;
 
-    // Show dropdown when filtering
     select.style.display = 'block';
 
-    // Get all options and optgroups
     const options = select.querySelectorAll('option');
     const optgroups = select.querySelectorAll('optgroup');
 
-    // Filter options
     options.forEach(option => {
         const text = option.textContent.toLowerCase();
         const value = option.value.toLowerCase();
@@ -1760,7 +1659,6 @@ function filterTemplates(query) {
         }
     });
 
-    // Show/hide optgroups based on visible children
     optgroups.forEach(group => {
         const visibleOptions = group.querySelectorAll('option:not([style*="display: none"])');
         group.style.display = visibleOptions.length > 0 ? '' : 'none';
@@ -1772,13 +1670,11 @@ function showTemplateDropdown() {
     const searchInput = document.getElementById('templateSearch');
     if (select) {
         select.style.display = 'block';
-        // Reset filter when showing
         const options = select.querySelectorAll('option');
         const optgroups = select.querySelectorAll('optgroup');
         options.forEach(option => option.style.display = '');
         optgroups.forEach(group => group.style.display = '');
     }
-    // Clear search input
     if (searchInput) searchInput.value = '';
 }
 
@@ -1789,7 +1685,6 @@ function hideTemplateDropdown() {
     }
 }
 
-// Hide dropdown when clicking outside
 document.addEventListener('click', function(e) {
     const container = document.querySelector('.template-search-container');
     const select = document.getElementById('templateSelect');
@@ -1818,11 +1713,9 @@ function handleFindingSubmit(e) {
     };
 
     if (state.editingFindingIndex !== null) {
-        // Update existing finding
         state.findings[state.editingFindingIndex] = finding;
         state.editingFindingIndex = null;
     } else {
-        // Add new finding
         state.findings.push(finding);
     }
 
@@ -1866,7 +1759,6 @@ function editFinding(index) {
     const finding = state.findings[index];
     if (!finding) return;
 
-    // Load finding data into currentFinding
     state.currentFinding = {
         templateKey: finding.templateKey || 'custom',
         title: finding.title || '',
@@ -1882,10 +1774,8 @@ function editFinding(index) {
         images: finding.images ? [...finding.images] : []
     };
 
-    // Store the index we're editing
     state.editingFindingIndex = index;
 
-    // Scroll to the form
     const form = document.getElementById('findingForm');
     if (form) {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2167,9 +2057,7 @@ async function saveCurrentReport(silent = false) {
             }
         }
 
-        if (state.currentReportId) {
-            localStorage.setItem('report_' + state.currentReportId + '_draft', JSON.stringify(state.currentFinding));
-        }
+        localStorage.setItem('report_' + state.currentReportId + '_draft', JSON.stringify(state.currentFinding));
 
         state.isDirty = false;
         if (!silent) renderApp();
@@ -2186,7 +2074,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const printMode = params.get('print_mode');
     const reportId = params.get('report_id');
 
-    // Restore saved theme on normal page loads (not print_mode)
     if (!printMode) {
         const savedTheme = localStorage.getItem('pentestify_theme');
         if (savedTheme && ['light', 'dark', 'htb'].includes(savedTheme)) {
@@ -2199,7 +2086,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const themeParam = params.get('theme');
     if (printMode === 'true' && reportId) {
-        state.showSplash = false;
         state.activeTab = 'preview';
         state.currentReportId = parseInt(reportId);
         if (themeParam === 'dark') {

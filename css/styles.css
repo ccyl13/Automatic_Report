@@ -3290,12 +3290,6 @@ button {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
-[data-theme="dark"] .preview-container {
-    background: #0f172a !important;
-    border-color: #334155 !important;
-    box-shadow: none !important;
-}
-
 .report-header {
     padding-bottom: 2rem;
     margin-bottom: 2rem;

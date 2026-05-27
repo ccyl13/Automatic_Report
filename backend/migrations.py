@@ -9,6 +9,8 @@ def run_migrations(engine):
     """Run all pending migrations."""
     _migrate_add_auditor_contact_fields(engine)
     _migrate_add_theme_field(engine)
+    _migrate_add_tlp_fields(engine)
+    _migrate_add_cwe_field(engine)
 
 
 def _migrate_add_auditor_contact_fields(engine):
@@ -44,3 +46,38 @@ def _migrate_add_theme_field(engine):
                 print("✅ Columna theme agregada")
     except Exception as e:
         print(f"⚠️  Migración de tema: {e}")
+
+
+def _migrate_add_tlp_fields(engine):
+    """Migration: Add tlp_level and classification_mode columns to reports table."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(reports)"))
+            columns = [row[1] for row in result]
+
+            if 'tlp_level' not in columns:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN tlp_level VARCHAR DEFAULT 'amber'"))
+                conn.commit()
+                print("✅ Columna tlp_level agregada")
+
+            if 'classification_mode' not in columns:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN classification_mode VARCHAR DEFAULT 'internal'"))
+                conn.commit()
+                print("✅ Columna classification_mode agregada")
+    except Exception as e:
+        print(f"⚠️  Migración de TLP: {e}")
+
+
+def _migrate_add_cwe_field(engine):
+    """Migration: Add cwe column to findings table (MITRE CWE reference)."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(findings)"))
+            columns = [row[1] for row in result]
+
+            if 'cwe' not in columns:
+                conn.execute(text("ALTER TABLE findings ADD COLUMN cwe VARCHAR DEFAULT ''"))
+                conn.commit()
+                print("✅ Columna cwe agregada a findings")
+    except Exception as e:
+        print(f"⚠️  Migración de CWE: {e}")

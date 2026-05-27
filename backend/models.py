@@ -16,6 +16,8 @@ class Report(Base):
     auditor_phone = Column(String, default="")
     auditor_email = Column(String, default="")
     classification = Column(Integer, default=2)
+    tlp_level = Column(String, default="amber")             # clear, green, amber, amber+strict, red
+    classification_mode = Column(String, default="internal") # internal, tlp, both
     version = Column(String, default="1.0")
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")
@@ -49,6 +51,7 @@ class Finding(Base):
     remediation = Column(Text, default="")
     reference = Column(String, default="")
     cve = Column(String, default="")
+    cwe = Column(String, default="")  # Ej: "CWE-89" o "CWE-89, CWE-564"
     
     # Imágenes se guardan como JSON array de URLs/data URLs
     images = Column(JSON, default=list)

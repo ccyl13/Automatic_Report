@@ -14,6 +14,7 @@ class FindingBase(BaseModel):
     remediation: str = ""
     reference: str = ""
     cve: str = ""
+    cwe: str = ""
     images: List[str] = []
     order_index: int = 0
 
@@ -45,6 +46,8 @@ class ReportBase(BaseModel):
     auditor_phone: str = ""
     auditor_email: str = ""
     classification: int = 2
+    tlp_level: str = "amber"
+    classification_mode: str = "internal"
     version: str = "1.0"
     date: str = ""
     lang: str = "es"

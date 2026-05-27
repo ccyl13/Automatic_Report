@@ -8,7 +8,8 @@
       "impact": "Un atacante podría acceder, modificar o eliminar datos sensibles de la base de datos...",
       "remediation": "Implementar consultas preparadas (prepared statements) con parámetros parametrizados...",
       "cvss": "8.1",
-      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection"
+      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection",
+      "cwe": "CWE-89"
     },
     "en": {
       "title": "SQL Injection",
@@ -17,7 +18,8 @@
       "impact": "An attacker could access, modify or delete sensitive database data...",
       "remediation": "Implement prepared statements with parameterized queries...",
       "cvss": "8.1",
-      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection"
+      "reference": "OWASP SQL Injection: https://owasp.org/www-community/attacks/SQL_Injection",
+      "cwe": "CWE-89"
     }
   },
   "xss": {
@@ -29,7 +31,8 @@
       "impact": "Permite a un atacante ejecutar scripts en el navegador de la víctima...",
       "remediation": "Implementar sanitización de entrada (input validation) y escaping de output...",
       "cvss": "6.1",
-      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/"
+      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/",
+      "cwe": "CWE-79"
     },
     "en": {
       "title": "Cross-Site Scripting (XSS)",
@@ -38,7 +41,8 @@
       "impact": "Allows an attacker to execute scripts in the victim's browser...",
       "remediation": "Implement input validation and output escaping...",
       "cvss": "6.1",
-      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/"
+      "reference": "OWASP XSS: https://owasp.org/www-community/attacks/xss/",
+      "cwe": "CWE-79"
     }
   },
   "idor": {
@@ -50,7 +54,8 @@
       "impact": "Un atacante podría acceder, modificar o eliminar datos de otros usuarios sin autorización, violando la confidencialidad e integridad de la información.",
       "remediation": "Implementar controles de autorización en cada acceso a recursos, utilizar identificadores indirectos (GUIDs) y validar que el usuario autenticado tenga permisos sobre el recurso solicitado.",
       "cvss": "7.5",
-      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference"
+      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference",
+      "cwe": "CWE-639"
     },
     "en": {
       "title": "IDOR (Insecure Direct Object Reference)",
@@ -59,7 +64,8 @@
       "impact": "An attacker could access, modify or delete other users' data without authorization, violating data confidentiality and integrity.",
       "remediation": "Implement authorization controls on every resource access, use indirect identifiers (GUIDs) and validate that the authenticated user has permissions over the requested resource.",
       "cvss": "7.5",
-      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference"
+      "reference": "OWASP IDOR: https://owasp.org/www-community/attacks/Insecure_Direct_Object_Reference",
+      "cwe": "CWE-639"
     }
   },
   "ssrf": {
@@ -71,7 +77,8 @@
       "impact": "Un atacante podría acceder a servicios internos, escanear puertos internos, acceder a metadata de cloud, o exfiltrar datos sensibles desde la red interna.",
       "remediation": "Validar y sanitizar todas las URLs de entrada, usar listas blancas de dominios permitidos, deshabilitar esquemas peligrosos (file://, gopher://), y usar DNS resolving con validación.",
       "cvss": "8.2",
-      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery"
+      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery",
+      "cwe": "CWE-918"
     },
     "en": {
       "title": "SSRF (Server-Side Request Forgery)",
@@ -80,7 +87,8 @@
       "impact": "An attacker could access internal services, scan internal ports, access cloud metadata, or exfiltrate sensitive data from the internal network.",
       "remediation": "Validate and sanitize all input URLs, use whitelists of allowed domains, disable dangerous schemes (file://, gopher://), and use DNS resolving with validation.",
       "cvss": "8.2",
-      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery"
+      "reference": "OWASP SSRF: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery",
+      "cwe": "CWE-918"
     }
   },
   "csrf": {
@@ -92,7 +100,8 @@
       "impact": "Un atacante podría realizar acciones en nombre del usuario (cambiar contraseña, realizar transferencias, modificar datos) sin su conocimiento o consentimiento.",
       "remediation": "Implementar tokens CSRF únicos en formularios, usar el atributo SameSite en cookies, validar el header Origin/Referer, y reautenticar para acciones sensibles.",
       "cvss": "6.8",
-      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf"
+      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf",
+      "cwe": "CWE-352"
     },
     "en": {
       "title": "CSRF (Cross-Site Request Forgery)",
@@ -101,7 +110,8 @@
       "impact": "An attacker could perform actions on behalf of the user (change password, make transfers, modify data) without their knowledge or consent.",
       "remediation": "Implement unique CSRF tokens in forms, use SameSite cookie attribute, validate Origin/Referer headers, and re-authenticate for sensitive actions.",
       "cvss": "6.8",
-      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf"
+      "reference": "OWASP CSRF: https://owasp.org/www-community/attacks/csrf",
+      "cwe": "CWE-352"
     }
   },
   "xxe": {
@@ -113,7 +123,8 @@
       "impact": "Un atacante podría leer archivos locales del servidor, acceder a servicios internos, ejecutar SSRF, o causar denegación de servicio (DoS).",
       "remediation": "Deshabilitar entidades externas y DTDs en el procesador XML (XXE=disable), usar formatos alternativos como JSON, y validar el input XML estrictamente.",
       "cvss": "7.5",
-      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing"
+      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing",
+      "cwe": "CWE-611"
     },
     "en": {
       "title": "XXE (XML External Entity)",
@@ -122,7 +133,8 @@
       "impact": "An attacker could read local server files, access internal services, execute SSRF, or cause denial of service (DoS).",
       "remediation": "Disable external entities and DTDs in the XML processor (XXE=disable), use alternative formats like JSON, and strictly validate XML input.",
       "cvss": "7.5",
-      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing"
+      "reference": "OWASP XXE: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing",
+      "cwe": "CWE-611"
     }
   },
   "rce": {
@@ -134,7 +146,8 @@
       "impact": "Un atacante podría tomar control completo del servidor, acceder a datos sensibles, moverse lateralmente en la red o instalar malware persistente.",
       "remediation": "Nunca ejecutar input del usuario sin validación, usar listas blancas de entrada, implementar sandboxing, y aplicar el principio de mínimo privilegio.",
       "cvss": "9.8",
-      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection",
+      "cwe": "CWE-94"
     },
     "en": {
       "title": "RCE (Remote Code Execution)",
@@ -143,7 +156,8 @@
       "impact": "An attacker could take complete control of the server, access sensitive data, move laterally in the network, or install persistent malware.",
       "remediation": "Never execute user input without validation, use input whitelists, implement sandboxing, and apply the principle of least privilege.",
       "cvss": "9.8",
-      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection",
+      "cwe": "CWE-94"
     }
   },
   "lfi": {
@@ -155,7 +169,8 @@
       "impact": "Un atacante podría leer archivos sensibles del sistema (/etc/passwd, archivos de configuración, código fuente) o potencialmente ejecutar código.",
       "remediation": "Validar y sanitizar rutas de archivo, usar listas blancas de archivos permitidos, evitar usar input del usuario en rutas, y deshabilitar funciones peligrosas.",
       "cvss": "7.1",
-      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal",
+      "cwe": "CWE-98"
     },
     "en": {
       "title": "LFI (Local File Inclusion)",
@@ -164,7 +179,8 @@
       "impact": "An attacker could read sensitive system files (/etc/passwd, configuration files, source code) or potentially execute code.",
       "remediation": "Validate and sanitize file paths, use whitelists of allowed files, avoid using user input in paths, and disable dangerous functions.",
       "cvss": "7.1",
-      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal",
+      "cwe": "CWE-98"
     }
   },
   "cors": {
@@ -176,7 +192,8 @@
       "impact": "Un atacante podría realizar peticiones autenticadas desde dominios maliciosos, acceder a datos sensibles o realizar acciones no autorizadas.",
       "remediation": "Validar el header Origin contra una lista blanca, no usar wildcard (*) con credenciales, y implementar headers CORS restrictivos según el recurso.",
       "cvss": "6.1",
-      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration"
+      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration",
+      "cwe": "CWE-942"
     },
     "en": {
       "title": "CORS Misconfiguration",
@@ -185,7 +202,8 @@
       "impact": "An attacker could make authenticated requests from malicious domains, access sensitive data, or perform unauthorized actions.",
       "remediation": "Validate Origin header against a whitelist, do not use wildcard (*) with credentials, and implement restrictive CORS headers per resource.",
       "cvss": "6.1",
-      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration"
+      "reference": "OWASP CORS: https://owasp.org/www-community/attacks/CORS_Misconfiguration",
+      "cwe": "CWE-942"
     }
   },
   "path_traversal": {
@@ -197,7 +215,8 @@
       "impact": "Un atacante podría acceder a archivos sensibles del sistema operativo, archivos de configuración, logs, o código fuente de la aplicación.",
       "remediation": "Validar y sanitizar rutas eliminando secuencias como ../, usar chroot jails, validar extensiones permitidas, y usar APIs de archivos seguras.",
       "cvss": "7.5",
-      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal",
+      "cwe": "CWE-22"
     },
     "en": {
       "title": "Path Traversal / Directory Traversal",
@@ -206,7 +225,8 @@
       "impact": "An attacker could access sensitive operating system files, configuration files, logs, or application source code.",
       "remediation": "Validate and sanitize paths removing sequences like ../, use chroot jails, validate allowed extensions, and use safe file APIs.",
       "cvss": "7.5",
-      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal"
+      "reference": "OWASP Path Traversal: https://owasp.org/www-community/attacks/Path_Traversal",
+      "cwe": "CWE-22"
     }
   },
   "command_injection": {
@@ -218,7 +238,8 @@
       "impact": "Un atacante podría ejecutar comandos arbitrarios en el servidor, comprometer el sistema completo, o usarlo como pivot para ataques internos.",
       "remediation": "Evitar ejecutar comandos del sistema con input del usuario, usar APIs seguras, implementar listas blancas estrictas, y sanitizar input eliminando metacaracteres.",
       "cvss": "9.1",
-      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection",
+      "cwe": "CWE-78"
     },
     "en": {
       "title": "Command Injection",
@@ -227,7 +248,8 @@
       "impact": "An attacker could execute arbitrary commands on the server, compromise the entire system, or use it as a pivot for internal attacks.",
       "remediation": "Avoid executing system commands with user input, use secure APIs, implement strict whitelists, and sanitize input removing metacharacters.",
       "cvss": "9.1",
-      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection"
+      "reference": "OWASP Command Injection: https://owasp.org/www-community/attacks/Command_Injection",
+      "cwe": "CWE-78"
     }
   },
   "insecure_deserialization": {
@@ -239,7 +261,8 @@
       "impact": "Un atacante podría ejecutar código arbitrario, realizar escalada de privilegios, o manipular la lógica de negocio de la aplicación.",
       "remediation": "No deserializar datos de fuentes no confiables, usar formatos seguros como JSON, implementar firmas digitales, y usar deserialización con tipos estrictos.",
       "cvss": "8.1",
-      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"
+      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data",
+      "cwe": "CWE-502"
     },
     "en": {
       "title": "Insecure Deserialization",
@@ -248,7 +271,8 @@
       "impact": "An attacker could execute arbitrary code, escalate privileges, or manipulate the application's business logic.",
       "remediation": "Do not deserialize data from untrusted sources, use safe formats like JSON, implement digital signatures, and use deserialization with strict typing.",
       "cvss": "8.1",
-      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"
+      "reference": "OWASP Deserialization: https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data",
+      "cwe": "CWE-502"
     }
   },
   "jwt_bypass": {
@@ -260,7 +284,8 @@
       "impact": "Un atacante podría falsificar tokens JWT, impersonar otros usuarios, escalar privilegios, o acceder a funcionalidades protegidas sin autenticación.",
       "remediation": "Validar estrictamente el algoritmo JWT, usar claves seguras (HS256+ o RS256), validar expiración y issuer, y almacenar claves de forma segura.",
       "cvss": "8.2",
-      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens"
+      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens",
+      "cwe": "CWE-347"
     },
     "en": {
       "title": "JWT Authentication Bypass",
@@ -269,7 +294,8 @@
       "impact": "An attacker could forge JWT tokens, impersonate other users, escalate privileges, or access protected functionality without authentication.",
       "remediation": "Strictly validate JWT algorithm, use secure keys (HS256+ or RS256), validate expiration and issuer, and store keys securely.",
       "cvss": "8.2",
-      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens"
+      "reference": "OWASP JWT Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/10-Testing_JSON_Web_Tokens",
+      "cwe": "CWE-347"
     }
   },
   "file_upload": {
@@ -281,7 +307,8 @@
       "impact": "Un atacante podría subir archivos maliciosos (webshells, ejecutables), ejecutar código en el servidor, o realizar ataques contra otros usuarios.",
       "remediation": "Validar extensiones y tipos MIME con listas blancas, escanear archivos con antivirus, renombrar archivos al subir, y almacenar fuera del web root.",
       "cvss": "7.5",
-      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"
+      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload",
+      "cwe": "CWE-434"
     },
     "en": {
       "title": "Insecure File Upload",
@@ -290,7 +317,8 @@
       "impact": "An attacker could upload malicious files (webshells, executables), execute code on the server, or perform attacks against other users.",
       "remediation": "Validate extensions and MIME types with whitelists, scan files with antivirus, rename files on upload, and store outside web root.",
       "cvss": "7.5",
-      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"
+      "reference": "OWASP File Upload: https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload",
+      "cwe": "CWE-434"
     }
   },
   "security_misconfig": {
@@ -302,7 +330,8 @@
       "impact": "Un atacante podría explotar configuraciones débiles para acceder a datos sensibles, escalar privilegios, o comprometer el sistema.",
       "remediation": "Implementar hardening del servidor, cambiar credenciales por defecto, deshabilitar debugging en producción, y usar headers de seguridad apropiados.",
       "cvss": "6.5",
-      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"
+      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/",
+      "cwe": "CWE-16"
     },
     "en": {
       "title": "Security Misconfiguration",
@@ -311,7 +340,8 @@
       "impact": "An attacker could exploit weak configurations to access sensitive data, escalate privileges, or compromise the system.",
       "remediation": "Implement server hardening, change default credentials, disable debugging in production, and use appropriate security headers.",
       "cvss": "6.5",
-      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"
+      "reference": "OWASP Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/",
+      "cwe": "CWE-16"
     }
   },
   "missing_csp": {
@@ -323,7 +353,8 @@
       "impact": "Un atacante podría ejecutar ataques XSS, inyectar contenido malicioso, cargar recursos desde dominios no confiables, o realizar clickjacking.",
       "remediation": "Implementar cabecera Content-Security-Policy con directivas restrictivas: default-src 'self', script-src 'self', object-src 'none', frame-ancestors 'none'. Usar nonces o hashes para scripts inline.",
       "cvss": "5.3",
-      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy"
+      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy",
+      "cwe": "CWE-693"
     },
     "en": {
       "title": "Missing Content-Security-Policy Header",
@@ -332,7 +363,8 @@
       "impact": "An attacker could execute XSS attacks, inject malicious content, load resources from untrusted domains, or perform clickjacking.",
       "remediation": "Implement Content-Security-Policy header with restrictive directives: default-src 'self', script-src 'self', object-src 'none', frame-ancestors 'none'. Use nonces or hashes for inline scripts.",
       "cvss": "5.3",
-      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy"
+      "reference": "OWASP CSP: https://owasp.org/www-community/controls/Content_Security_Policy",
+      "cwe": "CWE-693"
     }
   },
   "missing_x_frame": {
@@ -344,7 +376,8 @@
       "impact": "Un atacante podría realizar ataques de clickjacking, UI redressing, o engañar a los usuarios para que interactúen con la aplicación de forma involuntaria.",
       "remediation": "Implementar cabecera X-Frame-Options: DENY o SAMEORIGIN. Alternativamente, usar CSP con frame-ancestors 'none' o frame-ancestors 'self'.",
       "cvss": "5.2",
-      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking"
+      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking",
+      "cwe": "CWE-1021"
     },
     "en": {
       "title": "Missing X-Frame-Options Header",
@@ -353,7 +386,8 @@
       "impact": "An attacker could perform clickjacking attacks, UI redressing, or trick users into interacting with the application unintentionally.",
       "remediation": "Implement X-Frame-Options header: DENY or SAMEORIGIN. Alternatively, use CSP with frame-ancestors 'none' or frame-ancestors 'self'.",
       "cvss": "5.2",
-      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking"
+      "reference": "OWASP Clickjacking: https://owasp.org/www-community/attacks/Clickjacking",
+      "cwe": "CWE-1021"
     }
   },
   "missing_x_content_type": {
@@ -365,7 +399,8 @@
       "impact": "Un atacante podría ejecutar código malicioso mediante MIME sniffing, llevar a cabo ataques XSS o hacer que el navegador interprete datos sensibles como ejecutables.",
       "remediation": "Implementar cabecera X-Content-Type-Options: nosniff en todas las respuestas para prevenir que el navegador realice MIME sniffing.",
       "cvss": "4.3",
-      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing"
+      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing",
+      "cwe": "CWE-693"
     },
     "en": {
       "title": "Missing X-Content-Type-Options Header",
@@ -374,7 +409,8 @@
       "impact": "An attacker could execute malicious code via MIME sniffing, carry out XSS attacks, or make the browser interpret sensitive data as executable.",
       "remediation": "Implement X-Content-Type-Options: nosniff header on all responses to prevent the browser from performing MIME sniffing.",
       "cvss": "4.3",
-      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing"
+      "reference": "OWASP MIME Sniffing: https://owasp.org/www-community/attacks/Content_Sniffing",
+      "cwe": "CWE-693"
     }
   },
   "missing_referrer": {
@@ -386,7 +422,8 @@
       "impact": "Información sensible como tokens de sesión, IDs internos o datos personales pueden filtrarse a sitios externos a través de la cabecera Referer.",
       "remediation": "Implementar cabecera Referrer-Policy con valores restrictivos: no-referrer, strict-origin-when-cross-origin, o no-referrer-when-downgrade según los requisitos.",
       "cvss": "4.0",
-      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure"
+      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure",
+      "cwe": "CWE-200"
     },
     "en": {
       "title": "Missing Referrer-Policy Header",
@@ -395,7 +432,8 @@
       "impact": "Sensitive information such as session tokens, internal IDs or personal data may leak to external sites through the Referer header.",
       "remediation": "Implement Referrer-Policy header with restrictive values: no-referrer, strict-origin-when-cross-origin, or no-referrer-when-downgrade depending on requirements.",
       "cvss": "4.0",
-      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure"
+      "reference": "OWASP Information Disclosure: https://owasp.org/www-community/vulnerabilities/Information_Disclosure",
+      "cwe": "CWE-200"
     }
   },
   "missing_permissions": {
@@ -407,7 +445,8 @@
       "impact": "Funcionalidades del navegador como geolocalización, cámara, micrófono o notificaciones pueden ser abusadas por atacantes o scripts de terceros sin consentimiento explícito.",
       "remediation": "Implementar cabecera Permissions-Policy deshabilitando funcionalidades no necesarias: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=().",
       "cvss": "4.2",
-      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy"
+      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy",
+      "cwe": "CWE-693"
     },
     "en": {
       "title": "Missing Permissions-Policy Header",
@@ -416,7 +455,8 @@
       "impact": "Browser features such as geolocalización, camera, microphone or notifications could be abused by attackers or third-party scripts without explicit consent.",
       "remediation": "Implement Permissions-Policy header disabling unnecessary features: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=().",
       "cvss": "4.2",
-      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy"
+      "reference": "MDN Permissions-Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy",
+      "cwe": "CWE-693"
     }
   },
   "wordpress_xmlrpc": {
@@ -428,7 +468,8 @@
       "impact": "Un atacante puede realizar ataques de fuerza bruta masivos, usar el sitio como proxy para ataques DDoS, escanear puertos internos o enumerar información sensible del sistema.",
       "remediation": "Deshabilitar XML-RPC si no se utiliza: añadir código en .htaccess para bloquear acceso, usar plugin de seguridad que lo desactive, o implementar reglas WAF que bloqueen peticiones a xmlrpc.php.",
       "cvss": "7.5",
-      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files"
+      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files",
+      "cwe": "CWE-307"
     },
     "en": {
       "title": "WordPress XML-RPC Enabled (xmlrpc.php)",
@@ -437,7 +478,8 @@
       "impact": "An attacker can perform massive brute force attacks, use the site as a proxy for DDoS attacks, scan internal ports, or enumerate sensitive system information.",
       "remediation": "Disable XML-RPC if not needed: add code in .htaccess to block access, use security plugin to disable it, or implement WAF rules to block requests to xmlrpc.php.",
       "cvss": "7.5",
-      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files"
+      "reference": "OWASP WordPress Security: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files",
+      "cwe": "CWE-307"
     }
   },
   "wordpress_rest_enum": {
@@ -449,7 +491,8 @@
       "impact": "Un atacante puede obtener una lista completa de usuarios válidos, facilitando ataques de fuerza bruta dirigidos, spear phishing o recolección de información para ingeniería social.",
       "remediation": "Restringir acceso a la API REST: usar plugins como \"Disable REST API\" o \"WP REST API Controller\", añadir autenticación requerida, o implementar reglas .htaccess para bloquear /wp-json/wp/v2/users/.",
       "cvss": "5.3",
-      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     },
     "en": {
       "title": "WordPress User Enumeration via REST API",
@@ -458,7 +501,8 @@
       "impact": "An attacker can obtain a complete list of valid users, facilitating targeted brute force attacks, spear phishing, or information gathering for social engineering.",
       "remediation": "Restrict access to REST API: use plugins like \"Disable REST API\" or \"WP REST API Controller\", require authentication, or implement .htaccess rules to block /wp-json/wp/v2/users/.",
       "cvss": "5.3",
-      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan WordPress Security: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     }
   },
   "wordpress_error_enum": {
@@ -470,7 +514,8 @@
       "impact": "Un atacante puede enumerar usuarios válidos mediante fuerza bruta de nombres de usuario, facilitando ataques dirigidos de fuerza bruta sobre contraseñas de usuarios conocidos.",
       "remediation": "Unificar mensajes de error para no revelar si el usuario existe: usar plugins como \"Login Lockdown\" o \"Wordfence\", o añadir código al functions.php para filtrar mensajes de error.",
       "cvss": "5.0",
-      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism"
+      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism",
+      "cwe": "CWE-209"
     },
     "en": {
       "title": "WordPress User Enumeration via Error Messages",
@@ -479,7 +524,8 @@
       "impact": "An attacker can enumerate valid users through username brute force, facilitating targeted brute force attacks on passwords of known users.",
       "remediation": "Unify error messages to not reveal if user exists: use plugins like \"Login Lockdown\" or \"Wordfence\", or add code to functions.php to filter error messages.",
       "cvss": "5.0",
-      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism"
+      "reference": "OWASP Authentication: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/03-Testing_for_Weak_Lock_Out_Mechanism",
+      "cwe": "CWE-209"
     }
   },
   "wordpress_login_brute": {
@@ -491,7 +537,8 @@
       "impact": "Un atacante puede realizar ataques de fuerza bruta automatizados para obtener credenciales válidas, comprometiendo cuentas de administrador o usuarios.",
       "remediation": "Implementar limitación de intentos de login: usar plugins como \"Login Lockdown\", \"Limit Login Attempts Reloaded\" o \"Wordfence\". Añadir CAPTCHA (reCAPTCHA v3) y autenticación de dos factores (2FA).",
       "cvss": "7.2",
-      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack"
+      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack",
+      "cwe": "CWE-307"
     },
     "en": {
       "title": "WordPress Brute Force on Login (/wp-login.php)",
@@ -500,7 +547,8 @@
       "impact": "An attacker can perform automated brute force attacks to obtain valid credentials, compromising administrator or user accounts.",
       "remediation": "Implement login attempt limiting: use plugins like \"Login Lockdown\", \"Limit Login Attempts Reloaded\" or \"Wordfence\". Add CAPTCHA (reCAPTCHA v3) and two-factor authentication (2FA).",
       "cvss": "7.2",
-      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack"
+      "reference": "OWASP Brute Force: https://owasp.org/www-community/attacks/Brute_force_attack",
+      "cwe": "CWE-307"
     }
   },
   "wordpress_plugin_enum": {
@@ -512,7 +560,8 @@
       "impact": "Un atacante puede identificar plugins vulnerables, versiones desactualizadas o plugins personalizados con vulnerabilidades conocidas para explotación posterior.",
       "remediation": "Ocultar información de plugins: usar plugins de seguridad como \"Sucuri\" o \"iThemes Security\", eliminar readme.txt de plugins, y mantener todos los plugins actualizados.",
       "cvss": "5.3",
-      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     },
     "en": {
       "title": "WordPress Plugin Enumeration",
@@ -521,7 +570,8 @@
       "impact": "An attacker can identify vulnerable plugins, outdated versions or custom plugins with known vulnerabilities for subsequent exploitation.",
       "remediation": "Hide plugin information: use security plugins like \"Sucuri\" or \"iThemes Security\", remove readme.txt from plugins, and keep all plugins updated.",
       "cvss": "5.3",
-      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan Plugin Enumeration: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     }
   },
   "wordpress_theme_enum": {
@@ -533,7 +583,8 @@
       "impact": "Un atacante puede identificar temas vulnerables, versiones desactualizadas o temas personalizados con vulnerabilidades para explotación posterior.",
       "remediation": "Ocultar información de temas: usar plugins de seguridad, eliminar style.css público si es posible, y mantener todos los temas actualizados.",
       "cvss": "5.3",
-      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     },
     "en": {
       "title": "WordPress Theme Enumeration",
@@ -542,7 +593,8 @@
       "impact": "An attacker can identify vulnerable themes, outdated versions or custom themes with vulnerabilities for subsequent exploitation.",
       "remediation": "Hide theme information: use security plugins, remove public style.css if possible, and keep all themes updated.",
       "cvss": "5.3",
-      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan Theme Enumeration: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     }
   },
   "wordpress_config_exposure": {
@@ -554,7 +606,8 @@
       "impact": "Exposición de credenciales de base de datos, claves de cifrado y configuración sensible, permitiendo acceso completo a la base de datos y potencial compromiso del sitio.",
       "remediation": "Asegurar wp-config.php: moverlo fuera del directorio web si es posible, configurar reglas .htaccess para denegar acceso, y eliminar copias de respaldo de directorios accesibles.",
       "cvss": "9.1",
-      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+      "cwe": "CWE-538"
     },
     "en": {
       "title": "WordPress wp-config.php Exposed",
@@ -563,7 +616,8 @@
       "impact": "Exposure of database credentials, encryption keys and sensitive configuration, allowing full database access and potential site compromise.",
       "remediation": "Secure wp-config.php: move it outside web directory if possible, configure .htaccess rules to deny access, and remove backup copies from accessible directories.",
       "cvss": "9.1",
-      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+      "cwe": "CWE-538"
     }
   },
   "wordpress_uploads_directory": {
@@ -575,7 +629,8 @@
       "impact": "Un atacante puede descubrir archivos sensibles subidos, estructura de contenido, plugins/temas a través de uploads, y usar esta información para ataques dirigidos.",
       "remediation": "Deshabilitar listado de directorios: añadir Options -Indexes al .htaccess, o crear archivos index.php vacíos en directorios de uploads. Configurar permisos apropiados.",
       "cvss": "4.3",
-      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage"
+      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage",
+      "cwe": "CWE-548"
     },
     "en": {
       "title": "WordPress /wp-content/uploads/ Directory Listing",
@@ -584,7 +639,8 @@
       "impact": "An attacker can discover sensitive uploaded files, content structure, plugins/themes through uploads, and use this information for targeted attacks.",
       "remediation": "Disable directory listing: add Options -Indexes to .htaccess, or create empty index.php files in upload directories. Configure appropriate permissions.",
       "cvss": "4.3",
-      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage"
+      "reference": "OWASP Directory Listing: https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Webserver_Metafiles_for_Information_Leakage",
+      "cwe": "CWE-548"
     }
   },
   "wordpress_version_leak": {
@@ -596,7 +652,8 @@
       "impact": "Un atacante puede identificar vulnerabilidades específicas de la versión instalada y usar exploits conocidos para comprometer el sitio.",
       "remediation": "Ocultar versión de WordPress: añadir código al functions.php para remover el meta generator, usar plugins de seguridad que oculten la versión, y eliminar readme.html.",
       "cvss": "5.3",
-      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     },
     "en": {
       "title": "WordPress Version Leakage",
@@ -605,7 +662,8 @@
       "impact": "An attacker can identify specific vulnerabilities of the installed version and use known exploits to compromise the site.",
       "remediation": "Hide WordPress version: add code to functions.php to remove meta generator, use security plugins that hide the version, and remove readme.html.",
       "cvss": "5.3",
-      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers"
+      "reference": "WPScan WordPress Version: https://wpscan.com/wordpress-security-headers",
+      "cwe": "CWE-200"
     }
   },
   "wordpress_db_backup": {
@@ -617,7 +675,8 @@
       "impact": "Exposición completa de la base de datos incluyendo usuarios, contraseñas hasheadas, contenido privado y configuración sensible, permitiendo compromiso total del sitio.",
       "remediation": "Mover backups fuera del directorio web: almacenar en ubicación no accesible públicamente, implementar autenticación para descargas de backup, y usar extensiones no ejecutables.",
       "cvss": "9.1",
-      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+      "cwe": "CWE-530"
     },
     "en": {
       "title": "WordPress Database Backups Exposed",
@@ -626,7 +685,8 @@
       "impact": "Complete exposure of database including users, hashed passwords, private content and sensitive configuration, allowing total site compromise.",
       "remediation": "Move backups outside web directory: store in non-publicly accessible location, implement authentication for backup downloads, and use non-executable extensions.",
       "cvss": "9.1",
-      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure"
+      "reference": "OWASP Sensitive Data Exposure: https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+      "cwe": "CWE-530"
     }
   }
 }

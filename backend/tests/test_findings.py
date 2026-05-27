@@ -233,12 +233,131 @@ class TestFindingsAPI:
     def test_report_includes_findings(self, client, sample_report, sample_finding):
         """Test: GET /api/reports/{id} incluye hallazgos embebidos"""
         report_id = sample_report["id"]
-        
+
         response = client.get(f"/api/reports/{report_id}")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "findings" in data
         assert isinstance(data["findings"], list)
         assert len(data["findings"]) == 1
         assert data["findings"][0]["title"] == "SQL Injection"
+
+    # --- CWE (MITRE) ---
+
+    def test_create_finding_with_cwe(self, client, sample_report):
+        """Test: POST /api/reports/{id}/findings acepta campo cwe"""
+        finding_data = {
+            "template_key": "sqli",
+            "title": "SQL Injection con CWE",
+            "severity": "crit",
+            "description": "Inyección SQL",
+            "cvss": "9.8",
+            "poc": "payload",
+            "impact": "Pérdida de datos",
+            "remediation": "Prepared statements",
+            "reference": "https://owasp.org",
+            "cve": "CVE-2024-1234",
+            "cwe": "CWE-89",
+            "images": [],
+            "order_index": 0
+        }
+        report_id = sample_report["id"]
+        response = client.post(f"/api/reports/{report_id}/findings", json=finding_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["cwe"] == "CWE-89"
+
+    def test_finding_cwe_default_empty(self, client, sample_report):
+        """Test: Hallazgo sin cwe tiene string vacío por defecto"""
+        finding_data = {
+            "template_key": "custom",
+            "title": "Finding sin CWE",
+            "severity": "low",
+            "description": "Desc",
+            "cvss": "",
+            "poc": "",
+            "impact": "",
+            "remediation": "",
+            "reference": "",
+            "cve": "",
+            "images": [],
+            "order_index": 0
+        }
+        report_id = sample_report["id"]
+        response = client.post(f"/api/reports/{report_id}/findings", json=finding_data)
+        assert response.status_code == 200
+        assert response.json()["cwe"] == ""
+
+    def test_update_finding_cwe(self, client, sample_report, sample_finding):
+        """Test: PUT /api/findings/{id} actualiza el campo cwe"""
+        finding_id = sample_finding["id"]
+
+        update_data = {
+            "template_key": "sqli",
+            "title": "SQL Injection",
+            "severity": "crit",
+            "description": "Desc",
+            "cvss": "9.8",
+            "poc": "",
+            "impact": "",
+            "remediation": "",
+            "reference": "",
+            "cve": "CVE-2024-1234",
+            "cwe": "CWE-89",
+            "images": [],
+            "order_index": 0
+        }
+        response = client.put(f"/api/findings/{finding_id}", json=update_data)
+        assert response.status_code == 200
+        assert response.json()["cwe"] == "CWE-89"
+
+    def test_finding_multiple_cwe(self, client, sample_report):
+        """Test: El campo cwe acepta múltiples identificadores separados por coma"""
+        finding_data = {
+            "template_key": "custom",
+            "title": "Multi CWE",
+            "severity": "high",
+            "description": "Desc",
+            "cvss": "7.0",
+            "poc": "",
+            "impact": "",
+            "remediation": "",
+            "reference": "",
+            "cve": "",
+            "cwe": "CWE-89, CWE-564",
+            "images": [],
+            "order_index": 0
+        }
+        report_id = sample_report["id"]
+        response = client.post(f"/api/reports/{report_id}/findings", json=finding_data)
+        assert response.status_code == 200
+        assert response.json()["cwe"] == "CWE-89, CWE-564"
+
+    def test_cwe_persists_in_report(self, client, sample_report):
+        """Test: El campo cwe se conserva al recuperar hallazgos del reporte"""
+        finding_data = {
+            "template_key": "xss",
+            "title": "XSS con CWE",
+            "severity": "high",
+            "description": "Cross-Site Scripting",
+            "cvss": "6.1",
+            "poc": "",
+            "impact": "",
+            "remediation": "",
+            "reference": "",
+            "cve": "",
+            "cwe": "CWE-79",
+            "images": [],
+            "order_index": 0
+        }
+        report_id = sample_report["id"]
+        client.post(f"/api/reports/{report_id}/findings", json=finding_data)
+
+        response = client.get(f"/api/reports/{report_id}")
+        assert response.status_code == 200
+
+        findings = response.json()["findings"]
+        assert len(findings) == 1
+        assert findings[0]["cwe"] == "CWE-79"

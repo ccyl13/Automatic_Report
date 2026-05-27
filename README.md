@@ -19,26 +19,41 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
-## Autores
+## 👥 Autores
 
-<p align="center">
+<br>
+
+<div align="center">
   <table>
     <tr>
-      <td align="center">
+      <td align="center" width="200">
         <a href="https://www.linkedin.com/in/maalfer1/" target="_blank">
-          <img src="assets/images/el-pinguino-de-mario.webp" width="100" height="100" style="border-radius: 50%;" alt="El Pingüino de Mario">
-        </a><br>
+          <img src="assets/images/el-pinguino-de-mario.webp" width="120" height="120" style="border-radius: 50%; border: 3px solid #9fef00;" alt="El Pingüino de Mario">
+        </a>
+        <br><br>
         <strong>El Pingüino de Mario</strong>
+        <br>
+        <a href="https://www.linkedin.com/in/maalfer1/" target="_blank">
+          <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn">
+        </a>
       </td>
-      <td align="center">
+      <td width="60"></td>
+      <td align="center" width="200">
         <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
-          <img src="assets/images/thomas-oneil.webp" width="100" height="100" style="border-radius: 50%;" alt="Thomas O'neil">
-        </a><br>
+          <img src="assets/images/thomas-oneil.webp" width="120" height="120" style="border-radius: 50%; border: 3px solid #9fef00;" alt="Thomas O'neil">
+        </a>
+        <br><br>
         <strong>Thomas O'neil Álvarez</strong>
+        <br>
+        <a href="https://www.linkedin.com/in/thomasoneil%C3%A1lvarez/" target="_blank">
+          <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn">
+        </a>
       </td>
     </tr>
   </table>
-</p>
+</div>
+
+<br>
 
 ## Estructura del Proyecto
 

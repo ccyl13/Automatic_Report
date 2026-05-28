@@ -46,7 +46,11 @@ const state = {
     isDirty: false,
     showSettings: false,
     generatingPdf: false,
-    showDemoModal: false
+    showDemoModal: false,
+    showPdfModal: false,
+    pdfPrintTheme: 'light',
+    pdfShowSeverityBars: true,
+    pdfContentWidth: 820
 };
 
 const UI = {
@@ -92,6 +96,19 @@ const UI = {
         demoModalGenerate: 'Generar Demo',
         demoModalGenerating: 'Creando demo...',
         demoModalCancel: 'Cancelar',
+        pdfModalTitle: 'Configurar PDF',
+        pdfModalTheme: 'Tema del documento',
+        pdfModalThemeLight: 'Claro',
+        pdfModalThemeDark: 'Oscuro',
+        pdfModalThemeHtb: 'HTB',
+        pdfModalSeverityBars: 'Barras de color de severidad',
+        pdfModalSeverityBarsDesc: 'Incluir indicadores de color de severidad en cada hallazgo y en el resumen',
+        pdfModalContentWidth: 'Ancho del contenido',
+        pdfModalContentWidthDesc: 'Controla qué tan ancho o estrecho aparece el contenido de los hallazgos en el PDF',
+        pdfModalContentWidthNarrow: 'Estrecho',
+        pdfModalContentWidthWide: 'Ancho',
+        pdfModalCancel: 'Cancelar',
+        pdfModalGenerate: 'Generar PDF',
         noReports: 'No hay reportes guardados',
         noReportsDesc: 'Crea tu primer reporte usando el botón de arriba',
         editor: 'Edición',
@@ -218,6 +235,19 @@ const UI = {
         demoModalGenerate: 'Generate Demo',
         demoModalGenerating: 'Creating demo...',
         demoModalCancel: 'Cancel',
+        pdfModalTitle: 'PDF Settings',
+        pdfModalTheme: 'Document theme',
+        pdfModalThemeLight: 'Light',
+        pdfModalThemeDark: 'Dark',
+        pdfModalThemeHtb: 'HTB',
+        pdfModalSeverityBars: 'Severity color bars',
+        pdfModalSeverityBarsDesc: 'Include severity color indicators on each finding and in the summary',
+        pdfModalContentWidth: 'Content width',
+        pdfModalContentWidthDesc: 'Controls how wide or narrow the findings content appears in the PDF',
+        pdfModalContentWidthNarrow: 'Narrow',
+        pdfModalContentWidthWide: 'Wide',
+        pdfModalCancel: 'Cancel',
+        pdfModalGenerate: 'Generate PDF',
         noReports: 'No saved reports',
         noReportsDesc: 'Create your first report using the button above',
         editor: 'Editor',
@@ -806,6 +836,26 @@ function renderFindingsList() {
     `;
 }
 
+function getThemeColorsFor(theme) {
+    const dk  = theme === 'dark';
+    const htb = theme === 'htb';
+    return {
+        pageBg:      htb ? '#1a2332' : dk ? '#0f172a' : '#ffffff',
+        cardBg:      htb ? '#0d1117' : dk ? '#1e293b' : '#f9fafb',
+        textHeading: htb ? '#9fef00' : dk ? '#f1f5f9' : '#111827',
+        textBody:    htb ? '#e2e8f0' : dk ? '#e2e8f0' : '#1f2937',
+        textMuted:   htb ? '#cbd5e1' : dk ? '#cbd5e1' : '#374151',
+        textFaint:   htb ? '#a0aec0' : dk ? '#94a3b8' : '#4b5563',
+        border:      htb ? '#2d3f55' : dk ? '#334155' : '#e5e7eb',
+        coverBg:     htb ? '#0d1117' : dk ? '#020617' : '#1e293b',
+        coverAccent: htb ? '#9fef00' : '#2563eb',
+        pocBg:       htb ? '#060b10' : dk ? '#060a0f' : '#1e293b',
+        pocBorder:   htb ? '#1a2332' : dk ? '#1e293b' : '#334155',
+        pocText:     '#e2e8f0',
+        pocHeading:  htb ? '#9fef00' : '#93c5fd',
+    };
+}
+
 function getThemeColors() {
     const theme = state.reportTheme;
     const dk  = theme === 'dark';
@@ -846,6 +896,10 @@ function getThemeColors() {
         classifBg:      htb ? '#0d1117' : dk ? '#1e293b'  : '#f1f5f9',
         classifBorder:  htb ? '#9fef00' : dk ? '#475569'  : '#cbd5e1',
         classifText:    htb ? '#9fef00' : dk ? '#94a3b8'  : '#475569',
+        pocBg:          htb ? '#060b10' : dk ? '#060a0f'  : '#1e293b',
+        pocBorder:      htb ? '#1a2332' : dk ? '#1e293b'  : '#334155',
+        pocText:        '#e2e8f0',
+        pocHeading:     htb ? '#9fef00' : '#93c5fd',
     };
 }
 
@@ -900,9 +954,11 @@ function renderCvssSummary() {
         <div class="cvss-summary card" style="margin: 2rem 0; padding: 1.5rem; page-break-inside: avoid; background: ${cardBg}; border-color: ${border};">
             <h3 style="margin-bottom: 1.5rem; border-bottom: 1px solid ${borderH3}; padding-bottom: 0.75rem; color: ${textHead};">${t.cvssSummaryTitle}</h3>
 
+            ${state.pdfShowSeverityBars ? `
             <div style="display: flex; height: 28px; width: 100%; border-radius: 6px; overflow: hidden; margin-bottom: 1.5rem; box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06);">
                 ${barSegments}
             </div>
+            ` : ''}
 
             <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
                 ${legendItems}
@@ -920,8 +976,9 @@ function renderPreview() {
     const dk  = state.reportTheme === 'dark';
     const htb = state.reportTheme === 'htb';
 
+    const _cw = state.pdfContentWidth || 820;
     return `
-        <div class="preview-container">
+        <div class="preview-container" style="max-width:${_cw}px;">
             <!-- PORTADA -->
             <div class="cover-page" style="
                 display: flex;
@@ -1108,7 +1165,7 @@ function renderPreview() {
             <!-- HALLAZGOS TÉCNICOS -->
             <div class="findings-preview" style="background: ${c.pageBg};">
                 ${state.findings.map((f, idx) => `
-                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: ${c.cardBg}; padding: 2rem; border-radius: 12px; border-left: 6px solid var(--severity-${f.severity}); border: 1px solid ${c.border}; border-left: 6px solid var(--severity-${f.severity}); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: ${c.cardBg}; padding: 2rem; border-radius: 12px; border: 1px solid ${c.border}; ${state.pdfShowSeverityBars ? `border-left: 6px solid var(--severity-${f.severity});` : ''} box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid ${c.border}; padding-bottom: 1rem; page-break-after: avoid;">
                             <h3 style="font-size: 1.5rem; font-weight: 800; color: ${c.textHeading}; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
                             <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap; margin-left: 1rem;">
@@ -1146,12 +1203,12 @@ function renderPreview() {
                         ` : ''}
 
                         ${f.poc ? `
-                            <div style="margin-bottom: 1.5rem; background: #1e293b; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; border: 1px solid #0f172a;">
-                                <h4 style="font-size: 1.125rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                            <div style="margin-bottom: 1.5rem; background: ${c.pocBg}; color: ${c.pocText}; padding: 1.5rem; border-radius: 8px; border: 1px solid ${c.pocBorder};">
+                                <h4 style="font-size: 1.125rem; font-weight: 700; color: ${c.pocHeading}; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c.pocHeading}" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                                     ${t.pocSteps}
                                 </h4>
-                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: #e2e8f0; margin: 0; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
+                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: ${c.pocText}; margin: 0; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
                             </div>
                         ` : ''}
 
@@ -1471,6 +1528,229 @@ async function loadDemoReport() {
     }
 }
 
+function renderPdfModal() {
+    if (!state.showPdfModal) return '';
+    const t = UI[state.lang];
+    const c = getThemeColors();
+
+    const sunIcon  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+    const moonIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    const termIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`;
+
+    function themeCard(id, label, icon) {
+        const active     = state.pdfPrintTheme === id;
+        const activeBg   = id === 'htb' ? '#9fef00' : '#3b82f6';
+        const activeText = id === 'htb' ? '#1a2332' : '#ffffff';
+        return `<button id="pdf-theme-btn-${id}" onclick="pdfModalSetTheme('${id}')"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0.5rem;padding:0.875rem 0.5rem;border-radius:10px;
+                   border:2px solid ${active ? activeBg : c.border};
+                   background:${active ? activeBg : c.cardBg};
+                   color:${active ? activeText : c.textMuted};
+                   cursor:pointer;font-weight:${active ? '700' : '500'};font-size:0.875rem;transition:all 0.15s;">
+            ${icon}${label}
+        </button>`;
+    }
+
+    const toggleOn  = state.pdfShowSeverityBars;
+    const toggleBg  = toggleOn ? '#3b82f6' : c.border;
+    const thumbLeft = toggleOn ? '22px' : '2px';
+    const panelBg   = state.reportTheme === 'htb' ? '#04090e' : state.reportTheme === 'dark' ? '#070d18' : '#dde3ea';
+    const dotMuted  = state.reportTheme !== 'light' ? '#4a5568' : '#b0bec5';
+
+    return `
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closePdfModal()">
+            <div class="settings-modal" style="width:100%;max-width:860px;display:flex;flex-direction:column;max-height:90vh;" onclick="event.stopPropagation()">
+
+                <!-- Header -->
+                <div class="settings-modal-header" style="flex-shrink:0;">
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span>${t.pdfModalTitle}</span>
+                    </div>
+                    <button class="settings-close-btn" onclick="closePdfModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+
+                <!-- Two-column body -->
+                <div style="display:flex;min-height:0;flex:1;overflow:hidden;">
+
+                    <!-- LEFT: Controls -->
+                    <div style="width:272px;flex-shrink:0;border-right:1px solid ${c.border};padding:1.375rem;display:flex;flex-direction:column;gap:1.25rem;overflow-y:auto;">
+
+                        <!-- Theme -->
+                        <div>
+                            <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${c.textMuted};margin-bottom:0.625rem;">${t.pdfModalTheme}</p>
+                            <div style="display:flex;gap:0.5rem;">
+                                ${themeCard('light', t.pdfModalThemeLight, sunIcon)}
+                                ${themeCard('dark',  t.pdfModalThemeDark,  moonIcon)}
+                                ${themeCard('htb',   t.pdfModalThemeHtb,   termIcon)}
+                            </div>
+                        </div>
+
+                        <div style="border-top:1px solid ${c.border};"></div>
+
+                        <!-- Severity bars -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;">
+                            <div style="min-width:0;">
+                                <p style="font-weight:600;font-size:0.875rem;color:${c.textHeading};margin-bottom:0.2rem;">${t.pdfModalSeverityBars}</p>
+                                <p style="font-size:0.775rem;color:${c.textFaint};margin:0;line-height:1.4;">${t.pdfModalSeverityBarsDesc}</p>
+                            </div>
+                            <label style="position:relative;display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0;">
+                                <input type="checkbox" style="opacity:0;position:absolute;width:0;height:0;" ${toggleOn ? 'checked' : ''} onchange="pdfModalSetBars(this.checked)">
+                                <div id="pdf-toggle-bg" style="width:44px;height:24px;background:${toggleBg};border-radius:12px;position:relative;transition:background 0.2s;">
+                                    <div id="pdf-toggle-thumb" style="position:absolute;top:2px;left:${thumbLeft};width:20px;height:20px;background:white;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.25);"></div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div style="border-top:1px solid ${c.border};"></div>
+
+                        <!-- Content width -->
+                        <div>
+                            <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${c.textMuted};margin-bottom:0.25rem;">${t.pdfModalContentWidth}</p>
+                            <p style="font-size:0.75rem;color:${c.textFaint};margin:0 0 0.875rem;line-height:1.4;">${t.pdfModalContentWidthDesc}</p>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.375rem;">
+                                <span style="font-size:0.8rem;color:${c.textFaint};">${t.pdfModalContentWidthNarrow}</span>
+                                <span id="pdf-content-width-val" style="font-size:0.875rem;font-weight:700;color:#3b82f6;">${state.pdfContentWidth} px</span>
+                                <span style="font-size:0.8rem;color:${c.textFaint};">${t.pdfModalContentWidthWide}</span>
+                            </div>
+                            <input type="range" min="580" max="1100" step="20" value="${state.pdfContentWidth}"
+                                oninput="pdfModalSetContentWidth(this.value)"
+                                style="width:100%;accent-color:#3b82f6;cursor:pointer;">
+                        </div>
+
+                        <!-- Spacer + Buttons -->
+                        <div style="flex:1;min-height:0.5rem;"></div>
+                        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                            <button class="btn-primary" id="pdf-confirm-btn" onclick="executePdfGeneration()" style="width:100%;justify-content:center;gap:0.5rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                ${t.pdfModalGenerate}
+                            </button>
+                            <button class="btn-secondary" onclick="closePdfModal()" style="width:100%;justify-content:center;">${t.pdfModalCancel}</button>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Live preview -->
+                    <div style="flex:1;background:${panelBg};overflow:hidden;position:relative;min-height:480px;">
+                        <div style="position:absolute;top:0;left:0;right:0;height:28px;display:flex;align-items:center;padding:0 0.75rem;gap:0.35rem;z-index:5;">
+                            <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;opacity:0.7;"></div>
+                            <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;opacity:0.7;"></div>
+                            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;opacity:0.7;"></div>
+                            <span style="margin-left:0.375rem;font-size:0.67rem;font-weight:600;color:${dotMuted};text-transform:uppercase;letter-spacing:0.06em;">Vista Previa</span>
+                        </div>
+                        <div id="pdf-preview-panel" style="position:absolute;inset:0;top:28px;overflow-y:auto;overflow-x:hidden;">
+                            ${renderPdfPreviewHtml(state.pdfPrintTheme, state.pdfShowSeverityBars, state.pdfContentWidth)}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function openPdfModal() {
+    state.pdfPrintTheme = state.reportTheme;
+    state.pdfShowSeverityBars = true;
+    state.pdfContentWidth = 820;
+    state.showPdfModal = true;
+    renderApp();
+}
+
+function closePdfModal() {
+    state.showPdfModal = false;
+    renderApp();
+}
+
+function pdfModalSetTheme(theme) {
+    state.pdfPrintTheme = theme;
+    const c = getThemeColors();
+    ['light', 'dark', 'htb'].forEach(id => {
+        const btn = document.getElementById('pdf-theme-btn-' + id);
+        if (!btn) return;
+        const isActive   = id === theme;
+        const activeBg   = id === 'htb' ? '#9fef00' : '#3b82f6';
+        const activeText = id === 'htb' ? '#1a2332' : '#ffffff';
+        btn.style.background  = isActive ? activeBg   : c.cardBg;
+        btn.style.borderColor = isActive ? activeBg   : c.border;
+        btn.style.color       = isActive ? activeText : c.textMuted;
+        btn.style.fontWeight  = isActive ? '700'      : '500';
+    });
+    updatePdfModalPreview();
+}
+
+function pdfModalSetBars(checked) {
+    state.pdfShowSeverityBars = checked;
+    const c     = getThemeColors();
+    const bg    = document.getElementById('pdf-toggle-bg');
+    const thumb = document.getElementById('pdf-toggle-thumb');
+    if (bg)    bg.style.background = checked ? '#3b82f6' : c.border;
+    if (thumb) thumb.style.left    = checked ? '22px'   : '2px';
+    updatePdfModalPreview();
+}
+
+let _pdfWidthTimer = null;
+
+function pdfModalSetContentWidth(v) {
+    state.pdfContentWidth = parseInt(v);
+    const el = document.getElementById('pdf-content-width-val');
+    if (el) el.textContent = v + ' px';
+    clearTimeout(_pdfWidthTimer);
+    _pdfWidthTimer = setTimeout(updatePdfModalPreview, 200);
+}
+
+function updatePdfModalPreview() {
+    const panel = document.getElementById('pdf-preview-panel');
+    if (!panel) return;
+    panel.innerHTML = renderPdfPreviewHtml(state.pdfPrintTheme, state.pdfShowSeverityBars, state.pdfContentWidth);
+}
+
+function renderPdfPreviewHtml(previewTheme, showBars, contentWidth) {
+    const saved = {
+        reportTheme:          state.reportTheme,
+        pdfShowSeverityBars:  state.pdfShowSeverityBars,
+        pdfContentWidth:      state.pdfContentWidth,
+        activeTab:            state.activeTab,
+        showSplash:           state.showSplash,
+        showReportSelector:   state.showReportSelector,
+    };
+
+    state.reportTheme        = previewTheme;
+    state.pdfShowSeverityBars = showBars;
+    state.pdfContentWidth    = contentWidth || 820;
+    state.activeTab          = 'preview';
+    state.showSplash         = false;
+    state.showReportSelector = false;
+
+    const html = renderPreview();
+
+    state.reportTheme        = saved.reportTheme;
+    state.pdfShowSeverityBars = saved.pdfShowSeverityBars;
+    state.pdfContentWidth    = saved.pdfContentWidth;
+    state.activeTab          = saved.activeTab;
+    state.showSplash         = saved.showSplash;
+    state.showReportSelector = saved.showReportSelector;
+
+    const c2   = getThemeColorsFor(previewTheme);
+    const ZOOM = 0.42;
+
+    return `
+        <style>
+            #_pdf_inner .preview-container {
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                background: ${c2.pageBg} !important;
+            }
+        </style>
+        <div style="background:${c2.pageBg};">
+            <div id="_pdf_inner" style="zoom:${ZOOM};background:${c2.pageBg};">
+                ${html}
+            </div>
+        </div>`;
+}
+
 function renderApp() {
     const app = $('#app');
 
@@ -1484,6 +1764,7 @@ function renderApp() {
         </main>
         ${renderSettingsModal()}
         ${renderDemoModal()}
+        ${renderPdfModal()}
     `;
 }
 
@@ -1529,10 +1810,16 @@ function setReportTheme(theme) {
     renderApp();
 }
 
-async function generatePdf() {
+function generatePdf() {
+    openPdfModal();
+}
+
+async function executePdfGeneration() {
     if (state.generatingPdf) return;
     const isEs = state.lang === 'es';
+    const t = UI[state.lang];
 
+    state.showPdfModal = false;
     state.generatingPdf = true;
     renderApp();
 
@@ -1543,7 +1830,12 @@ async function generatePdf() {
             throw new Error(isEs ? 'No se pudo guardar el reporte' : 'Could not save the report');
         }
 
-        const response = await fetch(`/api/reports/${state.currentReportId}/pdf?theme=${state.reportTheme}`);
+        const params = new URLSearchParams({
+            theme: state.pdfPrintTheme,
+            show_severity_bars: state.pdfShowSeverityBars,
+            content_width: state.pdfContentWidth
+        });
+        const response = await fetch(`/api/reports/${state.currentReportId}/pdf?${params}`);
 
         if (!response.ok) {
             let errorData;
@@ -2094,6 +2386,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (themeParam === 'htb') {
             document.documentElement.setAttribute('data-theme', 'htb');
             state.reportTheme = 'htb';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            state.reportTheme = 'light';
+        }
+        if (params.get('show_severity_bars') === 'false') {
+            state.pdfShowSeverityBars = false;
+        }
+        const cwParam = params.get('content_width');
+        if (cwParam) {
+            state.pdfContentWidth = parseInt(cwParam);
         }
         
         try {

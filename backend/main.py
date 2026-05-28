@@ -188,14 +188,25 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
 
 
 @app.get("/api/reports/{report_id}/pdf")
-async def generate_pdf(report_id: int, request: Request, db: Session = Depends(get_db), theme: str = "light"):
+async def generate_pdf(
+    report_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    theme: str = "light",
+    show_severity_bars: bool = True,
+    content_width: int = 820,
+):
     report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
     try:
         base_url = str(request.base_url).rstrip("/")
-        target_url = f"{base_url}/?report_id={report_id}&print_mode=true&theme={theme}"
+        target_url = (
+            f"{base_url}/?report_id={report_id}&print_mode=true&theme={theme}"
+            f"&show_severity_bars={'true' if show_severity_bars else 'false'}"
+            f"&content_width={content_width}"
+        )
 
         async with async_playwright() as p:
             try:
@@ -221,26 +232,63 @@ async def generate_pdf(report_id: int, request: Request, db: Session = Depends(g
 
             await page.wait_for_timeout(2000)
 
+            # Map content_width (580-1100px) to horizontal padding percentage for print mode.
+            # @media print forces max-width:100% so we control width via padding instead.
+            # content_width=1100 (widest) → 0% padding; content_width=580 (narrowest) → 15% padding.
+            padding_pct = round(max(0.0, (1100 - content_width) / 520.0 * 15), 2)
+
+            # Ensure data-theme attribute matches the requested PDF theme before any injection.
+            # For light theme we explicitly remove data-theme so no dark/htb CSS rules fire.
+            if theme in ('dark', 'htb'):
+                await page.evaluate(f"document.documentElement.setAttribute('data-theme', '{theme}');")
+            else:
+                await page.evaluate("document.documentElement.removeAttribute('data-theme');")
+
+            # Inject a <style> block AFTER the existing stylesheet.
+            # Only adjusts content width via padding — finding-card colors are handled
+            # by the comprehensive @media print rules already in styles.css.
+            await page.evaluate(f"""
+                var s = document.createElement('style');
+                s.textContent = [
+                    '@media print {{',
+                    '  .preview-container {{',
+                    '    padding-left:  {padding_pct}% !important;',
+                    '    padding-right: {padding_pct}% !important;',
+                    '    margin: 0 auto !important;',
+                    '  }}'
+                ].join('\\n') + '}}';
+                document.head.appendChild(s);
+            """)
+
+            # For dark/htb: set page and body background colours so the PDF canvas matches the theme.
             if theme in ('dark', 'htb'):
                 bg = '#0f172a' if theme == 'dark' else '#1a2332'
                 await page.evaluate(f"""
-                    document.documentElement.setAttribute('data-theme', '{theme}');
                     document.documentElement.style.background = '{bg}';
                     document.body.style.background = '{bg}';
+                    document.body.style.color = '#e2e8f0';
                     document.body.style.margin = '0';
                     var style = document.createElement('style');
                     style.textContent = [
-                        'html, body, div {{ background-color: {bg}; }}',
                         'html, body {{ background: {bg} !important; color: #e2e8f0 !important; }}',
-                        '@page {{ background: {bg}; }}',
-                        '@media print {{',
-                        '  html, body, .cover-page, .index-page, #summary, #incidents, .main-content, .preview-container {{ background: {bg} !important; }}',
-                        '  html, body {{ color: #e2e8f0 !important; }}',
-                        '}}'
+                        '@page {{ background: {bg}; }}'
                     ].join('\\n');
                     document.head.appendChild(style);
                 """)
                 await page.wait_for_timeout(500)
+
+            # If severity bars are disabled, hide the coloured left border and the bar chart.
+            if not show_severity_bars:
+                await page.evaluate("""
+                    var s2 = document.createElement('style');
+                    s2.textContent = [
+                        '@media print {',
+                        '  .finding-preview { border-left-width: 1px !important; border-left-color: inherit !important; }',
+                        '  .cvss-summary [style*="height: 28px"], .cvss-summary [style*="height:28px"] { display: none !important; }',
+                        '}'
+                    ].join('\\n');
+                    document.head.appendChild(s2);
+                """)
 
             fd, path = tempfile.mkstemp(suffix=".pdf")
             os.close(fd)

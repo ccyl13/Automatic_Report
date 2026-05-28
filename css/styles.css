@@ -3568,7 +3568,7 @@ button {
 }
 
 /* ==================== DARK / HTB THEME PRINT OVERRIDES ==================== */
-/* Override the white-background print rules for dark themes */
+/* Override the white-background print rules for dark/htb themes */
 @media print {
     [data-theme="dark"] body,
     [data-theme="dark"] .cover-page,
@@ -3576,7 +3576,8 @@ button {
     [data-theme="dark"] #summary,
     [data-theme="dark"] #incidents,
     [data-theme="dark"] .main-content,
-    [data-theme="dark"] .preview-container {
+    [data-theme="dark"] .preview-container,
+    [data-theme="dark"] .findings-preview {
         background: #0f172a !important;
         color: #e2e8f0 !important;
     }
@@ -3587,7 +3588,8 @@ button {
     [data-theme="htb"] #summary,
     [data-theme="htb"] #incidents,
     [data-theme="htb"] .main-content,
-    [data-theme="htb"] .preview-container {
+    [data-theme="htb"] .preview-container,
+    [data-theme="htb"] .findings-preview {
         background: #1a2332 !important;
         color: #e2e8f0 !important;
     }
@@ -4479,3 +4481,44 @@ button {
 }
 [data-theme="htb"] ::-webkit-scrollbar-thumb { background: #2d3f55 !important; }
 [data-theme="htb"] ::-webkit-scrollbar-thumb:hover { background: #3d5570 !important; }
+
+/* ==================== FINDING CARDS — COMPREHENSIVE PRINT BACKGROUNDS ==================== */
+/* Must be LAST in the file so these @media print rules win the cascade over the gradient
+   screen rules above (same specificity + !important → later declaration order wins). */
+@media print {
+    /* Force background rendering on finding cards */
+    .finding-preview {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* LIGHT THEME (no data-theme attribute) — flat light background, overrides gradients */
+    .finding-preview,
+    .finding-preview.severity-crit,
+    .finding-preview.severity-high,
+    .finding-preview.severity-med,
+    .finding-preview.severity-low,
+    .finding-preview.severity-info {
+        background: #f9fafb !important;
+    }
+
+    /* DARK THEME — flat dark background, overrides gradients */
+    [data-theme="dark"] .finding-preview,
+    [data-theme="dark"] .finding-preview.severity-crit,
+    [data-theme="dark"] .finding-preview.severity-high,
+    [data-theme="dark"] .finding-preview.severity-med,
+    [data-theme="dark"] .finding-preview.severity-low,
+    [data-theme="dark"] .finding-preview.severity-info {
+        background: #1e293b !important;
+    }
+
+    /* HTB THEME — flat dark background, overrides gradients */
+    [data-theme="htb"] .finding-preview,
+    [data-theme="htb"] .finding-preview.severity-crit,
+    [data-theme="htb"] .finding-preview.severity-high,
+    [data-theme="htb"] .finding-preview.severity-med,
+    [data-theme="htb"] .finding-preview.severity-low,
+    [data-theme="htb"] .finding-preview.severity-info {
+        background: #0d1117 !important;
+    }
+}

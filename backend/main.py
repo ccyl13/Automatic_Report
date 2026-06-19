@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -27,12 +27,30 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# URL base interna que usa el backend para renderizar PDFs con Playwright.
+# Se fija desde el servidor (no desde el header Host de la petición) para evitar
+# SSRF: el destino que visita el navegador headless nunca debe ser controlable
+# por el atacante. Configurable vía APP_BASE_URL (run.py lo ajusta al puerto real).
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+
+# Orígenes permitidos para CORS. Lista explícita (separada por comas en
+# ALLOWED_ORIGINS) en lugar de wildcard: "*" junto a allow_credentials=True
+# viola la especificación CORS y abre la API a cualquier dominio.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar el origen exacto
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
@@ -190,7 +208,6 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
 @app.get("/api/reports/{report_id}/pdf")
 async def generate_pdf(
     report_id: int,
-    request: Request,
     db: Session = Depends(get_db),
     theme: str = "light",
     show_severity_bars: bool = True,
@@ -201,7 +218,11 @@ async def generate_pdf(
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
     try:
-        base_url = str(request.base_url).rstrip("/")
+        # Usamos una URL base fija del servidor (APP_BASE_URL), NUNCA request.base_url:
+        # request.base_url deriva del header Host, controlable por el atacante, lo que
+        # permitiría SSRF (escaneo interno, metadata cloud, etc.) al hacer que el
+        # navegador headless visite un destino arbitrario.
+        base_url = APP_BASE_URL
         target_url = (
             f"{base_url}/?report_id={report_id}&print_mode=true&theme={theme}"
             f"&show_severity_bars={'true' if show_severity_bars else 'false'}"

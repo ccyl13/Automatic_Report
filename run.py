@@ -68,6 +68,12 @@ def main():
 
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.join(os.getcwd(), "backend")
+
+    # URL base interna fija para la generación de PDFs (Playwright). Se ancla a
+    # loopback con el puerto real del servidor para que el backend nunca confíe
+    # en el header Host de la petición (evita SSRF). No sobrescribe un valor
+    # previo de APP_BASE_URL por si se despliega tras un proxy/dominio propio.
+    env.setdefault("APP_BASE_URL", f"http://127.0.0.1:{args.port}")
     
     python_exec = find_venv_python()
     

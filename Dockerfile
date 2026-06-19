@@ -51,6 +51,11 @@ RUN mkdir -p /app/data
 ENV PYTHONPATH=/app/backend
 ENV DATABASE_URL=sqlite:///./data/pentestify.db
 ENV PORT=8000
+# URL base interna fija para la generación de PDFs (Playwright). Anclar a loopback
+# evita el SSRF derivado de confiar en el header Host de la petición.
+ENV APP_BASE_URL=http://127.0.0.1:8000
+# Orígenes CORS permitidos (lista explícita). Ajustar al dominio real en producción.
+ENV ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 
 # Puerto expuesto
 EXPOSE 8000

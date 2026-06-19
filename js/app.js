@@ -1,3 +1,7 @@
+// Versión de la aplicación. Se muestra de forma persistente en la interfaz
+// (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
+const APP_VERSION = '1.0.0';
+
 const state = {
     lang: 'es',
     showSplash: false,
@@ -50,7 +54,23 @@ const state = {
     showPdfModal: false,
     pdfPrintTheme: 'light',
     pdfShowSeverityBars: true,
-    pdfContentWidth: 820
+    pdfContentWidth: 820,
+    // Autenticación
+    authChecked: false,
+    isAuthenticated: false,
+    authUsername: '',
+    loginUsername: '',
+    loginPassword: '',
+    loginError: '',
+    loginLoading: false,
+    showProfile: false,
+    profileError: '',
+    profileSuccess: '',
+    // Página de cuenta / gestión de usuarios
+    isAccountView: false,
+    users: [],
+    userMgmtError: '',
+    userMgmtSuccess: ''
 };
 
 const UI = {
@@ -191,7 +211,37 @@ const UI = {
         logoClient: 'Logo Cliente',
         logoClientAlt: 'Logo Cliente',
         cvssSummaryTitle: 'Resumen de Vulnerabilidades (CVSS)',
-        noFindings: 'No hay hallazgos registrados'
+        noFindings: 'No hay hallazgos registrados',
+        loginTitle: 'Iniciar sesión',
+        loginSubtitle: 'Accede a tu generador de reportes',
+        loginUser: 'Usuario',
+        loginPass: 'Contraseña',
+        loginBtn: 'Entrar',
+        loginLoading: 'Entrando...',
+        defaultCredentials: 'Credenciales por defecto',
+        profile: 'Perfil',
+        logout: 'Cerrar sesión',
+        changePassword: 'Cambiar contraseña',
+        currentPassword: 'Contraseña actual',
+        newPassword: 'Nueva contraseña',
+        confirmPassword: 'Confirmar nueva contraseña',
+        savePassword: 'Guardar contraseña',
+        passwordMismatch: 'Las contraseñas no coinciden',
+        passwordChanged: 'Contraseña actualizada correctamente',
+        accountTitle: 'Cuenta y usuarios',
+        accountSubtitle: 'Gestiona tu cuenta y los usuarios del sistema',
+        backToApp: 'Volver a la aplicación',
+        signedInAs: 'Sesión iniciada como',
+        manageUsers: 'Gestión de usuarios',
+        existingUsers: 'Usuarios existentes',
+        createUser: 'Crear nuevo usuario',
+        createUserBtn: 'Crear usuario',
+        userCreated: 'Usuario creado correctamente',
+        userDeleted: 'Usuario eliminado correctamente',
+        deleteLabel: 'Eliminar',
+        youLabel: 'tú',
+        noUsers: 'No hay usuarios registrados',
+        confirmDeleteUser: '¿Eliminar al usuario'
     },
     en: {
         appTitle: 'Pentestify',
@@ -330,7 +380,37 @@ const UI = {
         logoClient: 'Client Logo',
         logoClientAlt: 'Client Logo',
         cvssSummaryTitle: 'Vulnerabilities Summary (CVSS)',
-        noFindings: 'No findings registered'
+        noFindings: 'No findings registered',
+        loginTitle: 'Sign in',
+        loginSubtitle: 'Access your report generator',
+        loginUser: 'Username',
+        loginPass: 'Password',
+        loginBtn: 'Sign in',
+        loginLoading: 'Signing in...',
+        defaultCredentials: 'Default credentials',
+        profile: 'Profile',
+        logout: 'Log out',
+        changePassword: 'Change password',
+        currentPassword: 'Current password',
+        newPassword: 'New password',
+        confirmPassword: 'Confirm new password',
+        savePassword: 'Save password',
+        passwordMismatch: 'Passwords do not match',
+        passwordChanged: 'Password updated successfully',
+        accountTitle: 'Account & users',
+        accountSubtitle: 'Manage your account and system users',
+        backToApp: 'Back to the app',
+        signedInAs: 'Signed in as',
+        manageUsers: 'User management',
+        existingUsers: 'Existing users',
+        createUser: 'Create new user',
+        createUserBtn: 'Create user',
+        userCreated: 'User created successfully',
+        userDeleted: 'User deleted successfully',
+        deleteLabel: 'Delete',
+        youLabel: 'you',
+        noUsers: 'No users registered',
+        confirmDeleteUser: 'Delete user'
     }
 };
 
@@ -418,13 +498,41 @@ const API = {
         const url = `${this.baseUrl}${endpoint}`;
         const options = {
             method,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'  // envía la cookie de sesión (mismo origen)
         };
         if (data) options.body = JSON.stringify(data);
 
         const response = await fetch(url, options);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (response.status === 401) {
+            handleUnauthorized();
+            throw new Error('HTTP 401');
+        }
+        if (!response.ok) {
+            // Intentamos extraer el mensaje de error del backend (FastAPI: { detail }).
+            let detail = `HTTP ${response.status}`;
+            try {
+                const body = await response.json();
+                if (body && typeof body.detail === 'string') detail = body.detail;
+            } catch (e) { /* respuesta sin cuerpo JSON */ }
+            const error = new Error(detail);
+            error.status = response.status;
+            throw error;
+        }
         return response.json();
+    },
+
+    auth: {
+        login: (data) => API.request('POST', '/api/auth/login', data),
+        logout: () => API.request('POST', '/api/auth/logout'),
+        me: () => API.request('GET', '/api/auth/me'),
+        changePassword: (data) => API.request('POST', '/api/auth/change-password', data)
+    },
+
+    users: {
+        list: () => API.request('GET', '/api/users'),
+        create: (data) => API.request('POST', '/api/users', data),
+        delete: (id) => API.request('DELETE', `/api/users/${id}`)
     },
 
     reports: {
@@ -481,6 +589,7 @@ function renderNavbar() {
         <header class="navbar">
             <div class="navbar-brand">
                 <img src="/assets/logo-transparent.png" alt="Pentestify" style="height: 38px; width: 38px; object-fit: contain; flex-shrink: 0;">
+                <span class="app-version-badge">v${APP_VERSION}</span>
                 ${state.isDirty ? '<span class="dirty-indicator">•</span>' : ''}
             </div>
             
@@ -496,6 +605,9 @@ function renderNavbar() {
                 </button>
                 <button class="settings-btn" onclick="openSettings()" title="${state.lang === 'es' ? 'Ajustes' : 'Settings'}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button class="settings-btn" onclick="openProfile()" title="${UI[state.lang].profile}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </button>
             </div>
         </header>
@@ -1751,8 +1863,177 @@ function renderPdfPreviewHtml(previewTheme, showBars, contentWidth) {
         </div>`;
 }
 
+function renderLogin() {
+    const t = UI[state.lang];
+    return `
+        <div class="login-screen">
+            <div class="login-card">
+                <div class="login-brand">
+                    <img src="/assets/logo-transparent.png" alt="Pentestify">
+                    <div>
+                        <h1>${t.appTitle}</h1>
+                        <p>${t.loginSubtitle}</p>
+                    </div>
+                </div>
+
+                <form onsubmit="doLogin(event)" autocomplete="on">
+                    <label class="login-label">${t.loginUser}</label>
+                    <input type="text" id="loginUsername" class="login-input" autocomplete="username"
+                           value="${escapeHTML(state.loginUsername)}" oninput="state.loginUsername = this.value" autofocus>
+
+                    <label class="login-label">${t.loginPass}</label>
+                    <input type="password" id="loginPassword" class="login-input" autocomplete="current-password"
+                           value="${escapeHTML(state.loginPassword)}" oninput="state.loginPassword = this.value">
+
+                    ${state.loginError ? `<div class="login-error">${escapeHTML(state.loginError)}</div>` : ''}
+
+                    <button type="submit" class="login-btn" ${state.loginLoading ? 'disabled' : ''}>
+                        ${state.loginLoading ? t.loginLoading : t.loginBtn}
+                    </button>
+                </form>
+
+                <div class="login-default-creds">
+                    <span class="login-default-creds__label">${t.defaultCredentials}</span>
+                    <code>admin</code> / <code>admin</code>
+                </div>
+
+                <div class="login-version">v${APP_VERSION}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderAccountPage() {
+    const t = UI[state.lang];
+
+    const userRows = state.users.length
+        ? state.users.map(u => {
+            const isSelf = u.username === state.authUsername;
+            return `
+                <div class="account-user-row">
+                    <div class="account-user-info">
+                        <span class="account-user-avatar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </span>
+                        <span class="account-user-name">${escapeHTML(u.username)}</span>
+                        ${isSelf ? `<span class="account-user-badge">${t.youLabel}</span>` : ''}
+                    </div>
+                    ${isSelf
+                        ? ''
+                        : `<button class="account-user-delete" onclick="deleteUser(${u.id}, '${escapeHTML(u.username).replace(/'/g, "\\'")}')" title="${t.deleteLabel}">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                           </button>`
+                    }
+                </div>`;
+        }).join('')
+        : `<p class="account-empty">${t.noUsers}</p>`;
+
+    return `
+        <div class="account-page">
+            <header class="account-header">
+                <div class="account-header-brand">
+                    <img src="/assets/logo-transparent.png" alt="Pentestify">
+                    <div>
+                        <h1>${t.accountTitle}</h1>
+                        <p>${t.accountSubtitle}</p>
+                    </div>
+                </div>
+                <div class="account-header-actions">
+                    <a class="account-back-btn" href="/">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        ${t.backToApp}
+                    </a>
+                    <button class="profile-logout-btn" onclick="doLogout()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        ${t.logout}
+                    </button>
+                </div>
+            </header>
+
+            <div class="account-container">
+                <div class="account-card">
+                    <div class="account-signed-in">
+                        <span class="account-user-avatar account-user-avatar--lg">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </span>
+                        <div>
+                            <span class="account-signed-in-label">${t.signedInAs}</span>
+                            <strong>${escapeHTML(state.authUsername)}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="account-grid">
+                    <div class="account-card">
+                        <h2 class="account-section-title">${t.changePassword}</h2>
+                        <form onsubmit="doChangePassword(event)" class="profile-form">
+                            <label class="login-label">${t.currentPassword}</label>
+                            <input type="password" id="currentPassword" class="login-input" autocomplete="current-password">
+
+                            <label class="login-label">${t.newPassword}</label>
+                            <input type="password" id="newPassword" class="login-input" autocomplete="new-password">
+
+                            <label class="login-label">${t.confirmPassword}</label>
+                            <input type="password" id="confirmPassword" class="login-input" autocomplete="new-password">
+
+                            ${state.profileError ? `<div class="login-error">${escapeHTML(state.profileError)}</div>` : ''}
+                            ${state.profileSuccess ? `<div class="login-success">${escapeHTML(state.profileSuccess)}</div>` : ''}
+
+                            <button type="submit" class="login-btn" style="margin-top:0.85rem;">${t.savePassword}</button>
+                        </form>
+                    </div>
+
+                    <div class="account-card">
+                        <h2 class="account-section-title">${t.manageUsers}</h2>
+
+                        <p class="account-subsection-title">${t.existingUsers}</p>
+                        <div class="account-user-list">
+                            ${userRows}
+                        </div>
+
+                        <div class="account-divider"></div>
+
+                        <p class="account-subsection-title">${t.createUser}</p>
+                        <form onsubmit="createUser(event)">
+                            <label class="login-label">${t.loginUser}</label>
+                            <input type="text" id="newUserName" class="login-input" autocomplete="off">
+
+                            <label class="login-label">${t.loginPass}</label>
+                            <input type="password" id="newUserPassword" class="login-input" autocomplete="new-password">
+
+                            ${state.userMgmtError ? `<div class="login-error">${escapeHTML(state.userMgmtError)}</div>` : ''}
+                            ${state.userMgmtSuccess ? `<div class="login-success">${escapeHTML(state.userMgmtSuccess)}</div>` : ''}
+
+                            <button type="submit" class="login-btn" style="margin-top:0.85rem;">${t.createUserBtn}</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderApp() {
     const app = $('#app');
+
+    // Mientras no se haya comprobado la sesión, no pintamos nada (evita parpadeo
+    // del login antes de validar la cookie existente).
+    if (!state.authChecked) {
+        app.innerHTML = '';
+        return;
+    }
+
+    // Puerta de autenticación: sin sesión válida sólo se muestra el login.
+    if (!state.isAuthenticated) {
+        app.innerHTML = renderLogin();
+        return;
+    }
+
+    // Página de cuenta / gestión de usuarios (se abre en pestaña nueva con ?account=1).
+    if (state.isAccountView) {
+        app.innerHTML = renderAccountPage();
+        return;
+    }
 
     app.innerHTML = `
         ${renderSplashScreen()}
@@ -1766,6 +2047,155 @@ function renderApp() {
         ${renderDemoModal()}
         ${renderPdfModal()}
     `;
+}
+
+// --------------------------------------------------------------------------- //
+// Handlers de autenticación
+// --------------------------------------------------------------------------- //
+async function doLogin(event) {
+    if (event) event.preventDefault();
+    if (state.loginLoading) return;
+    const t = UI[state.lang];
+
+    state.loginError = '';
+    state.loginLoading = true;
+    renderApp();
+
+    try {
+        const result = await API.auth.login({
+            username: state.loginUsername,
+            password: state.loginPassword
+        });
+        state.isAuthenticated = true;
+        state.authUsername = result.username;
+        state.loginPassword = '';
+        state.loginError = '';
+        // Si se inició sesión directamente en la página de cuenta, cargamos usuarios.
+        if (state.isAccountView) {
+            await loadUsers();
+        }
+    } catch (err) {
+        state.loginError = (state.lang === 'es'
+            ? 'Usuario o contraseña incorrectos'
+            : 'Invalid username or password');
+    } finally {
+        state.loginLoading = false;
+        renderApp();
+    }
+}
+
+async function doLogout() {
+    try {
+        await API.auth.logout();
+    } catch (e) { /* la cookie se limpia igualmente */ }
+    state.isAuthenticated = false;
+    state.showProfile = false;
+    state.authUsername = '';
+    state.loginUsername = '';
+    state.loginPassword = '';
+    renderApp();
+}
+
+// El perfil ahora vive en una página propia que se abre en una pestaña nueva.
+function openProfile() {
+    window.open('/?account=1', '_blank');
+}
+
+// --------------------------------------------------------------------------- //
+// Gestión de usuarios (página de cuenta)
+// --------------------------------------------------------------------------- //
+async function loadUsers() {
+    try {
+        state.users = await API.users.list();
+    } catch (e) {
+        state.users = [];
+    }
+}
+
+async function createUser(event) {
+    if (event) event.preventDefault();
+    const username = (($('#newUserName') || {}).value || '').trim();
+    const password = ($('#newUserPassword') || {}).value || '';
+
+    state.userMgmtError = '';
+    state.userMgmtSuccess = '';
+
+    try {
+        await API.users.create({ username, password });
+        state.userMgmtSuccess = UI[state.lang].userCreated;
+        await loadUsers();
+    } catch (err) {
+        state.userMgmtError = err.message && !err.message.startsWith('HTTP ')
+            ? err.message
+            : (state.lang === 'es' ? 'No se pudo crear el usuario' : 'Could not create user');
+    }
+    renderApp();
+}
+
+async function deleteUser(userId, username) {
+    const t = UI[state.lang];
+    if (!confirm(`${t.confirmDeleteUser} "${username}"?`)) return;
+
+    state.userMgmtError = '';
+    state.userMgmtSuccess = '';
+
+    try {
+        await API.users.delete(userId);
+        state.userMgmtSuccess = t.userDeleted;
+        await loadUsers();
+    } catch (err) {
+        state.userMgmtError = err.message && !err.message.startsWith('HTTP ')
+            ? err.message
+            : (state.lang === 'es' ? 'No se pudo eliminar el usuario' : 'Could not delete user');
+    }
+    renderApp();
+}
+
+async function doChangePassword(event) {
+    if (event) event.preventDefault();
+    const t = UI[state.lang];
+    const current = ($('#currentPassword') || {}).value || '';
+    const next = ($('#newPassword') || {}).value || '';
+    const confirm = ($('#confirmPassword') || {}).value || '';
+
+    state.profileError = '';
+    state.profileSuccess = '';
+
+    if (next !== confirm) {
+        state.profileError = t.passwordMismatch;
+        renderApp();
+        return;
+    }
+
+    try {
+        const result = await API.auth.changePassword({
+            current_password: current,
+            new_password: next
+        });
+        state.profileSuccess = t.passwordChanged;
+        state.authUsername = result.username;
+        // Limpiamos los campos del formulario tras el éxito.
+        ['#currentPassword', '#newPassword', '#confirmPassword'].forEach(id => {
+            const el = $(id);
+            if (el) el.value = '';
+        });
+    } catch (err) {
+        // El backend devuelve mensajes específicos en err.message (detail de FastAPI).
+        state.profileError = err.message && !err.message.startsWith('HTTP ')
+            ? err.message
+            : (state.lang === 'es' ? 'No se pudo cambiar la contraseña' : 'Could not change password');
+    }
+    renderApp();
+}
+
+// El backend cierra la sesión devolviendo 401: limpiamos el estado y mostramos login.
+function handleUnauthorized() {
+    if (state.isAuthenticated) {
+        state.isAuthenticated = false;
+        state.showProfile = false;
+        state.authChecked = true;
+        renderApp();
+    }
 }
 
 function enterApp() {
@@ -2378,6 +2808,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const themeParam = params.get('theme');
     if (printMode === 'true' && reportId) {
+        // En modo impresión (Playwright) la autenticación viaja en la cookie de
+        // sesión inyectada por el backend; saltamos la pantalla de login.
+        state.authChecked = true;
+        state.isAuthenticated = true;
         state.activeTab = 'preview';
         state.currentReportId = parseInt(reportId);
         if (themeParam === 'dark') {
@@ -2427,6 +2861,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         renderApp();
     } else {
+        // Modo normal: comprobamos si ya hay una sesión válida (cookie) antes de
+        // decidir entre mostrar el login o la aplicación.
+        const accountParam = params.get('account');
+        state.isAccountView = accountParam === '1' || accountParam === 'true';
+
+        try {
+            const me = await API.auth.me();
+            state.isAuthenticated = true;
+            state.authUsername = me.username;
+            // En la página de cuenta cargamos la lista de usuarios.
+            if (state.isAccountView) {
+                await loadUsers();
+            }
+        } catch (e) {
+            state.isAuthenticated = false;
+        }
+        state.authChecked = true;
         renderApp();
     }
 });

@@ -9,8 +9,8 @@ import tempfile
 import shutil
 from datetime import datetime
 from playwright.async_api import async_playwright
-import models, schemas, database
-from database import engine, get_db, db_path
+import models, schemas, database, auth
+from database import engine, get_db, db_path, SessionLocal
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if not os.path.exists(os.path.join(BASE_DIR, "index.html")):
@@ -20,6 +20,13 @@ models.Base.metadata.create_all(bind=engine)
 
 from migrations import run_migrations
 run_migrations(engine)
+
+# Sembrar el usuario administrador por defecto (admin/admin) en el primer arranque.
+_seed_db = SessionLocal()
+try:
+    auth.get_or_create_default_user(_seed_db)
+finally:
+    _seed_db.close()
 
 app = FastAPI(
     title="Pentestify API",
@@ -78,8 +85,115 @@ def root():
     return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
 
+# --------------------------------------------------------------------------- #
+# Autenticación
+# --------------------------------------------------------------------------- #
+def _auth_response(user: models.User, message: str = None) -> JSONResponse:
+    token = auth.create_token(user)
+    content = {"token": token, "username": user.username}
+    if message:
+        content["message"] = message
+    response = JSONResponse(content=content)
+    response.set_cookie(
+        key=auth.COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=auth.TOKEN_TTL,
+    )
+    return response
+
+
+@app.post("/api/auth/login")
+def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == credentials.username).first()
+    if not user or not auth.verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    return _auth_response(user)
+
+
+@app.post("/api/auth/logout")
+def logout():
+    response = JSONResponse(content={"message": "Sesión cerrada"})
+    response.delete_cookie(auth.COOKIE_NAME)
+    return response
+
+
+@app.get("/api/auth/me")
+def get_me(user: models.User = Depends(auth.require_auth)):
+    return {"username": user.username}
+
+
+@app.post("/api/auth/change-password")
+def change_password(
+    payload: schemas.ChangePasswordRequest,
+    user: models.User = Depends(auth.require_auth),
+    db: Session = Depends(get_db),
+):
+    if not auth.verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+    if len(payload.new_password) < 4:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 4 caracteres")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe ser distinta de la actual")
+
+    user.password_hash = auth.hash_password(payload.new_password)
+    db.commit()
+    db.refresh(user)
+    # Al cambiar la contraseña se invalidan los tokens previos; emitimos uno nuevo.
+    return _auth_response(user, message="Contraseña actualizada correctamente")
+
+
+# --------------------------------------------------------------------------- #
+# Gestión de usuarios
+# --------------------------------------------------------------------------- #
+@app.get("/api/users", response_model=List[schemas.UserInfo])
+def list_users(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    return db.query(models.User).order_by(models.User.id).all()
+
+
+@app.post("/api/users", response_model=schemas.UserInfo)
+def create_user(
+    payload: schemas.CreateUserRequest,
+    db: Session = Depends(get_db),
+    _user: models.User = Depends(auth.require_auth),
+):
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="El nombre de usuario no puede estar vacío")
+    if len(payload.password) < 4:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+    if db.query(models.User).filter(models.User.username == username).first():
+        raise HTTPException(status_code=400, detail="Ya existe un usuario con ese nombre")
+
+    user = models.User(username=username, password_hash=auth.hash_password(payload.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_auth),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propio usuario mientras estás conectado")
+    if db.query(models.User).count() <= 1:
+        raise HTTPException(status_code=400, detail="Debe existir al menos un usuario")
+
+    db.delete(user)
+    db.commit()
+    return {"message": "Usuario eliminado correctamente"}
+
+
 @app.get("/api/reports", response_model=List[schemas.ReportList])
-def get_reports(db: Session = Depends(get_db)):
+def get_reports(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     reports = db.query(models.Report).all()
     result = []
     for report in reports:
@@ -91,7 +205,7 @@ def get_reports(db: Session = Depends(get_db)):
 
 
 @app.get("/api/reports/{report_id}", response_model=schemas.ReportResponse)
-def get_report(report_id: int, db: Session = Depends(get_db)):
+def get_report(report_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -99,7 +213,7 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/reports", response_model=schemas.ReportResponse)
-def create_report(report: schemas.ReportCreate, db: Session = Depends(get_db)):
+def create_report(report: schemas.ReportCreate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     db_report = models.Report(**report.dict())
     db.add(db_report)
     db.commit()
@@ -108,7 +222,7 @@ def create_report(report: schemas.ReportCreate, db: Session = Depends(get_db)):
 
 
 @app.put("/api/reports/{report_id}", response_model=schemas.ReportResponse)
-def update_report(report_id: int, report: schemas.ReportUpdate, db: Session = Depends(get_db)):
+def update_report(report_id: int, report: schemas.ReportUpdate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not db_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -122,7 +236,7 @@ def update_report(report_id: int, report: schemas.ReportUpdate, db: Session = De
 
 
 @app.delete("/api/reports/{report_id}")
-def delete_report(report_id: int, db: Session = Depends(get_db)):
+def delete_report(report_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     db_report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not db_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -133,7 +247,7 @@ def delete_report(report_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/reports/{report_id}/findings", response_model=List[schemas.FindingResponse])
-def get_findings(report_id: int, db: Session = Depends(get_db)):
+def get_findings(report_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     findings = db.query(models.Finding).filter(
         models.Finding.report_id == report_id
     ).order_by(models.Finding.order_index).all()
@@ -141,7 +255,7 @@ def get_findings(report_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/reports/{report_id}/findings", response_model=schemas.FindingResponse)
-def create_finding(report_id: int, finding: schemas.FindingCreate, db: Session = Depends(get_db)):
+def create_finding(report_id: int, finding: schemas.FindingCreate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -158,7 +272,7 @@ def create_finding(report_id: int, finding: schemas.FindingCreate, db: Session =
 
 
 @app.put("/api/findings/{finding_id}", response_model=schemas.FindingResponse)
-def update_finding(finding_id: int, finding: schemas.FindingUpdate, db: Session = Depends(get_db)):
+def update_finding(finding_id: int, finding: schemas.FindingUpdate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     db_finding = db.query(models.Finding).filter(models.Finding.id == finding_id).first()
     if not db_finding:
         raise HTTPException(status_code=404, detail="Hallazgo no encontrado")
@@ -172,7 +286,7 @@ def update_finding(finding_id: int, finding: schemas.FindingUpdate, db: Session 
 
 
 @app.delete("/api/findings/{finding_id}")
-def delete_finding(finding_id: int, db: Session = Depends(get_db)):
+def delete_finding(finding_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     db_finding = db.query(models.Finding).filter(models.Finding.id == finding_id).first()
     if not db_finding:
         raise HTTPException(status_code=404, detail="Hallazgo no encontrado")
@@ -193,7 +307,7 @@ def delete_finding(finding_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/reports/{report_id}/findings/reorder")
-def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depends(get_db)):
+def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     for idx, finding_id in enumerate(finding_ids):
         finding = db.query(models.Finding).filter(
             models.Finding.id == finding_id,
@@ -209,6 +323,7 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
 async def generate_pdf(
     report_id: int,
     db: Session = Depends(get_db),
+    user: models.User = Depends(auth.require_auth),
     theme: str = "light",
     show_severity_bars: bool = True,
     content_width: int = 820,
@@ -247,7 +362,19 @@ async def generate_pdf(
                     )
                 raise
             # Set viewport height to match A4 paper (~1123px at 96dpi) so min-height:100vh fills one page
-            page = await browser.new_page(viewport={"width": 1280, "height": 1123})
+            context = await browser.new_context(viewport={"width": 1280, "height": 1123})
+
+            # Inyectamos la cookie de sesión del usuario autenticado para que la
+            # página en modo impresión pueda consultar la API protegida (que ahora
+            # requiere autenticación). El token es de un solo uso de facto: vive
+            # sólo durante la generación del PDF.
+            await context.add_cookies([{
+                "name": auth.COOKIE_NAME,
+                "value": auth.create_token(user),
+                "url": base_url,
+            }])
+
+            page = await context.new_page()
 
             await page.goto(target_url, wait_until="networkidle")
 
@@ -362,7 +489,7 @@ async def generate_pdf(
 
 
 @app.post("/api/demo/create")
-def create_demo_report(db: Session = Depends(get_db)):
+def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     import base64
 
     demo_dir = os.path.join(BASE_DIR, "demo")
@@ -506,7 +633,7 @@ def create_demo_report(db: Session = Depends(get_db)):
 
 
 @app.get("/api/database/export")
-def export_database():
+def export_database(_user: models.User = Depends(auth.require_auth)):
     if not os.path.exists(db_path):
         raise HTTPException(status_code=404, detail="Base de datos no encontrada")
     
@@ -521,7 +648,7 @@ def export_database():
 
 
 @app.post("/api/database/import")
-def import_database(file: UploadFile = File(...), db: Session = Depends(get_db)):
+def import_database(file: UploadFile = File(...), db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
     if not file.filename.endswith('.db'):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .db")
     

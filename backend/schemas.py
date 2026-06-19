@@ -3,6 +3,36 @@ from typing import List, Optional
 from datetime import datetime
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    username: str
+    message: Optional[str] = None
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class FindingBase(BaseModel):
     template_key: str = "custom"
     title: str

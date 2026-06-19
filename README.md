@@ -20,6 +20,10 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
+<p align="center">
+  <strong>Versión actual: 1.0.0</strong>
+</p>
+
 ## 👥 Autores
 
 <br>

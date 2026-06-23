@@ -31,7 +31,7 @@ finally:
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 # URL base interna que usa el backend para renderizar PDFs con Playwright.
@@ -77,7 +77,7 @@ app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "1.0.0"}
+    return {"message": "Pentestify API", "version": "1.1.0"}
 
 
 @app.get("/")
@@ -663,19 +663,42 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
             shutil.copyfileobj(file.file, buffer)
         
         import sqlite3
+        import json
         try:
             conn = sqlite3.connect(temp_path)
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
-            conn.close()
-            
+
             required_tables = {'reports', 'findings'}
             if not required_tables.issubset(set(tables)):
+                conn.close()
                 raise HTTPException(
-                    status_code=400, 
+                    status_code=400,
                     detail=f"La base de datos no tiene las tablas requeridas. Tablas encontradas: {tables}"
                 )
+
+            # El .db importado no pasa por los schemas, así que saneamos aquí
+            # client_logo/images para no almacenar URLs que provoquen SSRF o XSS.
+            def _sanitize_json_column(table, column, keep_slots):
+                cursor.execute(f"SELECT id, {column} FROM {table}")
+                for row_id, raw in cursor.fetchall():
+                    try:
+                        values = json.loads(raw) if raw else []
+                    except (TypeError, ValueError):
+                        values = []
+                    if not isinstance(values, list):
+                        values = []
+                    cleaned = schemas.sanitize_image_list(values, keep_slots=keep_slots)
+                    cursor.execute(
+                        f"UPDATE {table} SET {column} = ? WHERE id = ?",
+                        (json.dumps(cleaned), row_id),
+                    )
+
+            _sanitize_json_column("reports", "client_logo", keep_slots=True)
+            _sanitize_json_column("findings", "images", keep_slots=False)
+            conn.commit()
+            conn.close()
         except sqlite3.Error as e:
             raise HTTPException(status_code=400, detail=f"Archivo no es una base de datos SQLite válida: {str(e)}")
         

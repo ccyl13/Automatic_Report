@@ -1,6 +1,26 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 from datetime import datetime
+import re
+
+
+# Logos y evidencias solo pueden ser data URLs de imagen. Cualquier URL remota
+# se rechaza para evitar SSRF al generar el PDF y XSS al romper el atributo src.
+_DATA_IMAGE_RE = re.compile(r'^data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+$')
+
+
+def is_safe_image_src(value) -> bool:
+    return isinstance(value, str) and bool(_DATA_IMAGE_RE.match(value.strip()))
+
+
+def sanitize_image_list(values, keep_slots: bool = False) -> List[str]:
+    cleaned: List[str] = []
+    for v in (values or []):
+        if v == '' or is_safe_image_src(v):
+            cleaned.append(v)
+        elif keep_slots:
+            cleaned.append('')
+    return cleaned
 
 
 class LoginRequest(BaseModel):
@@ -48,6 +68,11 @@ class FindingBase(BaseModel):
     images: List[str] = []
     order_index: int = 0
 
+    @field_validator('images')
+    @classmethod
+    def _sanitize_images(cls, v):
+        return sanitize_image_list(v)
+
 
 class FindingCreate(FindingBase):
     pass
@@ -88,6 +113,11 @@ class ReportBase(BaseModel):
     audit_summary: str = ""
     tests_performed: str = ""
     recommended_solutions: str = ""
+
+    @field_validator('client_logo')
+    @classmethod
+    def _sanitize_client_logo(cls, v):
+        return sanitize_image_list(v, keep_slots=True)
 
 
 class ReportCreate(ReportBase):

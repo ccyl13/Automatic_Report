@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 const state = {
     lang: 'es',
@@ -718,7 +718,7 @@ function renderEditor() {
                         <div class="image-preview-container">
                             ${state.currentFinding.images.map((img, idx) => `
                                 <div class="image-preview-item">
-                                    <img src="${img}" alt="Evidencia ${idx + 1}">
+                                    <img src="${escapeHTML(img)}" alt="Evidencia ${idx + 1}">
                                     <button type="button" class="image-remove-btn" onclick="removeImage(${idx})">×</button>
                                 </div>
                             `).join('')}
@@ -796,7 +796,7 @@ function renderAuditData() {
                     <input type="file" accept="image/*" onchange="handleClientLogoUpload(event, 0)">
                     ${d.clientLogo[0] ? `
                         <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <img src="${d.clientLogo[0]}" alt="Logo 1" style="height: 40px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                            <img src="${escapeHTML(d.clientLogo[0])}" alt="Logo 1" style="height: 40px; border-radius: 4px; border: 1px solid #e5e7eb;">
                             <button type="button" class="btn-sm btn-secondary" onclick="removeClientLogo(0)">×</button>
                         </div>
                     ` : ''}
@@ -806,7 +806,7 @@ function renderAuditData() {
                     <input type="file" accept="image/*" onchange="handleClientLogoUpload(event, 1)">
                     ${d.clientLogo[1] ? `
                         <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <img src="${d.clientLogo[1]}" alt="Logo 2" style="height: 40px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                            <img src="${escapeHTML(d.clientLogo[1])}" alt="Logo 2" style="height: 40px; border-radius: 4px; border: 1px solid #e5e7eb;">
                             <button type="button" class="btn-sm btn-secondary" onclick="removeClientLogo(1)">×</button>
                         </div>
                     ` : ''}
@@ -1110,10 +1110,10 @@ function renderPreview() {
                     <div style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                         ${d.clientLogo[0] || d.clientLogo[1] ? `
                             ${d.clientLogo[0] ? `
-                                <img src="${d.clientLogo[0]}" alt="${t.logoClient} 1" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
+                                <img src="${escapeHTML(d.clientLogo[0])}" alt="${t.logoClient} 1" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                             ` : ''}
                             ${d.clientLogo[1] ? `
-                                <img src="${d.clientLogo[1]}" alt="${t.logoClient} 2" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
+                                <img src="${escapeHTML(d.clientLogo[1])}" alt="${t.logoClient} 2" style="max-height: 200px; width: auto; max-width: 45%; object-fit: contain; display: block; filter: drop-shadow(0 10px 25px rgba(0,0,0,0.08));">
                             ` : ''}
                         ` : htb ? `
                             <div style="display:flex;flex-direction:column;align-items:center;gap:1.25rem;">
@@ -1333,7 +1333,7 @@ function renderPreview() {
                                 <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                                     ${f.images.map((img, imgIdx) => `
                                         <div style="border: 1px solid ${c.border}; border-radius: 8px; overflow: hidden; break-inside: avoid; background: ${c.pageBg}; padding: 0.5rem;">
-                                            <img src="${img}" alt="${t.evidence} ${imgIdx + 1}" style="width: 100%; height: auto; border-radius: 4px; display: block;">
+                                            <img src="${escapeHTML(img)}" alt="${t.evidence} ${imgIdx + 1}" style="width: 100%; height: auto; border-radius: 4px; display: block;">
                                         </div>
                                     `).join('')}
                                 </div>

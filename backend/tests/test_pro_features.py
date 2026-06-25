@@ -42,6 +42,27 @@ class TestThemes:
         data = client.post("/api/themes", json=payload).json()
         assert data["vars"] == {"--rt-pageBg": "#fff"}
 
+    def test_custom_css_saved_and_sanitized(self, client):
+        css = (
+            ".finding-preview h3 { color: #08c; }\n"
+            "@import url(http://evil.com/x.css);\n"
+            ".x { background: url(http://evil.com/p.png); }\n"
+            ".y { background: url(data:image/png;base64,AAA); }\n"
+            "</style><script>alert(1)</script>\n"
+            ".z { behavior: url(#default); width: expression(alert(1)); }"
+        )
+        data = client.post("/api/themes", json={
+            "slug": "css-theme", "name": "CSS", "vars": {}, "custom_css": css
+        }).json()
+        out = data["custom_css"]
+        assert ".finding-preview h3 { color: #08c; }" in out
+        assert "@import" not in out
+        assert "http://evil.com" not in out          # url() externas neutralizadas
+        assert "data:image/png;base64,AAA" in out     # data: se conserva
+        assert "<" not in out and ">" not in out      # sin etiquetas HTML
+        assert "expression(" not in out
+        assert "behavior:" not in out
+
     def test_upsert_same_slug(self, client):
         client.post("/api/themes", json={"slug": "t1", "name": "A", "vars": {}})
         client.post("/api/themes", json={"slug": "t1", "name": "B", "vars": {"--rt-pageBg": "#111"}})

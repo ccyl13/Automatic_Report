@@ -246,11 +246,39 @@ def _sanitize_theme_vars(vars_dict) -> dict:
     return clean
 
 
+def sanitize_css_source(css) -> str:
+    """Sanea CSS libre escrito por el usuario antes de inyectarlo en un <style>.
+
+    Elimina lo que permitiría romper el <style>, inyectar HTML/JS o hacer
+    peticiones externas (SSRF al imprimir): etiquetas, @import, expression(),
+    javascript:, behavior y url() que no sean data: o fragmentos locales.
+    """
+    if not isinstance(css, str):
+        return ''
+    css = css[:8000]
+    # Nada de etiquetas HTML ni cierre de <style>.
+    css = css.replace('<', '').replace('>', '')
+    # Construcciones peligrosas fuera.
+    css = re.sub(r'@import[^;]*;?', '', css, flags=re.IGNORECASE)
+    css = re.sub(r'expression\s*\([^)]*\)', '', css, flags=re.IGNORECASE)
+    css = re.sub(r'(javascript|vbscript)\s*:', '', css, flags=re.IGNORECASE)
+    css = re.sub(r'-moz-binding\s*:[^;]*;?', '', css, flags=re.IGNORECASE)
+    css = re.sub(r'behavior\s*:[^;]*;?', '', css, flags=re.IGNORECASE)
+
+    # url(...) sólo se permite con data: o fragmentos (#id); el resto -> none.
+    def _url(m):
+        inner = m.group(1).strip().strip('\'"').lower()
+        return m.group(0) if (inner.startswith('data:') or inner.startswith('#')) else 'none'
+    css = re.sub(r'url\(([^)]*)\)', _url, css, flags=re.IGNORECASE)
+    return css
+
+
 class ThemeBase(BaseModel):
     slug: str
     name: str
     base: str = "light"
     vars: dict = {}
+    custom_css: str = ""
 
     @field_validator('slug')
     @classmethod
@@ -269,6 +297,11 @@ class ThemeBase(BaseModel):
     @classmethod
     def _clean_vars(cls, v):
         return _sanitize_theme_vars(v)
+
+    @field_validator('custom_css')
+    @classmethod
+    def _clean_css(cls, v):
+        return sanitize_css_source(v)
 
 
 class ThemeCreate(ThemeBase):

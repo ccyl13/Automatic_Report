@@ -1319,7 +1319,7 @@ function listAllThemes() {
         builtin: true
     }));
     const customs = (state.customThemes || []).map(t => ({
-        id: t.id, slug: t.slug, name: t.name, base: t.base, vars: t.vars, builtin: false
+        id: t.id, slug: t.slug, name: t.name, base: t.base, vars: t.vars, custom_css: t.custom_css || '', builtin: false
     }));
     return [...builtins, ...customs];
 }
@@ -1332,7 +1332,12 @@ function injectThemeStyles() {
         css += `[data-rt-theme="${slug}"]{${decls}}\n`;
     };
     Object.keys(BUILTIN_THEMES).forEach(slug => emit(slug, BUILTIN_THEMES[slug]));
-    (state.customThemes || []).forEach(t => emit(t.slug, resolveThemePalette(t.slug)));
+    (state.customThemes || []).forEach(t => {
+        emit(t.slug, resolveThemePalette(t.slug));
+        // CSS libre del usuario (control total): se acota a ESTE tema mediante
+        // anidamiento CSS, de modo que sus reglas solo afectan a su informe.
+        if (t.custom_css) css += `\n[data-rt-theme="${t.slug}"]{\n${t.custom_css}\n}\n`;
+    });
 
     let styleEl = document.getElementById('rt-theme-styles');
     if (!styleEl) {
@@ -1385,6 +1390,24 @@ function uniqueThemeSlug(name) {
     return `${base}-${i}`;
 }
 
+// Serializa las variables del tema a CSS legible (una declaración por línea).
+function serializeThemeVars(vars) {
+    return THEME_KEYS.map(k => `${cssVarName(k)}: ${vars[k] || ''};`).join('\n');
+}
+
+// Parsea texto CSS "--rt-key: value;" en un mapa de variables conocidas.
+function parseThemeVars(text) {
+    const out = {};
+    (text || '').split(/[;\n]/).forEach(line => {
+        const m = line.match(/^\s*(--rt-[a-zA-Z0-9-]+)\s*:\s*(.+?)\s*$/);
+        if (m) {
+            const key = m[1].slice(5);
+            if (THEME_KEYS.includes(key)) out[key] = m[2].trim();
+        }
+    });
+    return out;
+}
+
 // --- Gestor de temas (crear / editar / aplicar / exportar / importar) ---
 function openThemeEditor(slug) {
     // slug null => crear nuevo (a partir de 'light'); slug existente => editar.
@@ -1398,6 +1421,8 @@ function openThemeEditor(slug) {
         name: editing ? editing.name : '',
         base: baseSlug,
         vars: { ...palette },
+        customCss: editing ? (editing.custom_css || '') : '',
+        mode: 'visual',          // 'visual' | 'code'
         isNew: !editing
     };
     state.themeManagerError = '';
@@ -1406,13 +1431,21 @@ function openThemeEditor(slug) {
 
 function closeThemeEditor() {
     state.themeEditor = null;
+    const live = document.getElementById('rt-editor-live');
+    if (live) live.remove();
+    renderApp();
+}
+
+function themeEditorSetMode(mode) {
+    if (!state.themeEditor) return;
+    state.themeEditor.mode = mode;
     renderApp();
 }
 
 function themeEditorSetBase(base) {
     if (!state.themeEditor) return;
     state.themeEditor.base = base;
-    // Al cambiar la base partimos de su paleta (conservando el nombre).
+    // Al cambiar la base partimos de su paleta (conservando el nombre y el CSS libre).
     state.themeEditor.vars = { ...(BUILTIN_THEMES[base] || BUILTIN_THEMES.light) };
     renderApp();
 }
@@ -1420,9 +1453,37 @@ function themeEditorSetBase(base) {
 function themeEditorSetVar(key, value) {
     if (!state.themeEditor) return;
     state.themeEditor.vars[key] = value;
-    // Refresca sólo el panel de vista previa (sin re-render completo) para fluidez.
+    refreshThemeEditorPreview();
+}
+
+// Edición directa de las variables como código CSS.
+function themeEditorSetVarsCode(text) {
+    if (!state.themeEditor) return;
+    const parsed = parseThemeVars(text);
+    // Partimos de la base para que las claves no escritas tengan valor.
+    state.themeEditor.vars = { ...(BUILTIN_THEMES[state.themeEditor.base] || BUILTIN_THEMES.light), ...parsed };
+    refreshThemeEditorPreview();
+}
+
+function themeEditorSetCustomCss(text) {
+    if (!state.themeEditor) return;
+    state.themeEditor.customCss = text;
+    refreshThemeEditorPreview();
+}
+
+// Refresca el panel de vista previa del editor sin re-render completo (fluidez).
+function refreshThemeEditorPreview() {
     const prev = document.getElementById('theme-editor-preview');
     if (prev) prev.outerHTML = renderThemeEditorPreview();
+    // Inyecta CSS libre del editor en vivo para que también se vea su efecto.
+    let live = document.getElementById('rt-editor-live');
+    if (!live) {
+        live = document.createElement('style');
+        live.id = 'rt-editor-live';
+        document.head.appendChild(live);
+    }
+    const ed = state.themeEditor;
+    live.textContent = (ed && ed.customCss) ? `[data-rt-theme="${ed.slug || '__rtedit'}"]{\n${ed.customCss}\n}` : '';
 }
 
 async function saveThemeFromEditor() {
@@ -1442,8 +1503,10 @@ async function saveThemeFromEditor() {
     THEME_KEYS.forEach(k => { if (ed.vars[k]) vars[cssVarName(k)] = ed.vars[k]; });
 
     try {
-        await API.themes.create({ slug, name, base: ed.base, vars });
+        await API.themes.create({ slug, name, base: ed.base, vars, custom_css: ed.customCss || '' });
         await loadCustomThemes();
+        const live = document.getElementById('rt-editor-live');
+        if (live) live.remove();
         state.themeEditor = null;
         state.themeManagerSuccess = isEs ? 'Tema guardado' : 'Theme saved';
         setReportTheme(slug);  // aplica y re-renderiza
@@ -1476,7 +1539,8 @@ function exportTheme(slug) {
         pentestify_theme: true,
         name: meta.name,
         base: meta.base || 'light',
-        vars
+        vars,
+        custom_css: meta.custom_css || ''
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1503,7 +1567,7 @@ async function importThemeFile(input) {
         const name = (data.name || 'Tema importado').toString().slice(0, 60);
         const base = ['light', 'dark', 'htb'].includes(data.base) ? data.base : 'light';
         const slug = uniqueThemeSlug(name);
-        await API.themes.create({ slug, name, base, vars: data.vars });
+        await API.themes.create({ slug, name, base, vars: data.vars, custom_css: data.custom_css || '' });
         await loadCustomThemes();
         state.themeManagerSuccess = isEs ? 'Tema importado' : 'Theme imported';
         setReportTheme(slug);
@@ -1722,9 +1786,32 @@ function renderThemeEditorModal() {
             </div>`;
     }).join('');
 
+    const tabBtn = (mode, label) => `
+        <button type="button" onclick="themeEditorSetMode('${mode}')"
+            style="flex:1;padding:0.4rem;border:1px solid var(--border,#e2e8f0);background:${ed.mode === mode ? '#3b82f6' : 'transparent'};color:${ed.mode === mode ? '#fff' : 'inherit'};border-radius:6px;cursor:pointer;font-weight:600;font-size:0.8rem;">${label}</button>`;
+
+    const visualPanel = `<div style="border-top:1px solid var(--border,#e2e8f0);margin:0.5rem 0;"></div>${fieldInputs}`;
+
+    const codePanel = `
+        <div class="form-group" style="margin-bottom:0.75rem;">
+            <label>${isEs ? 'Variables CSS del informe' : 'Report CSS variables'}</label>
+            <textarea spellcheck="false" oninput="themeEditorSetVarsCode(this.value)"
+                style="width:100%;height:200px;font-family:ui-monospace,Menlo,monospace;font-size:0.74rem;line-height:1.5;white-space:pre;overflow-wrap:normal;border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.6rem;background:#0d1117;color:#e2e8f0;">${escapeHTML(serializeThemeVars(ed.vars))}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0.4rem;">
+            <label>${isEs ? 'CSS avanzado (control total)' : 'Advanced CSS (full control)'}</label>
+            <textarea spellcheck="false" placeholder=".finding-preview h3 { letter-spacing:-.02em; }\n.cover-page h1 { text-transform: uppercase; }" oninput="themeEditorSetCustomCss(this.value)"
+                style="width:100%;height:150px;font-family:ui-monospace,Menlo,monospace;font-size:0.74rem;line-height:1.5;white-space:pre;overflow-wrap:normal;border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.6rem;background:#0d1117;color:#e2e8f0;">${escapeHTML(ed.customCss || '')}</textarea>
+        </div>
+        <p style="font-size:0.72rem;color:var(--text-muted,#64748b);line-height:1.5;margin:0 0 0.4rem;">
+            ${isEs
+                ? 'Estas reglas se aplican <b>solo a este tema</b>. Selectores del informe: <code>.cover-page</code>, <code>.index-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>.cvss-summary</code>, <code>h1/h2/h3/h4</code>.'
+                : 'These rules apply <b>only to this theme</b>. Report selectors: <code>.cover-page</code>, <code>.index-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>.cvss-summary</code>, <code>h1/h2/h3/h4</code>.'}
+        </p>`;
+
     return `
         <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeThemeEditor()">
-            <div class="settings-modal" style="width:100%;max-width:760px;display:flex;flex-direction:column;max-height:92vh;" onclick="event.stopPropagation()">
+            <div class="settings-modal" style="width:100%;max-width:820px;display:flex;flex-direction:column;max-height:92vh;" onclick="event.stopPropagation()">
                 <div class="settings-modal-header">
                     <span>${ed.isNew ? (isEs ? 'Nuevo tema de informe' : 'New report theme') : (isEs ? 'Editar tema' : 'Edit theme')}</span>
                     <button class="settings-close-btn" onclick="closeThemeEditor()">
@@ -1732,7 +1819,7 @@ function renderThemeEditorModal() {
                     </button>
                 </div>
                 <div style="display:flex;min-height:0;flex:1;overflow:hidden;">
-                    <div style="width:340px;flex-shrink:0;border-right:1px solid var(--border,#e2e8f0);padding:1.1rem;overflow-y:auto;">
+                    <div style="width:380px;flex-shrink:0;border-right:1px solid var(--border,#e2e8f0);padding:1.1rem;overflow-y:auto;">
                         <div class="form-group" style="margin-bottom:0.75rem;">
                             <label>${isEs ? 'Nombre' : 'Name'}</label>
                             <input type="text" value="${escapeHTML(ed.name)}" oninput="state.themeEditor.name = this.value" placeholder="${isEs ? 'Mi tema corporativo' : 'My corporate theme'}">
@@ -1745,8 +1832,11 @@ function renderThemeEditorModal() {
                                 <option value="htb" ${ed.base === 'htb' ? 'selected' : ''}>HTB</option>
                             </select>
                         </div>
-                        <div style="border-top:1px solid var(--border,#e2e8f0);margin:0.5rem 0;"></div>
-                        ${fieldInputs}
+                        <div style="display:flex;gap:0.4rem;margin-bottom:0.75rem;">
+                            ${tabBtn('visual', isEs ? 'Visual' : 'Visual')}
+                            ${tabBtn('code', isEs ? 'Código (CSS)' : 'Code (CSS)')}
+                        </div>
+                        ${ed.mode === 'code' ? codePanel : visualPanel}
                         ${state.themeManagerError ? `<div class="login-error" style="margin-top:0.75rem;">${escapeHTML(state.themeManagerError)}</div>` : ''}
                         <div style="display:flex;gap:0.5rem;margin-top:1rem;">
                             <button class="btn-primary" style="flex:1;justify-content:center;" onclick="saveThemeFromEditor()">${isEs ? 'Guardar tema' : 'Save theme'}</button>
@@ -2429,11 +2519,7 @@ function renderReportsPage() {
 
 function renderSettingsModal() {
     if (!state.showSettings) return '';
-    const t = UI[state.lang];
-    const isEs  = state.lang === 'es';
-    const isDark = state.reportTheme === 'dark';
-    const isHtb  = state.reportTheme === 'htb';
-    const isLight = state.reportTheme === 'light';
+    const isEs = state.lang === 'es';
 
     return `
         <div class="settings-overlay" onclick="closeSettings()">
@@ -3027,6 +3113,12 @@ async function doLogin(event) {
         state.authUsername = result.username;
         state.loginPassword = '';
         state.loginError = '';
+        // Tras iniciar sesión cargamos los temas personalizados y aplicamos el
+        // tema guardado (la cookie no existía durante el arranque inicial).
+        await loadCustomThemes();
+        const savedTheme = localStorage.getItem('pentestify_theme');
+        state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
+        applyThemeAttributes(state.reportTheme);
         // Si se inició sesión directamente en la página de cuenta, cargamos usuarios.
         if (state.isAccountView) {
             await loadUsers();

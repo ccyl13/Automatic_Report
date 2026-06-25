@@ -3284,11 +3284,13 @@ button {
 .preview-container {
     max-width: 820px;
     margin: 0 auto;
-    background: white;
+    /* El fondo del informe sale de la variable del tema activo (data-rt-theme),
+       de modo que es perfecto en los 3 temas de fábrica y en los personalizados. */
+    background: var(--rt-pageBg, white);
     padding: 3.5rem;
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 20px 60px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--rt-border, rgba(0, 0, 0, 0.05));
 }
 .report-header {
     padding-bottom: 2rem;
@@ -3662,88 +3664,27 @@ button {
 
 
 
-/* ==================== TEMA OSCURO ==================== */
+/* ==================== APARIENCIA DE LA INTERFAZ (oscuro / HTB) ==================== */
+/* El fondo del INFORME lo controlan ahora las variables --rt-* (ver
+   .preview-container). Aquí solo ajustamos el fondo de la aplicación y quitamos
+   la sombra del contenedor en temas con base oscura. */
 [data-theme="dark"] body,
 [data-theme="dark"] .app-wrapper,
 [data-theme="dark"] main,
 [data-theme="dark"] #app {
     background: #0f172a !important;
 }
-[data-theme="dark"] .preview-container {
-    background: #0f172a !important;
-    border-color: #334155 !important;
-    box-shadow: none !important;
-}
-[data-theme="dark"] .preview-container .card {
-    background: #1e293b !important;
-    border-color: #334155 !important;
-}
-
-/* ==================== TEMA HACKTHEBOX ==================== */
 [data-theme="htb"] body,
 [data-theme="htb"] .app-wrapper,
 [data-theme="htb"] main,
 [data-theme="htb"] #app {
     background: #1a2332 !important;
 }
+[data-theme="dark"] .preview-container,
 [data-theme="htb"] .preview-container {
-    background: #1a2332 !important;
-    border-color: #2d3f55 !important;
     box-shadow: none !important;
 }
-[data-theme="htb"] .preview-container .card {
-    background: #0d1117 !important;
-    border-color: #2d3f55 !important;
-}
 
-/* Settings modal — botón HTB seleccionado */
-.settings-theme-btn.htb-theme-btn.selected {
-    border-color: #9fef00 !important;
-    background: #0a1f0d !important;
-    color: #9fef00 !important;
-}
-.settings-theme-btn.htb-theme-btn:not(.selected):hover {
-    border-color: #9fef00 !important;
-    color: #9fef00 !important;
-}
-.settings-theme-btn.htb-theme-btn .settings-check {
-    color: #9fef00 !important;
-}
-
-/* Theme toggle button */
-.theme-toggle-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #64748b;
-    transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
-    flex-shrink: 0;
-}
-.theme-toggle-btn:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #334155;
-    transform: scale(1.08);
-}
-.theme-toggle-btn:active {
-    transform: scale(0.94);
-}
-.theme-toggle-btn .theme-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: theme-icon-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-@keyframes theme-icon-pop {
-    0%   { transform: rotate(-30deg) scale(0.6); opacity: 0; }
-    100% { transform: rotate(0deg)   scale(1);   opacity: 1; }
-}
 
 /* PDF button spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -3858,7 +3799,6 @@ button {
     gap: 0.6rem;
 }
 
-.settings-theme-btn,
 .settings-lang-btn {
     flex: 1;
     display: flex;
@@ -3876,13 +3816,11 @@ button {
     transition: border-color 0.15s, background 0.15s, color 0.15s;
     position: relative;
 }
-.settings-theme-btn:hover,
 .settings-lang-btn:hover {
     border-color: #cbd5e1;
     background: #f1f5f9;
     color: #334155;
 }
-.settings-theme-btn.selected,
 .settings-lang-btn.selected {
     border-color: #6366f1;
     background: #eef2ff;
@@ -3896,12 +3834,6 @@ button {
     padding: 0.65rem 0.85rem;
 }
 
-.settings-theme-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: inherit;
-}
 .settings-lang-flag {
     font-size: 1.2rem;
     line-height: 1;
@@ -4047,19 +3979,16 @@ button {
     border-bottom-color: #334155 !important;
 }
 [data-theme="dark"] .settings-section-title { color: #64748b !important; }
-[data-theme="dark"] .settings-theme-btn,
 [data-theme="dark"] .settings-lang-btn {
     background: #0f172a !important;
     border-color: #334155 !important;
     color: #94a3b8 !important;
 }
-[data-theme="dark"] .settings-theme-btn:hover,
 [data-theme="dark"] .settings-lang-btn:hover {
     border-color: #475569 !important;
     background: #172035 !important;
     color: #e2e8f0 !important;
 }
-[data-theme="dark"] .settings-theme-btn.selected,
 [data-theme="dark"] .settings-lang-btn.selected {
     border-color: #6366f1 !important;
     background: #1e1b4b !important;
@@ -4182,19 +4111,16 @@ button {
     border-bottom-color: #2d3f55 !important;
 }
 [data-theme="htb"] .settings-section-title { color: #3d5570 !important; }
-[data-theme="htb"] .settings-theme-btn,
 [data-theme="htb"] .settings-lang-btn {
     background: #1a2332 !important;
     border-color: #2d3f55 !important;
     color: #a0aec0 !important;
 }
-[data-theme="htb"] .settings-theme-btn:hover,
 [data-theme="htb"] .settings-lang-btn:hover {
     border-color: #9fef00 !important;
     background: #0a1a0a !important;
     color: #9fef00 !important;
 }
-[data-theme="htb"] .settings-theme-btn.selected,
 [data-theme="htb"] .settings-lang-btn.selected {
     border-color: #6366f1 !important;
     background: #0d0f2a !important;

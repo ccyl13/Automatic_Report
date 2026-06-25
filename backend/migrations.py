@@ -13,6 +13,7 @@ def run_migrations(engine):
     _migrate_add_cwe_field(engine)
     _migrate_add_pro_report_fields(engine)
     _migrate_add_pro_finding_fields(engine)
+    _migrate_add_theme_custom_css(engine)
 
 
 def _add_columns(engine, table, columns):
@@ -46,6 +47,22 @@ def _migrate_add_pro_report_fields(engine):
         ("engagement_end", "VARCHAR DEFAULT ''"),
         ("revision_history", "TEXT DEFAULT '[]'"),
     ])
+
+
+def _migrate_add_theme_custom_css(engine):
+    """Migration: columna custom_css en themes (CSS libre del usuario)."""
+    # La tabla themes puede no existir aún en bases muy antiguas; create_all la
+    # crea con la columna, así que aquí solo cubrimos bases que ya la tenían.
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(themes)"))
+            existing = [row[1] for row in result]
+            if existing and 'custom_css' not in existing:
+                conn.execute(text("ALTER TABLE themes ADD COLUMN custom_css TEXT DEFAULT ''"))
+                conn.commit()
+                print("✅ Columna custom_css agregada a themes")
+    except Exception as e:
+        print(f"⚠️  Migración custom_css: {e}")
 
 
 def _migrate_add_pro_finding_fields(engine):

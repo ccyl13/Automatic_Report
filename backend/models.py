@@ -109,6 +109,7 @@ class Theme(Base):
     name = Column(String, nullable=False)
     base = Column(String, default="light")     # tema base del que hereda (light/dark/htb)
     vars = Column(JSON, default=dict)           # { "--rt-pageBg": "#fff", ... }
+    custom_css = Column(Text, default="")       # CSS libre del usuario (control total de estilos)
     is_builtin = Column(Integer, default=0)     # 0 = personalizado, 1 = de fábrica
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

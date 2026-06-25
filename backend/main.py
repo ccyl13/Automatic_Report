@@ -344,11 +344,12 @@ def create_theme(payload: schemas.ThemeCreate, db: Session = Depends(get_db), _u
         existing.name = name
         existing.base = payload.base
         existing.vars = payload.vars
+        existing.custom_css = payload.custom_css
         db.commit()
         db.refresh(existing)
         return existing
 
-    theme = models.Theme(slug=payload.slug, name=name, base=payload.base, vars=payload.vars, is_builtin=0)
+    theme = models.Theme(slug=payload.slug, name=name, base=payload.base, vars=payload.vars, custom_css=payload.custom_css, is_builtin=0)
     db.add(theme)
     db.commit()
     db.refresh(theme)
@@ -832,14 +833,20 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
             # Saneamos las variables CSS de temas importados: se inyectan en un
             # <style> del frontend, así que un .db malicioso podría colar CSS/HTML.
             if "themes" in tables:
-                cursor.execute("SELECT id, vars FROM themes")
-                for row_id, raw in cursor.fetchall():
+                theme_cols = [r[1] for r in cursor.execute("PRAGMA table_info(themes)").fetchall()]
+                has_css = "custom_css" in theme_cols
+                sel = "SELECT id, vars" + (", custom_css" if has_css else "") + " FROM themes"
+                for row in cursor.execute(sel).fetchall():
+                    row_id, raw = row[0], row[1]
                     try:
                         parsed = json.loads(raw) if raw else {}
                     except (TypeError, ValueError):
                         parsed = {}
                     cleaned = schemas._sanitize_theme_vars(parsed)
                     cursor.execute("UPDATE themes SET vars = ? WHERE id = ?", (json.dumps(cleaned), row_id))
+                    if has_css:
+                        cursor.execute("UPDATE themes SET custom_css = ? WHERE id = ?",
+                                       (schemas.sanitize_css_source(row[2] or ""), row_id))
 
             conn.commit()
             conn.close()

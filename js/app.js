@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 
 const state = {
     lang: 'es',
@@ -29,7 +29,17 @@ const state = {
         incidentsText: '',
         auditSummary: '',
         testsPerformed: '',
-        recommendedSolutions: ''
+        recommendedSolutions: '',
+        reportTheme: 'light',
+        // Alcance y metodología (informe profesional)
+        scopeIn: '',
+        scopeOut: '',
+        methodologyNotes: '',
+        methodologyStandards: [],
+        toolsUsed: '',
+        engagementStart: '',
+        engagementEnd: '',
+        revisionHistory: []
     },
     findings: [],
     editingFindingIndex: null,
@@ -39,14 +49,33 @@ const state = {
         severity: 'med',
         description: '',
         cvss: '',
+        cvssVector: '',
         poc: '',
         impact: '',
         remediation: '',
         reference: '',
+        references: [],
         cve: '',
         cwe: '',
+        status: 'open',
+        affectedAssets: '',
+        likelihood: '',
+        impactRating: '',
+        owasp: '',
+        compliance: [],
+        retestNotes: '',
         images: []
     },
+    // Temas personalizados y gestor de temas
+    customThemes: [],
+    userFindingTemplates: [],
+    showThemeManager: false,
+    themeEditor: null,
+    themeManagerError: '',
+    themeManagerSuccess: '',
+    // Calculadora CVSS
+    showCvssCalc: false,
+    cvssMetrics: { AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'N', I: 'N', A: 'N' },
     isDirty: false,
     showSettings: false,
     generatingPdf: false,
@@ -85,6 +114,8 @@ const UI = {
         newFindingDesc: 'Completa los detalles de la vulnerabilidad descubierta.',
         quickTemplate: 'Plantilla Rápida (Auto-completar)',
         customOther: 'Personalizado / Otro',
+        findingStatuses: { open: 'Abierto', remediated: 'Remediado', accepted_risk: 'Riesgo aceptado', false_positive: 'Falso positivo' },
+        riskLevels: { '': '— Sin especificar —', high: 'Alta', med: 'Media', low: 'Baja' },
         vulnTitle: 'Título de la Vulnerabilidad',
         severity: 'Nivel de Severidad',
         description: 'Descripción de la Vulnerabilidad',
@@ -254,6 +285,8 @@ const UI = {
         newFindingDesc: 'Complete the details of the discovered vulnerability.',
         quickTemplate: 'Quick Template (Auto-fill)',
         customOther: 'Custom / Other',
+        findingStatuses: { open: 'Open', remediated: 'Remediated', accepted_risk: 'Accepted risk', false_positive: 'False positive' },
+        riskLevels: { '': '— Not specified —', high: 'High', med: 'Medium', low: 'Low' },
         vulnTitle: 'Vulnerability Title',
         severity: 'Severity Level',
         description: 'Vulnerability Description',
@@ -465,6 +498,30 @@ function renderTlpPageBadge(auditData) {
     return `<span style="display:inline-block; background:${tlp.bg}; color:${tlp.text}; font-size:0.65rem; font-weight:900; padding:0.2rem 0.6rem; border-radius:4px; letter-spacing:0.06em; vertical-align:middle;">${escapeHTML(tlp.label)}</span>`;
 }
 
+// Normaliza un hallazgo recibido de la API (snake_case) a las claves camelCase
+// que usa el estado local y el render. Conserva las claves originales.
+function normalizeFinding(f) {
+    if (!f) return f;
+    const map = {
+        cvss_vector: 'cvssVector',
+        affected_assets: 'affectedAssets',
+        impact_rating: 'impactRating',
+        retest_notes: 'retestNotes',
+        template_key: 'templateKey'
+    };
+    Object.entries(map).forEach(([snake, camel]) => {
+        if (f[camel] === undefined && f[snake] !== undefined) f[camel] = f[snake];
+    });
+    if (!Array.isArray(f.references)) f.references = f.references ? [].concat(f.references) : [];
+    if (!Array.isArray(f.compliance)) f.compliance = f.compliance ? [].concat(f.compliance) : [];
+    if (!f.status) f.status = 'open';
+    return f;
+}
+
+function normalizeFindings(list) {
+    return (list || []).map(normalizeFinding);
+}
+
 function sortFindingsBySeverity(findings) {
     return findings.sort((a, b) => {
         const weightDiff = severityWeights[b.severity] - severityWeights[a.severity];
@@ -547,6 +604,18 @@ const API = {
         create: (reportId, data) => API.request('POST', `/api/reports/${reportId}/findings`, data),
         update: (findingId, data) => API.request('PUT', `/api/findings/${findingId}`, data),
         delete: (findingId) => API.request('DELETE', `/api/findings/${findingId}`)
+    },
+
+    themes: {
+        list: () => API.request('GET', '/api/themes'),
+        create: (data) => API.request('POST', '/api/themes', data),
+        delete: (id) => API.request('DELETE', `/api/themes/${id}`)
+    },
+
+    findingTemplates: {
+        list: () => API.request('GET', '/api/finding-templates'),
+        create: (data) => API.request('POST', '/api/finding-templates', data),
+        delete: (id) => API.request('DELETE', `/api/finding-templates/${id}`)
     }
 };
 
@@ -695,9 +764,16 @@ function renderEditor() {
                         
                         <div class="form-group">
                             <label>${t.cvss}</label>
-                            <input type="text" id="findingCvss" value="${escapeHTML(state.currentFinding.cvss)}" oninput="updateCurrentFinding('cvss', this.value)">
+                            <div style="display:flex;gap:0.5rem;align-items:center;">
+                                <input type="text" id="findingCvss" style="flex:1;" value="${escapeHTML(state.currentFinding.cvss)}" oninput="updateCurrentFinding('cvss', this.value)">
+                                <button type="button" class="btn-secondary btn-sm" onclick="openCvssCalc()" title="${state.lang === 'es' ? 'Calculadora CVSS 3.1' : 'CVSS 3.1 calculator'}" style="white-space:nowrap;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                                    ${state.lang === 'es' ? 'Calcular' : 'Calculate'}
+                                </button>
+                            </div>
+                            ${state.currentFinding.cvssVector ? `<small class="text-muted" style="font-family:ui-monospace,monospace;display:block;margin-top:0.35rem;word-break:break-all;">${escapeHTML(state.currentFinding.cvssVector)}</small>` : ''}
                         </div>
-                        
+
                         <div class="form-group">
                             <label>${t.poc}</label>
                             <textarea id="findingPoc" rows="4" oninput="updateCurrentFinding('poc', this.value)">${escapeHTML(state.currentFinding.poc)}</textarea>
@@ -731,8 +807,13 @@ function renderEditor() {
                         </div>
 
                         <div class="form-group">
-                            <label>${t.reference}</label>
+                            <label>${t.reference} ${state.lang === 'es' ? '(principal)' : '(primary)'}</label>
                             <input type="text" id="findingReference" value="${escapeHTML(state.currentFinding.reference)}" oninput="updateCurrentFinding('reference', this.value)">
+                        </div>
+
+                        <div class="form-group">
+                            <label>${state.lang === 'es' ? 'Referencias adicionales (una por línea)' : 'Additional references (one per line)'}</label>
+                            <textarea id="findingReferences" rows="2" placeholder="https://owasp.org/...\nhttps://cwe.mitre.org/..." oninput="updateCurrentFindingList('references', this.value)">${escapeHTML((state.currentFinding.references || []).join('\n'))}</textarea>
                         </div>
 
                         <div class="form-row">
@@ -744,6 +825,52 @@ function renderEditor() {
                                 <label>${t.cwe}</label>
                                 <input type="text" id="findingCwe" placeholder="CWE-89" value="${escapeHTML(state.currentFinding.cwe || '')}" oninput="updateCurrentFinding('cwe', this.value)">
                             </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${state.lang === 'es' ? 'Estado' : 'Status'}</label>
+                                <select id="findingStatus" onchange="updateCurrentFinding('status', this.value)">
+                                    ${Object.entries(t.findingStatuses).map(([k, label]) =>
+        `<option value="${k}" ${(state.currentFinding.status || 'open') === k ? 'selected' : ''}>${label}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>${state.lang === 'es' ? 'Categoría OWASP Top 10' : 'OWASP Top 10 category'}</label>
+                                <input type="text" id="findingOwasp" placeholder="A01:2021" value="${escapeHTML(state.currentFinding.owasp || '')}" oninput="updateCurrentFinding('owasp', this.value)">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${state.lang === 'es' ? 'Probabilidad' : 'Likelihood'}</label>
+                                <select id="findingLikelihood" onchange="updateCurrentFinding('likelihood', this.value)">
+                                    ${Object.entries(t.riskLevels).map(([k, label]) =>
+        `<option value="${k}" ${(state.currentFinding.likelihood || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>${state.lang === 'es' ? 'Impacto (riesgo)' : 'Impact (risk)'}</label>
+                                <select id="findingImpactRating" onchange="updateCurrentFinding('impactRating', this.value)">
+                                    ${Object.entries(t.riskLevels).map(([k, label]) =>
+        `<option value="${k}" ${(state.currentFinding.impactRating || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>${state.lang === 'es' ? 'Activos afectados (host/URL/parámetro, uno por línea)' : 'Affected assets (host/URL/param, one per line)'}</label>
+                            <textarea id="findingAffected" rows="2" placeholder="${state.lang === 'es' ? 'https://app.com/api/users/{id}\nparam: id' : 'https://app.com/api/users/{id}\nparam: id'}" oninput="updateCurrentFinding('affectedAssets', this.value)">${escapeHTML(state.currentFinding.affectedAssets || '')}</textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>${state.lang === 'es' ? 'Cumplimiento / mapeo (separado por comas)' : 'Compliance / mapping (comma separated)'}</label>
+                            <input type="text" id="findingCompliance" placeholder="PCI-DSS 6.5.1, ISO 27001 A.14, MITRE T1190" value="${escapeHTML((state.currentFinding.compliance || []).join(', '))}" oninput="updateCurrentFindingCsv('compliance', this.value)">
+                        </div>
+
+                        <div class="form-group">
+                            <label>${state.lang === 'es' ? 'Notas de re-test (opcional)' : 'Re-test notes (optional)'}</label>
+                            <textarea id="findingRetest" rows="2" placeholder="${state.lang === 'es' ? 'Estado tras la re-verificación...' : 'Status after re-verification...'}" oninput="updateCurrentFinding('retestNotes', this.value)">${escapeHTML(state.currentFinding.retestNotes || '')}</textarea>
                         </div>
 
                         <div class="form-actions">
@@ -913,7 +1040,139 @@ function renderAuditData() {
                 <small style="display:block; color:#666; margin-bottom:0.5rem; font-weight:normal;">${t.recommendedSolutionsDesc}</small>
                 <textarea rows="4" placeholder="${t.recommendedSolutions}..." oninput="updateAuditData('recommendedSolutions', this.value)">${escapeHTML(d.recommendedSolutions)}</textarea>
             </div>
+
+            ${renderScopeMethodologySection()}
+            ${renderRevisionHistorySection()}
         </div>
+    `;
+}
+
+const METHODOLOGY_STANDARDS = [
+    { key: 'owasp_wstg', label: 'OWASP WSTG' },
+    { key: 'owasp_top10', label: 'OWASP Top 10' },
+    { key: 'ptes', label: 'PTES' },
+    { key: 'nist_800_115', label: 'NIST SP 800-115' },
+    { key: 'osstmm', label: 'OSSTMM' },
+    { key: 'mitre_attack', label: 'MITRE ATT&CK' },
+    { key: 'owasp_masvs', label: 'OWASP MASVS' },
+    { key: 'iso_27001', label: 'ISO 27001' }
+];
+
+function toggleMethodologyStandard(key) {
+    const arr = state.auditData.methodologyStandards || [];
+    const i = arr.indexOf(key);
+    if (i >= 0) arr.splice(i, 1); else arr.push(key);
+    state.auditData.methodologyStandards = arr;
+    state.isDirty = true;
+    renderApp();
+}
+
+function renderScopeMethodologySection() {
+    const isEs = state.lang === 'es';
+    const d = state.auditData;
+    const selected = d.methodologyStandards || [];
+    return `
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
+        <h3 style="margin: 0 0 1rem;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>${isEs ? 'Inicio del engagement' : 'Engagement start'}</label>
+                <input type="date" value="${escapeHTML(d.engagementStart || '')}" onchange="updateAuditData('engagementStart', this.value)">
+            </div>
+            <div class="form-group">
+                <label>${isEs ? 'Fin del engagement' : 'Engagement end'}</label>
+                <input type="date" value="${escapeHTML(d.engagementEnd || '')}" onchange="updateAuditData('engagementEnd', this.value)">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>${isEs ? 'Dentro del alcance (in-scope)' : 'In-scope assets'}</label>
+            <textarea rows="2" placeholder="${isEs ? 'IPs, dominios, URLs incluidos...' : 'Included IPs, domains, URLs...'}" oninput="updateAuditData('scopeIn', this.value)">${escapeHTML(d.scopeIn || '')}</textarea>
+        </div>
+        <div class="form-group">
+            <label>${isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions'}</label>
+            <textarea rows="2" placeholder="${isEs ? 'Sistemas excluidos, rangos no probados...' : 'Excluded systems, untested ranges...'}" oninput="updateAuditData('scopeOut', this.value)">${escapeHTML(d.scopeOut || '')}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>${isEs ? 'Metodologías / estándares aplicados' : 'Methodologies / standards applied'}</label>
+            <div class="pro-tags" style="margin-top:0.25rem;">
+                ${METHODOLOGY_STANDARDS.map(s => `
+                    <label style="display:inline-flex;align-items:center;gap:0.35rem;font-weight:500;text-transform:none;letter-spacing:normal;cursor:pointer;padding:0.2rem 0.55rem;border:1px solid ${selected.includes(s.key) ? '#3b82f6' : '#e2e8f0'};border-radius:999px;font-size:0.78rem;${selected.includes(s.key) ? 'background:rgba(59,130,246,0.1);color:#2563eb;' : ''}">
+                        <input type="checkbox" ${selected.includes(s.key) ? 'checked' : ''} onchange="toggleMethodologyStandard('${s.key}')" style="width:auto;margin:0;padding:0;">
+                        ${s.label}
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>${isEs ? 'Notas de metodología (opcional)' : 'Methodology notes (optional)'}</label>
+            <textarea rows="2" placeholder="${isEs ? 'Tipo de caja, reglas de enfrentamiento...' : 'Box type, rules of engagement...'}" oninput="updateAuditData('methodologyNotes', this.value)">${escapeHTML(d.methodologyNotes || '')}</textarea>
+        </div>
+        <div class="form-group">
+            <label>${isEs ? 'Herramientas utilizadas' : 'Tools used'}</label>
+            <textarea rows="2" placeholder="Burp Suite, nmap, sqlmap, ffuf..." oninput="updateAuditData('toolsUsed', this.value)">${escapeHTML(d.toolsUsed || '')}</textarea>
+        </div>
+    `;
+}
+
+function addRevisionRow() {
+    if (!Array.isArray(state.auditData.revisionHistory)) state.auditData.revisionHistory = [];
+    state.auditData.revisionHistory.push({
+        version: state.auditData.version || '1.0',
+        date: state.auditData.date || new Date().toISOString().split('T')[0],
+        author: state.auditData.auditorName || '',
+        changes: ''
+    });
+    state.isDirty = true;
+    renderApp();
+}
+
+function updateRevisionRow(idx, field, value) {
+    if (state.auditData.revisionHistory[idx]) {
+        state.auditData.revisionHistory[idx][field] = value;
+        state.isDirty = true;
+    }
+}
+
+function removeRevisionRow(idx) {
+    state.auditData.revisionHistory.splice(idx, 1);
+    state.isDirty = true;
+    renderApp();
+}
+
+function renderRevisionHistorySection() {
+    const isEs = state.lang === 'es';
+    const rows = state.auditData.revisionHistory || [];
+    return `
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+            <h3 style="margin:0;">${isEs ? 'Historial de revisiones' : 'Revision history'}</h3>
+            <button type="button" class="btn-sm btn-secondary" onclick="addRevisionRow()">+ ${isEs ? 'Añadir' : 'Add'}</button>
+        </div>
+        ${rows.length === 0 ? `<p class="text-muted" style="font-size:0.85rem;">${isEs ? 'Sin revisiones registradas.' : 'No revisions recorded.'}</p>` : rows.map((r, idx) => `
+            <div class="form-row" style="align-items:flex-end;gap:0.5rem;">
+                <div class="form-group" style="flex:0.6;">
+                    <label>${isEs ? 'Ver.' : 'Ver.'}</label>
+                    <input type="text" value="${escapeHTML(r.version || '')}" oninput="updateRevisionRow(${idx},'version',this.value)">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>${isEs ? 'Fecha' : 'Date'}</label>
+                    <input type="date" value="${escapeHTML(r.date || '')}" oninput="updateRevisionRow(${idx},'date',this.value)">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>${isEs ? 'Autor' : 'Author'}</label>
+                    <input type="text" value="${escapeHTML(r.author || '')}" oninput="updateRevisionRow(${idx},'author',this.value)">
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>${isEs ? 'Cambios' : 'Changes'}</label>
+                    <input type="text" value="${escapeHTML(r.changes || '')}" oninput="updateRevisionRow(${idx},'changes',this.value)">
+                </div>
+                <button type="button" class="btn-delete" style="margin-bottom:0.75rem;" onclick="removeRevisionRow(${idx})" title="${isEs ? 'Eliminar' : 'Delete'}">×</button>
+            </div>
+        `).join('')}
     `;
 }
 
@@ -948,71 +1207,559 @@ function renderFindingsList() {
     `;
 }
 
-function getThemeColorsFor(theme) {
-    const dk  = theme === 'dark';
-    const htb = theme === 'htb';
-    return {
-        pageBg:      htb ? '#1a2332' : dk ? '#0f172a' : '#ffffff',
-        cardBg:      htb ? '#0d1117' : dk ? '#1e293b' : '#f9fafb',
-        textHeading: htb ? '#9fef00' : dk ? '#f1f5f9' : '#111827',
-        textBody:    htb ? '#e2e8f0' : dk ? '#e2e8f0' : '#1f2937',
-        textMuted:   htb ? '#cbd5e1' : dk ? '#cbd5e1' : '#374151',
-        textFaint:   htb ? '#a0aec0' : dk ? '#94a3b8' : '#4b5563',
-        border:      htb ? '#2d3f55' : dk ? '#334155' : '#e5e7eb',
-        coverBg:     htb ? '#0d1117' : dk ? '#020617' : '#1e293b',
-        coverAccent: htb ? '#9fef00' : '#2563eb',
-        pocBg:       htb ? '#060b10' : dk ? '#060a0f' : '#1e293b',
-        pocBorder:   htb ? '#1a2332' : dk ? '#1e293b' : '#334155',
-        pocText:     '#e2e8f0',
-        pocHeading:  htb ? '#9fef00' : '#93c5fd',
-    };
+// --------------------------------------------------------------------------- //
+// Sistema de temas del informe basado en variables CSS (--rt-*).
+//
+// Cada tema es una paleta de ~40 variables. Los 3 temas de fábrica (light, dark,
+// htb) se definen aquí y se emiten como bloques CSS [data-rt-theme="x"]. Los temas
+// personalizados del usuario viven en la base de datos (mismas claves) y se
+// inyectan igual. El render del informe NO usa colores calculados en JS: usa
+// var(--rt-*), de modo que el estilo del informe se controla 100% desde CSS.
+// --------------------------------------------------------------------------- //
+const THEME_KEYS = [
+    'pageBg', 'cardBg', 'cardBgAlt', 'greenBg', 'orangeBg', 'purpleBg', 'metaBg',
+    'textPrimary', 'textHeading', 'textBody', 'textMuted', 'textFaint', 'textSubtle',
+    'textGray', 'textGrayMed', 'coverAccent', 'accentLine', 'accentBar', 'versionColor',
+    'textRed', 'textOrange', 'textOrangeDark', 'textGreen', 'textGreenDark',
+    'border', 'borderLight', 'borderMeta', 'borderMetaSub', 'borderGreen', 'borderOrange',
+    'borderPurple', 'borderFaint', 'classifBg', 'classifBorder', 'classifText',
+    'pocBg', 'pocBorder', 'pocText', 'pocHeading'
+];
+
+const BUILTIN_THEMES = {
+    light: {
+        pageBg: '#ffffff', cardBg: '#f9fafb', cardBgAlt: '#f8fafc', greenBg: '#f0fdf4',
+        orangeBg: '#fff7ed', purpleBg: '#faf5ff', metaBg: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)',
+        textPrimary: '#0f172a', textHeading: '#111827', textBody: '#1f2937', textMuted: '#374151',
+        textFaint: '#4b5563', textSubtle: '#475569', textGray: '#6b7280', textGrayMed: '#64748b',
+        coverAccent: '#475569', accentLine: '#2563eb', accentBar: 'linear-gradient(90deg,#2563eb,#6366f1)',
+        versionColor: '#2563eb', textRed: '#dc2626', textOrange: '#c2410c', textOrangeDark: '#9a3412',
+        textGreen: '#166534', textGreenDark: '#15803d', border: '#e5e7eb', borderLight: '#d1d5db',
+        borderMeta: '#e2e8f0', borderMetaSub: '#cbd5e1', borderGreen: '#bbf7d0', borderOrange: '#fed7aa',
+        borderPurple: '#e9d5ff', borderFaint: '#f3f4f6', classifBg: '#f1f5f9', classifBorder: '#cbd5e1',
+        classifText: '#475569', pocBg: '#1e293b', pocBorder: '#334155', pocText: '#e2e8f0', pocHeading: '#93c5fd'
+    },
+    dark: {
+        pageBg: '#0f172a', cardBg: '#1e293b', cardBgAlt: '#1e293b', greenBg: '#052e16',
+        orangeBg: '#431407', purpleBg: '#2e1065', metaBg: 'linear-gradient(135deg,#1e293b 0%,#0f172a 100%)',
+        textPrimary: '#f8fafc', textHeading: '#f1f5f9', textBody: '#e2e8f0', textMuted: '#cbd5e1',
+        textFaint: '#94a3b8', textSubtle: '#94a3b8', textGray: '#94a3b8', textGrayMed: '#94a3b8',
+        coverAccent: '#94a3b8', accentLine: '#2563eb', accentBar: 'linear-gradient(90deg,#2563eb,#6366f1)',
+        versionColor: '#9fef00', textRed: '#f87171', textOrange: '#fb923c', textOrangeDark: '#fdba74',
+        textGreen: '#86efac', textGreenDark: '#86efac', border: '#334155', borderLight: '#334155',
+        borderMeta: '#334155', borderMetaSub: '#475569', borderGreen: '#166534', borderOrange: '#9a3412',
+        borderPurple: '#6b21a8', borderFaint: '#334155', classifBg: '#1e293b', classifBorder: '#475569',
+        classifText: '#94a3b8', pocBg: '#060a0f', pocBorder: '#1e293b', pocText: '#e2e8f0', pocHeading: '#93c5fd'
+    },
+    htb: {
+        pageBg: '#1a2332', cardBg: '#0d1117', cardBgAlt: '#0d1117', greenBg: '#0a1f0d',
+        orangeBg: '#1f1005', purpleBg: '#140d1f', metaBg: '#0d1117',
+        textPrimary: '#ffffff', textHeading: '#9fef00', textBody: '#e2e8f0', textMuted: '#cbd5e1',
+        textFaint: '#a0aec0', textSubtle: '#a0aec0', textGray: '#64748b', textGrayMed: '#9fef00',
+        coverAccent: '#9fef00', accentLine: '#9fef00', accentBar: '#9fef00',
+        versionColor: '#9fef00', textRed: '#ff6b6b', textOrange: '#fb923c', textOrangeDark: '#fcd34d',
+        textGreen: '#9fef00', textGreenDark: '#d9f99d', border: '#2d3f55', borderLight: '#2d3f55',
+        borderMeta: '#2d3f55', borderMetaSub: '#2d3f55', borderGreen: '#9fef00', borderOrange: '#c2410c',
+        borderPurple: '#a78bfa', borderFaint: '#2d3f55', classifBg: '#0d1117', classifBorder: '#9fef00',
+        classifText: '#9fef00', pocBg: '#060b10', pocBorder: '#1a2332', pocText: '#e2e8f0', pocHeading: '#9fef00'
+    }
+};
+
+const BUILTIN_THEME_META = [
+    { slug: 'light', name: 'Claro',  nameEn: 'Light' },
+    { slug: 'dark',  name: 'Oscuro', nameEn: 'Dark' },
+    { slug: 'htb',   name: 'HTB',    nameEn: 'HTB' }
+];
+
+// Mapa estático key -> var(--rt-key). El informe sólo usa estas referencias CSS,
+// así que el tema activo se decide por el atributo data-rt-theme del contenedor.
+const RT_VAR_MAP = (() => {
+    const m = {};
+    THEME_KEYS.forEach(k => { m[k] = `var(--rt-${k})`; });
+    return m;
+})();
+
+function cssVarName(key) { return '--rt-' + key; }
+
+// Devuelve el mapa de referencias var() (idéntico para cualquier tema: lo que
+// cambia son los valores resueltos por CSS según data-rt-theme).
+function getThemeColors() { return RT_VAR_MAP; }
+function getThemeColorsFor() { return RT_VAR_MAP; }
+
+// Devuelve la paleta completa (valores reales) de un tema concreto, fusionando
+// la base con las variables del tema personalizado si lo hubiera.
+function resolveThemePalette(slug) {
+    if (BUILTIN_THEMES[slug]) return { ...BUILTIN_THEMES[slug] };
+    const custom = (state.customThemes || []).find(t => t.slug === slug);
+    if (custom) {
+        const base = BUILTIN_THEMES[custom.base] || BUILTIN_THEMES.light;
+        const merged = { ...base };
+        Object.entries(custom.vars || {}).forEach(([k, v]) => {
+            const key = k.startsWith('--rt-') ? k.slice(5) : k;
+            if (THEME_KEYS.includes(key)) merged[key] = v;
+        });
+        return merged;
+    }
+    return { ...BUILTIN_THEMES.light };
 }
 
-function getThemeColors() {
-    const theme = state.reportTheme;
-    const dk  = theme === 'dark';
-    const htb = theme === 'htb';
-    return {
-        pageBg:         htb ? '#1a2332' : dk ? '#0f172a'  : '#ffffff',
-        cardBg:         htb ? '#0d1117' : dk ? '#1e293b'  : '#f9fafb',
-        cardBgAlt:      htb ? '#0d1117' : dk ? '#1e293b'  : '#f8fafc',
-        greenBg:        htb ? '#0a1f0d' : dk ? '#052e16'  : '#f0fdf4',
-        orangeBg:       htb ? '#1f1005' : dk ? '#431407'  : '#fff7ed',
-        purpleBg:       htb ? '#140d1f' : dk ? '#2e1065'  : '#faf5ff',
-        metaBg:         htb ? '#0d1117' : dk ? 'linear-gradient(135deg,#1e293b 0%,#0f172a 100%)' : 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)',
-        textPrimary:    htb ? '#ffffff' : dk ? '#f8fafc'  : '#0f172a',
-        textHeading:    htb ? '#9fef00' : dk ? '#f1f5f9'  : '#111827',
-        textBody:       htb ? '#e2e8f0' : dk ? '#e2e8f0'  : '#1f2937',
-        textMuted:      htb ? '#cbd5e1' : dk ? '#cbd5e1'  : '#374151',
-        textFaint:      htb ? '#a0aec0' : dk ? '#94a3b8'  : '#4b5563',
-        textSubtle:     htb ? '#a0aec0' : dk ? '#94a3b8'  : '#475569',
-        textGray:       htb ? '#64748b' : dk ? '#94a3b8'  : '#6b7280',
-        textGrayMed:    htb ? '#9fef00' : dk ? '#94a3b8'  : '#64748b',
-        coverAccent:    htb ? '#9fef00' : dk ? '#94a3b8'  : '#475569',
-        accentLine:     htb ? '#9fef00' : dk ? '#2563eb'  : '#2563eb',
-        accentBar:      htb ? '#9fef00' : dk ? 'linear-gradient(90deg,#2563eb,#6366f1)' : 'linear-gradient(90deg,#2563eb,#6366f1)',
-        versionColor:   htb ? '#9fef00' : dk ? '#9fef00'  : '#2563eb',
-        textRed:        htb ? '#ff6b6b' : dk ? '#f87171'  : '#dc2626',
-        textOrange:     htb ? '#fb923c' : dk ? '#fb923c'  : '#c2410c',
-        textOrangeDark: htb ? '#fcd34d' : dk ? '#fdba74'  : '#9a3412',
-        textGreen:      htb ? '#9fef00' : dk ? '#86efac'  : '#166534',
-        textGreenDark:  htb ? '#d9f99d' : dk ? '#86efac'  : '#15803d',
-        border:         htb ? '#2d3f55' : dk ? '#334155'  : '#e5e7eb',
-        borderLight:    htb ? '#2d3f55' : dk ? '#334155'  : '#d1d5db',
-        borderMeta:     htb ? '#2d3f55' : dk ? '#334155'  : '#e2e8f0',
-        borderMetaSub:  htb ? '#2d3f55' : dk ? '#475569'  : '#cbd5e1',
-        borderGreen:    htb ? '#9fef00' : dk ? '#166534'  : '#bbf7d0',
-        borderOrange:   htb ? '#c2410c' : dk ? '#9a3412'  : '#fed7aa',
-        borderPurple:   htb ? '#a78bfa' : dk ? '#6b21a8'  : '#e9d5ff',
-        borderFaint:    htb ? '#2d3f55' : dk ? '#334155'  : '#f3f4f6',
-        classifBg:      htb ? '#0d1117' : dk ? '#1e293b'  : '#f1f5f9',
-        classifBorder:  htb ? '#9fef00' : dk ? '#475569'  : '#cbd5e1',
-        classifText:    htb ? '#9fef00' : dk ? '#94a3b8'  : '#475569',
-        pocBg:          htb ? '#060b10' : dk ? '#060a0f'  : '#1e293b',
-        pocBorder:      htb ? '#1a2332' : dk ? '#1e293b'  : '#334155',
-        pocText:        '#e2e8f0',
-        pocHeading:     htb ? '#9fef00' : '#93c5fd',
+// Tema base (light/dark/htb) del que hereda un slug, para decidir el aspecto de
+// la propia interfaz (data-theme) cuando se usa un tema personalizado.
+function themeBaseOf(slug) {
+    if (BUILTIN_THEMES[slug]) return slug;
+    const custom = (state.customThemes || []).find(t => t.slug === slug);
+    return (custom && BUILTIN_THEMES[custom.base]) ? custom.base : 'light';
+}
+
+function listAllThemes() {
+    const builtins = BUILTIN_THEME_META.map(m => ({
+        slug: m.slug,
+        name: state.lang === 'es' ? m.name : m.nameEn,
+        base: m.slug,
+        builtin: true
+    }));
+    const customs = (state.customThemes || []).map(t => ({
+        id: t.id, slug: t.slug, name: t.name, base: t.base, vars: t.vars, builtin: false
+    }));
+    return [...builtins, ...customs];
+}
+
+// Construye/actualiza el <style> con un bloque [data-rt-theme="x"] por tema.
+function injectThemeStyles() {
+    let css = '';
+    const emit = (slug, palette) => {
+        const decls = THEME_KEYS.map(k => `${cssVarName(k)}:${palette[k] || ''}`).join(';');
+        css += `[data-rt-theme="${slug}"]{${decls}}\n`;
     };
+    Object.keys(BUILTIN_THEMES).forEach(slug => emit(slug, BUILTIN_THEMES[slug]));
+    (state.customThemes || []).forEach(t => emit(t.slug, resolveThemePalette(t.slug)));
+
+    let styleEl = document.getElementById('rt-theme-styles');
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'rt-theme-styles';
+        document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = css;
+}
+
+async function loadCustomThemes() {
+    try {
+        const themes = await API.themes.list();
+        state.customThemes = Array.isArray(themes) ? themes : [];
+    } catch (e) {
+        state.customThemes = [];
+    }
+    injectThemeStyles();
+}
+
+// Subconjunto de variables editables en el creador de temas (con etiqueta amable).
+const THEME_EDITOR_FIELDS = [
+    { key: 'pageBg',       es: 'Fondo de página',      en: 'Page background' },
+    { key: 'cardBg',       es: 'Fondo de tarjetas',    en: 'Card background' },
+    { key: 'metaBg',       es: 'Fondo cabecera datos', en: 'Meta header bg', plain: true },
+    { key: 'textHeading',  es: 'Títulos',              en: 'Headings' },
+    { key: 'textPrimary',  es: 'Título portada',       en: 'Cover title' },
+    { key: 'textBody',     es: 'Texto',                en: 'Body text' },
+    { key: 'textMuted',    es: 'Texto secundario',     en: 'Secondary text' },
+    { key: 'accentLine',   es: 'Color de acento',      en: 'Accent color' },
+    { key: 'versionColor', es: 'Color de versión',     en: 'Version color' },
+    { key: 'border',       es: 'Bordes',               en: 'Borders' },
+    { key: 'pocBg',        es: 'Fondo de código (PoC)', en: 'Code (PoC) bg' },
+    { key: 'pocText',      es: 'Texto de código',      en: 'Code text' },
+    { key: 'pocHeading',   es: 'Título de código',     en: 'Code heading' }
+];
+
+function slugify(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+
+function uniqueThemeSlug(name) {
+    let base = 'c-' + (slugify(name) || 'tema');
+    base = base.slice(0, 40);
+    const taken = new Set(listAllThemes().map(t => t.slug));
+    if (!taken.has(base)) return base;
+    let i = 2;
+    while (taken.has(`${base}-${i}`) && i < 999) i++;
+    return `${base}-${i}`;
+}
+
+// --- Gestor de temas (crear / editar / aplicar / exportar / importar) ---
+function openThemeEditor(slug) {
+    // slug null => crear nuevo (a partir de 'light'); slug existente => editar.
+    let editing = null;
+    if (slug) editing = (state.customThemes || []).find(t => t.slug === slug) || null;
+    const baseSlug = editing ? editing.base : 'light';
+    const palette = editing ? resolveThemePalette(editing.slug) : { ...BUILTIN_THEMES.light };
+    state.themeEditor = {
+        id: editing ? editing.id : null,
+        slug: editing ? editing.slug : null,
+        name: editing ? editing.name : '',
+        base: baseSlug,
+        vars: { ...palette },
+        isNew: !editing
+    };
+    state.themeManagerError = '';
+    renderApp();
+}
+
+function closeThemeEditor() {
+    state.themeEditor = null;
+    renderApp();
+}
+
+function themeEditorSetBase(base) {
+    if (!state.themeEditor) return;
+    state.themeEditor.base = base;
+    // Al cambiar la base partimos de su paleta (conservando el nombre).
+    state.themeEditor.vars = { ...(BUILTIN_THEMES[base] || BUILTIN_THEMES.light) };
+    renderApp();
+}
+
+function themeEditorSetVar(key, value) {
+    if (!state.themeEditor) return;
+    state.themeEditor.vars[key] = value;
+    // Refresca sólo el panel de vista previa (sin re-render completo) para fluidez.
+    const prev = document.getElementById('theme-editor-preview');
+    if (prev) prev.outerHTML = renderThemeEditorPreview();
+}
+
+async function saveThemeFromEditor() {
+    const ed = state.themeEditor;
+    if (!ed) return;
+    const isEs = state.lang === 'es';
+    const name = (ed.name || '').trim();
+    if (!name) {
+        state.themeManagerError = isEs ? 'Ponle un nombre al tema' : 'Give the theme a name';
+        renderApp();
+        return;
+    }
+    const slug = ed.slug || uniqueThemeSlug(name);
+    // Guardamos la paleta completa (var con prefijo --rt-) para que el export sea
+    // autosuficiente y todas las variables queden definidas.
+    const vars = {};
+    THEME_KEYS.forEach(k => { if (ed.vars[k]) vars[cssVarName(k)] = ed.vars[k]; });
+
+    try {
+        await API.themes.create({ slug, name, base: ed.base, vars });
+        await loadCustomThemes();
+        state.themeEditor = null;
+        state.themeManagerSuccess = isEs ? 'Tema guardado' : 'Theme saved';
+        setReportTheme(slug);  // aplica y re-renderiza
+    } catch (err) {
+        state.themeManagerError = err.message || (isEs ? 'No se pudo guardar el tema' : 'Could not save theme');
+        renderApp();
+    }
+}
+
+async function deleteCustomTheme(id, slug) {
+    const isEs = state.lang === 'es';
+    if (!confirm(isEs ? '¿Eliminar este tema?' : 'Delete this theme?')) return;
+    try {
+        await API.themes.delete(id);
+        if (state.reportTheme === slug) setReportTheme('light');
+        await loadCustomThemes();
+        renderApp();
+    } catch (err) {
+        alert((isEs ? 'Error: ' : 'Error: ') + err.message);
+    }
+}
+
+function exportTheme(slug) {
+    const meta = listAllThemes().find(t => t.slug === slug);
+    if (!meta) return;
+    const palette = resolveThemePalette(slug);
+    const vars = {};
+    THEME_KEYS.forEach(k => { if (palette[k]) vars[cssVarName(k)] = palette[k]; });
+    const data = {
+        pentestify_theme: true,
+        name: meta.name,
+        base: meta.base || 'light',
+        vars
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pentestify-theme-${slug}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function importThemeFile(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    const isEs = state.lang === 'es';
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || typeof data !== 'object' || !data.vars) {
+            throw new Error(isEs ? 'El archivo no es un tema válido' : 'File is not a valid theme');
+        }
+        const name = (data.name || 'Tema importado').toString().slice(0, 60);
+        const base = ['light', 'dark', 'htb'].includes(data.base) ? data.base : 'light';
+        const slug = uniqueThemeSlug(name);
+        await API.themes.create({ slug, name, base, vars: data.vars });
+        await loadCustomThemes();
+        state.themeManagerSuccess = isEs ? 'Tema importado' : 'Theme imported';
+        setReportTheme(slug);
+    } catch (err) {
+        alert((isEs ? 'Error al importar el tema: ' : 'Error importing theme: ') + err.message);
+    }
+}
+
+function renderThemeEditorPreview() {
+    const v = state.themeEditor ? state.themeEditor.vars : BUILTIN_THEMES.light;
+    const g = (k) => v[k] || '';
+    return `
+        <div id="theme-editor-preview" style="border-radius:10px;overflow:hidden;border:1px solid ${g('border')};background:${g('pageBg')};padding:1rem;">
+            <div style="font-size:1.1rem;font-weight:800;color:${g('textPrimary')};margin-bottom:0.35rem;">Aa Título de portada</div>
+            <div style="height:4px;width:48px;border-radius:4px;background:${g('accentLine')};margin-bottom:0.75rem;"></div>
+            <div style="background:${g('cardBg')};border:1px solid ${g('border')};border-radius:8px;padding:0.75rem;margin-bottom:0.75rem;">
+                <div style="color:${g('textHeading')};font-weight:800;margin-bottom:0.25rem;">Hallazgo de ejemplo</div>
+                <div style="color:${g('textBody')};font-size:0.8rem;">Texto del cuerpo del informe.</div>
+                <div style="color:${g('textMuted')};font-size:0.72rem;margin-top:0.2rem;">Texto secundario · CVSS 7.5</div>
+            </div>
+            <div style="background:${g('pocBg')};border:1px solid ${g('pocBorder') || g('border')};border-radius:8px;padding:0.6rem 0.75rem;">
+                <div style="color:${g('pocHeading')};font-weight:700;font-size:0.75rem;margin-bottom:0.2rem;">PoC</div>
+                <div style="color:${g('pocText')};font-family:monospace;font-size:0.72rem;">$ id; whoami</div>
+            </div>
+        </div>`;
+}
+
+// --------------------------------------------------------------------------- //
+// Calculadora CVSS 3.1 (Base Score)
+// --------------------------------------------------------------------------- //
+const CVSS_METRIC_DEFS = [
+    { id: 'AV', es: 'Vector de ataque', en: 'Attack Vector', opts: [['N', 'Red'], ['A', 'Adyacente'], ['L', 'Local'], ['P', 'Físico']], optsEn: [['N', 'Network'], ['A', 'Adjacent'], ['L', 'Local'], ['P', 'Physical']] },
+    { id: 'AC', es: 'Complejidad', en: 'Attack Complexity', opts: [['L', 'Baja'], ['H', 'Alta']], optsEn: [['L', 'Low'], ['H', 'High']] },
+    { id: 'PR', es: 'Privilegios req.', en: 'Privileges Required', opts: [['N', 'Ninguno'], ['L', 'Bajos'], ['H', 'Altos']], optsEn: [['N', 'None'], ['L', 'Low'], ['H', 'High']] },
+    { id: 'UI', es: 'Interacción usuario', en: 'User Interaction', opts: [['N', 'Ninguna'], ['R', 'Requerida']], optsEn: [['N', 'None'], ['R', 'Required']] },
+    { id: 'S', es: 'Alcance (Scope)', en: 'Scope', opts: [['U', 'Sin cambio'], ['C', 'Cambiado']], optsEn: [['U', 'Unchanged'], ['C', 'Changed']] },
+    { id: 'C', es: 'Confidencialidad', en: 'Confidentiality', opts: [['N', 'Ninguno'], ['L', 'Bajo'], ['H', 'Alto']], optsEn: [['N', 'None'], ['L', 'Low'], ['H', 'High']] },
+    { id: 'I', es: 'Integridad', en: 'Integrity', opts: [['N', 'Ninguno'], ['L', 'Bajo'], ['H', 'Alto']], optsEn: [['N', 'None'], ['L', 'Low'], ['H', 'High']] },
+    { id: 'A', es: 'Disponibilidad', en: 'Availability', opts: [['N', 'Ninguno'], ['L', 'Bajo'], ['H', 'Alto']], optsEn: [['N', 'None'], ['L', 'Low'], ['H', 'High']] }
+];
+
+function cvssRoundUp(x) {
+    // Roundup oficial CVSS 3.1: menor decimal (1 cifra) >= x, evitando errores float.
+    const i = Math.round(x * 100000);
+    if (i % 10000 === 0) return i / 100000;
+    return (Math.floor(i / 10000) + 1) / 10;
+}
+
+function computeCvss(m) {
+    const AV = { N: 0.85, A: 0.62, L: 0.55, P: 0.2 }[m.AV];
+    const AC = { L: 0.77, H: 0.44 }[m.AC];
+    const PR = (m.S === 'C')
+        ? { N: 0.85, L: 0.68, H: 0.50 }[m.PR]
+        : { N: 0.85, L: 0.62, H: 0.27 }[m.PR];
+    const UI = { N: 0.85, R: 0.62 }[m.UI];
+    const cia = { N: 0, L: 0.22, H: 0.56 };
+    const C = cia[m.C], I = cia[m.I], A = cia[m.A];
+
+    const iscBase = 1 - ((1 - C) * (1 - I) * (1 - A));
+    let impact;
+    if (m.S === 'C') {
+        impact = 7.52 * (iscBase - 0.029) - 3.25 * Math.pow(iscBase - 0.02, 15);
+    } else {
+        impact = 6.42 * iscBase;
+    }
+    const exploitability = 8.22 * AV * AC * PR * UI;
+
+    let score;
+    if (impact <= 0) {
+        score = 0;
+    } else if (m.S === 'C') {
+        score = cvssRoundUp(Math.min(1.08 * (impact + exploitability), 10));
+    } else {
+        score = cvssRoundUp(Math.min(impact + exploitability, 10));
+    }
+    const vector = `CVSS:3.1/AV:${m.AV}/AC:${m.AC}/PR:${m.PR}/UI:${m.UI}/S:${m.S}/C:${m.C}/I:${m.I}/A:${m.A}`;
+    return { score: score.toFixed(1), vector };
+}
+
+function cvssSeverityKey(score) {
+    const s = parseFloat(score);
+    if (s >= 9.0) return 'crit';
+    if (s >= 7.0) return 'high';
+    if (s >= 4.0) return 'med';
+    if (s > 0.0) return 'low';
+    return 'info';
+}
+
+function parseCvssVector(vec) {
+    const m = { AV: 'N', AC: 'L', PR: 'N', UI: 'N', S: 'U', C: 'N', I: 'N', A: 'N' };
+    if (!vec) return m;
+    vec.split('/').forEach(part => {
+        const [k, v] = part.split(':');
+        if (k in m && v) m[k] = v;
+    });
+    return m;
+}
+
+function openCvssCalc() {
+    state.cvssMetrics = parseCvssVector(state.currentFinding.cvssVector);
+    state.showCvssCalc = true;
+    renderApp();
+}
+
+function closeCvssCalc() {
+    state.showCvssCalc = false;
+    renderApp();
+}
+
+function cvssSetMetric(id, val) {
+    state.cvssMetrics[id] = val;
+    const r = computeCvss(state.cvssMetrics);
+    // Actualiza marca de score y botones activos sin re-render completo.
+    const badge = document.getElementById('cvss-live-score');
+    const vecEl = document.getElementById('cvss-live-vector');
+    const sevKey = cvssSeverityKey(r.score);
+    const colorMap = { crit: '#dc2626', high: '#f97316', med: '#eab308', low: '#22c55e', info: '#6b7280' };
+    if (badge) {
+        badge.textContent = r.score;
+        const box = document.getElementById('cvss-score-box');
+        if (box) box.style.background = colorMap[sevKey];
+    }
+    if (vecEl) vecEl.textContent = r.vector;
+    // Refresca botones del grupo modificado.
+    CVSS_METRIC_DEFS.forEach(def => {
+        if (def.id !== id) return;
+        def.opts.forEach(([code]) => {
+            const b = document.getElementById(`cvss-opt-${def.id}-${code}`);
+            if (b) b.classList.toggle('active', code === val);
+        });
+    });
+    // Si cambia S, recalcular PR no es necesario en UI (PR sigue igual), pero el score sí cambia.
+}
+
+function applyCvssCalc() {
+    const r = computeCvss(state.cvssMetrics);
+    state.currentFinding.cvss = r.score;
+    state.currentFinding.cvssVector = r.vector;
+    state.currentFinding.severity = cvssSeverityKey(r.score);
+    state.showCvssCalc = false;
+    renderApp();
+}
+
+function renderCvssCalcModal() {
+    if (!state.showCvssCalc) return '';
+    const isEs = state.lang === 'es';
+    const m = state.cvssMetrics;
+    const r = computeCvss(m);
+    const sevKey = cvssSeverityKey(r.score);
+    const colorMap = { crit: '#dc2626', high: '#f97316', med: '#eab308', low: '#22c55e', info: '#6b7280' };
+    const sevLabel = UI[state.lang].severityLevels[sevKey];
+
+    const groups = CVSS_METRIC_DEFS.map(def => {
+        const opts = isEs ? def.opts : def.optsEn;
+        return `
+            <div class="cvss-metric">
+                <span>${isEs ? def.es : def.en}</span>
+                <div class="cvss-metric-opts">
+                    ${opts.map(([code, label]) => `
+                        <button type="button" id="cvss-opt-${def.id}-${code}" class="cvss-opt ${m[def.id] === code ? 'active' : ''}" onclick="cvssSetMetric('${def.id}','${code}')">${label}</button>
+                    `).join('')}
+                </div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeCvssCalc()">
+            <div class="settings-modal" style="width:100%;max-width:640px;display:flex;flex-direction:column;max-height:92vh;" onclick="event.stopPropagation()">
+                <div class="settings-modal-header">
+                    <span>${isEs ? 'Calculadora CVSS 3.1' : 'CVSS 3.1 Calculator'}</span>
+                    <button class="settings-close-btn" onclick="closeCvssCalc()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div style="padding:1.25rem;overflow-y:auto;">
+                    <div class="cvss-score-badge" id="cvss-score-box" style="background:${colorMap[sevKey]};color:#fff;">
+                        <span class="cvss-score-num" id="cvss-live-score">${r.score}</span>
+                        <div>
+                            <div style="font-weight:800;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">${sevLabel}</div>
+                            <div id="cvss-live-vector" style="font-family:ui-monospace,Menlo,monospace;font-size:0.72rem;opacity:0.9;word-break:break-all;">${r.vector}</div>
+                        </div>
+                    </div>
+                    <div class="cvss-calc-grid">
+                        ${groups}
+                    </div>
+                    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.25rem;">
+                        <button class="btn-secondary" onclick="closeCvssCalc()">${isEs ? 'Cancelar' : 'Cancel'}</button>
+                        <button class="btn-primary" onclick="applyCvssCalc()">${isEs ? 'Aplicar al hallazgo' : 'Apply to finding'}</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function renderThemeEditorModal() {
+    if (!state.themeEditor) return '';
+    const ed = state.themeEditor;
+    const isEs = state.lang === 'es';
+
+    const fieldInputs = THEME_EDITOR_FIELDS.map(f => {
+        const val = ed.vars[f.key] || '#000000';
+        const isHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(val);
+        const label = isEs ? f.es : f.en;
+        // Para valores no hex (p.ej. degradados) ofrecemos un campo de texto.
+        const control = (isHex || !f.plain)
+            ? `<input type="color" value="${isHex ? val : '#888888'}" oninput="themeEditorSetVar('${f.key}', this.value)" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0;">`
+            : '';
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.3rem 0;">
+                <span style="font-size:0.8rem;color:var(--text-muted,#64748b);">${label}</span>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <input type="text" value="${escapeHTML(val)}" oninput="themeEditorSetVar('${f.key}', this.value)"
+                        style="width:120px;font-size:0.75rem;font-family:monospace;padding:0.25rem 0.4rem;border:1px solid var(--border,#e2e8f0);border-radius:5px;background:transparent;color:inherit;">
+                    ${control}
+                </div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeThemeEditor()">
+            <div class="settings-modal" style="width:100%;max-width:760px;display:flex;flex-direction:column;max-height:92vh;" onclick="event.stopPropagation()">
+                <div class="settings-modal-header">
+                    <span>${ed.isNew ? (isEs ? 'Nuevo tema de informe' : 'New report theme') : (isEs ? 'Editar tema' : 'Edit theme')}</span>
+                    <button class="settings-close-btn" onclick="closeThemeEditor()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div style="display:flex;min-height:0;flex:1;overflow:hidden;">
+                    <div style="width:340px;flex-shrink:0;border-right:1px solid var(--border,#e2e8f0);padding:1.1rem;overflow-y:auto;">
+                        <div class="form-group" style="margin-bottom:0.75rem;">
+                            <label>${isEs ? 'Nombre' : 'Name'}</label>
+                            <input type="text" value="${escapeHTML(ed.name)}" oninput="state.themeEditor.name = this.value" placeholder="${isEs ? 'Mi tema corporativo' : 'My corporate theme'}">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0.75rem;">
+                            <label>${isEs ? 'Basado en' : 'Based on'}</label>
+                            <select onchange="themeEditorSetBase(this.value)">
+                                <option value="light" ${ed.base === 'light' ? 'selected' : ''}>${isEs ? 'Claro' : 'Light'}</option>
+                                <option value="dark" ${ed.base === 'dark' ? 'selected' : ''}>${isEs ? 'Oscuro' : 'Dark'}</option>
+                                <option value="htb" ${ed.base === 'htb' ? 'selected' : ''}>HTB</option>
+                            </select>
+                        </div>
+                        <div style="border-top:1px solid var(--border,#e2e8f0);margin:0.5rem 0;"></div>
+                        ${fieldInputs}
+                        ${state.themeManagerError ? `<div class="login-error" style="margin-top:0.75rem;">${escapeHTML(state.themeManagerError)}</div>` : ''}
+                        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+                            <button class="btn-primary" style="flex:1;justify-content:center;" onclick="saveThemeFromEditor()">${isEs ? 'Guardar tema' : 'Save theme'}</button>
+                            <button class="btn-secondary" onclick="closeThemeEditor()">${isEs ? 'Cancelar' : 'Cancel'}</button>
+                        </div>
+                    </div>
+                    <div style="flex:1;padding:1.1rem;overflow-y:auto;background:var(--bg-subtle,#f1f5f9);">
+                        <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted,#64748b);margin-bottom:0.6rem;">${isEs ? 'Vista previa' : 'Preview'}</p>
+                        ${renderThemeEditorPreview()}
+                    </div>
+                </div>
+            </div>
+        </div>`;
 }
 
 function renderCvssSummary() {
@@ -1079,6 +1826,184 @@ function renderCvssSummary() {
     `;
 }
 
+// Código de hallazgo legible (F-01, F-02, …).
+function findingCode(idx) { return 'F-' + String(idx + 1).padStart(2, '0'); }
+
+function findingStatusBadge(status) {
+    status = status || 'open';
+    const label = (UI[state.lang].findingStatuses || {})[status] || status;
+    return `<span class="finding-status-badge status-${status}">${escapeHTML(label)}</span>`;
+}
+
+// Bloque de metadatos profesionales por hallazgo (estado, riesgo, OWASP, activos,
+// vector CVSS, cumplimiento, referencias adicionales, re-test).
+function renderFindingProMeta(f, c, t) {
+    const isEs = state.lang === 'es';
+    const riskLbl = (k) => (UI[state.lang].riskLevels || {})[k] || k;
+    const rows = [];
+
+    const owasp = f.owasp || '';
+    const vec = f.cvssVector || f.cvss_vector || '';
+    const assets = f.affectedAssets || f.affected_assets || '';
+    const likelihood = f.likelihood || '';
+    const impactRating = f.impactRating || f.impact_rating || '';
+    const refs = Array.isArray(f.references) ? f.references : [];
+    const comp = Array.isArray(f.compliance) ? f.compliance : [];
+    const retest = f.retestNotes || f.retest_notes || '';
+
+    const item = (label, value) => `
+        <div style="padding:0.5rem 0;border-bottom:1px solid ${c.borderFaint};">
+            <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${c.textGray};">${label}</span>
+            <div style="font-size:0.9rem;color:${c.textBody};margin-top:0.15rem;">${value}</div>
+        </div>`;
+
+    if (owasp) rows.push(item(isEs ? 'OWASP Top 10' : 'OWASP Top 10', escapeHTML(owasp)));
+    if (likelihood || impactRating) {
+        rows.push(item(isEs ? 'Probabilidad × Impacto' : 'Likelihood × Impact',
+            `${escapeHTML(riskLbl(likelihood) || '—')} × ${escapeHTML(riskLbl(impactRating) || '—')}`));
+    }
+    if (vec) rows.push(item(isEs ? 'Vector CVSS' : 'CVSS Vector', `<span style="font-family:ui-monospace,monospace;font-size:0.8rem;word-break:break-all;">${escapeHTML(vec)}</span>`));
+    if (assets) rows.push(item(isEs ? 'Activos afectados' : 'Affected assets', `<span style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:0.82rem;">${formatMultiline(assets)}</span>`));
+    if (comp.length) rows.push(item(isEs ? 'Cumplimiento / mapeo' : 'Compliance / mapping',
+        comp.map(x => `<span class="pro-tag" style="background:rgba(99,102,241,0.12);color:${c.textHeading};">${escapeHTML(x)}</span>`).join(' ')));
+    if (refs.length) rows.push(item(isEs ? 'Referencias adicionales' : 'Additional references',
+        refs.map(r => `<a href="${escapeHTML(r)}" target="_blank" style="color:#3b82f6;text-decoration:none;word-break:break-all;display:block;">${escapeHTML(r)}</a>`).join('')));
+
+    let html = '';
+    if (rows.length) {
+        html += `<div style="background:${c.cardBg};border:1px solid ${c.border};border-radius:8px;padding:0.5rem 1.25rem;margin-bottom:1.5rem;">${rows.join('')}</div>`;
+    }
+    if (retest) {
+        html += `
+            <div style="margin-bottom:1.5rem;background:${c.cardBgAlt};border:1px dashed ${c.borderMetaSub};border-radius:8px;padding:1rem 1.25rem;">
+                <h4 style="font-size:0.95rem;font-weight:700;color:${c.textMuted};margin:0 0 0.4rem;display:flex;align-items:center;gap:0.4rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    ${isEs ? 'Notas de re-test' : 'Re-test notes'}
+                </h4>
+                <p style="color:${c.textFaint};line-height:1.6;margin:0;white-space:pre-wrap;">${formatMultiline(retest)}</p>
+            </div>`;
+    }
+    return html;
+}
+
+// Página de Alcance y Metodología para el informe.
+function renderScopeMethodologyPreview(c, t) {
+    const isEs = state.lang === 'es';
+    const d = state.auditData;
+    const std = d.methodologyStandards || [];
+    const stdLabels = METHODOLOGY_STANDARDS.filter(s => std.includes(s.key)).map(s => s.label);
+    const hasContent = d.scopeIn || d.scopeOut || d.methodologyNotes || d.toolsUsed || stdLabels.length || d.engagementStart || d.engagementEnd;
+    if (!hasContent) return '';
+
+    const block = (title, body, mono) => body ? `
+        <div style="margin-bottom:1.5rem;">
+            <h3 style="font-size:1.15rem;color:${c.textBody};margin:0 0 0.6rem;font-weight:700;">${title}</h3>
+            <div style="background:${c.cardBgAlt};border:1px solid ${c.borderMeta};border-radius:10px;padding:1.1rem 1.4rem;color:${c.textMuted};line-height:1.7;${mono ? 'font-family:ui-monospace,monospace;font-size:0.85rem;' : ''}"><span style="white-space:pre-wrap;">${formatMultiline(body)}</span></div>
+        </div>` : '';
+
+    const dates = (d.engagementStart || d.engagementEnd)
+        ? `${escapeHTML(d.engagementStart || '—')} → ${escapeHTML(d.engagementEnd || '—')}`
+        : '';
+
+    return `
+        <div id="scope" style="padding: 2rem 0; page-break-before: always; background: ${c.pageBg};">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 3px solid ${c.accentLine}; padding-bottom: 0.75rem; margin-bottom: 2rem;">
+                <h2 style="font-size: 2rem; color: ${c.textHeading}; margin: 0; font-weight: 800;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h2>
+                ${renderTlpPageBadge(d)}
+            </div>
+            ${dates ? block(isEs ? 'Ventana del engagement' : 'Engagement window', dates, true) : ''}
+            ${block(isEs ? 'Dentro del alcance' : 'In-scope', d.scopeIn, true)}
+            ${block(isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions', d.scopeOut, true)}
+            ${stdLabels.length ? `
+                <div style="margin-bottom:1.5rem;">
+                    <h3 style="font-size:1.15rem;color:${c.textBody};margin:0 0 0.6rem;font-weight:700;">${isEs ? 'Metodologías y estándares' : 'Methodologies & standards'}</h3>
+                    <div class="pro-tags">${stdLabels.map(l => `<span class="pro-tag" style="background:rgba(37,99,235,0.12);color:${c.textHeading};font-size:0.8rem;">${escapeHTML(l)}</span>`).join('')}</div>
+                </div>` : ''}
+            ${block(isEs ? 'Notas de metodología' : 'Methodology notes', d.methodologyNotes, false)}
+            ${block(isEs ? 'Herramientas utilizadas' : 'Tools used', d.toolsUsed, true)}
+        </div>`;
+}
+
+// Matriz de riesgo Probabilidad × Impacto en el resumen ejecutivo.
+function renderRiskMatrix(c, t) {
+    const isEs = state.lang === 'es';
+    // Deriva probabilidad/impacto del hallazgo; si faltan, se infiere de la severidad.
+    const sevToRisk = { crit: ['high', 'high'], high: ['high', 'med'], med: ['med', 'med'], low: ['low', 'med'], info: ['low', 'low'] };
+    const cells = { high: { high: 0, med: 0, low: 0 }, med: { high: 0, med: 0, low: 0 }, low: { high: 0, med: 0, low: 0 } };
+    let any = false;
+    state.findings.forEach(f => {
+        let lk = f.likelihood, im = f.impactRating || f.impact_rating;
+        if (!lk || !im) { const d = sevToRisk[f.severity] || ['med', 'med']; lk = lk || d[0]; im = im || d[1]; }
+        if (cells[lk] && cells[lk][im] !== undefined) { cells[lk][im]++; any = true; }
+    });
+    if (!any) return '';
+
+    const order = ['high', 'med', 'low'];
+    const lbl = (k) => (UI[state.lang].riskLevels || {})[k] || k;
+    // Color de celda según nivel de riesgo combinado.
+    const cellColor = (lk, im) => {
+        const score = { high: 3, med: 2, low: 1 }[lk] * { high: 3, med: 2, low: 1 }[im];
+        if (score >= 9) return '#dc2626';
+        if (score >= 6) return '#f97316';
+        if (score >= 3) return '#eab308';
+        return '#22c55e';
+    };
+
+    const headerRow = `<tr><th style="padding:0.5rem;"></th>${order.map(im => `<th style="padding:0.5rem;font-size:0.8rem;color:${c.textMuted};">${isEs ? 'Imp.' : 'Imp.'} ${lbl(im)}</th>`).join('')}</tr>`;
+    const bodyRows = order.map(lk => `
+        <tr>
+            <th style="padding:0.5rem;font-size:0.8rem;color:${c.textMuted};text-align:right;white-space:nowrap;">${isEs ? 'Prob.' : 'Lk.'} ${lbl(lk)}</th>
+            ${order.map(im => {
+                const n = cells[lk][im];
+                const bg = n > 0 ? cellColor(lk, im) : 'transparent';
+                return `<td style="padding:0;width:64px;height:48px;text-align:center;border:1px solid ${c.border};background:${bg};color:#fff;font-weight:800;font-size:1.1rem;">${n > 0 ? n : ''}</td>`;
+            }).join('')}
+        </tr>`).join('');
+
+    return `
+        <div style="margin: 2rem 0; page-break-inside: avoid;">
+            <h3 style="font-size:1.15rem;color:${c.textHeading};margin:0 0 1rem;font-weight:800;">${isEs ? 'Matriz de Riesgo (Probabilidad × Impacto)' : 'Risk Matrix (Likelihood × Impact)'}</h3>
+            <table style="border-collapse:collapse;margin:0 auto;">
+                ${headerRow}
+                ${bodyRows}
+            </table>
+        </div>`;
+}
+
+// Tabla de control de versiones del documento.
+function renderRevisionHistoryPreview(c, t) {
+    const isEs = state.lang === 'es';
+    const rows = (state.auditData.revisionHistory || []).filter(r => r.version || r.date || r.author || r.changes);
+    if (!rows.length) return '';
+    return `
+        <div id="revisions" style="padding: 2rem 0; page-break-inside: avoid; background: ${c.pageBg};">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 2px solid ${c.border}; padding-bottom: 0.75rem; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.75rem; color: ${c.textHeading}; margin: 0; font-weight: 800;">${isEs ? 'Control de Versiones' : 'Document Control'}</h2>
+                ${renderTlpPageBadge(state.auditData)}
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead>
+                    <tr style="text-align:left;">
+                        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid ${c.border};color:${c.textMuted};">${isEs ? 'Versión' : 'Version'}</th>
+                        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid ${c.border};color:${c.textMuted};">${isEs ? 'Fecha' : 'Date'}</th>
+                        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid ${c.border};color:${c.textMuted};">${isEs ? 'Autor' : 'Author'}</th>
+                        <th style="padding:0.6rem 0.8rem;border-bottom:2px solid ${c.border};color:${c.textMuted};">${isEs ? 'Cambios' : 'Changes'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => `
+                        <tr>
+                            <td style="padding:0.6rem 0.8rem;border-bottom:1px solid ${c.borderFaint};color:${c.textBody};font-weight:700;">${escapeHTML(r.version || '')}</td>
+                            <td style="padding:0.6rem 0.8rem;border-bottom:1px solid ${c.borderFaint};color:${c.textBody};">${escapeHTML(r.date || '')}</td>
+                            <td style="padding:0.6rem 0.8rem;border-bottom:1px solid ${c.borderFaint};color:${c.textBody};">${escapeHTML(r.author || '')}</td>
+                            <td style="padding:0.6rem 0.8rem;border-bottom:1px solid ${c.borderFaint};color:${c.textBody};">${escapeHTML(r.changes || '')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
 function renderPreview() {
     if (state.activeTab !== 'preview' || state.showSplash || state.showReportSelector) return '';
 
@@ -1090,7 +2015,7 @@ function renderPreview() {
 
     const _cw = state.pdfContentWidth || 820;
     return `
-        <div class="preview-container" style="max-width:${_cw}px;">
+        <div class="preview-container" data-rt-theme="${escapeHTML(state.reportTheme)}" style="max-width:${_cw}px;">
             <!-- PORTADA -->
             <div class="cover-page" style="
                 display: flex;
@@ -1220,6 +2145,10 @@ function renderPreview() {
                     <a href="#summary" style="display: flex; justify-content: space-between; text-decoration: none; color: ${c.textMuted}; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted ${c.borderLight}; font-size: 1.125rem; transition: color 0.2s;">
                         <span>${t.executiveSummaryWithCVSS}</span>
                     </a>
+                    ${(d.scopeIn || d.scopeOut || (d.methodologyStandards || []).length || d.toolsUsed || d.engagementStart) ? `
+                    <a href="#scope" style="display: flex; justify-content: space-between; text-decoration: none; color: ${c.textMuted}; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted ${c.borderLight}; font-size: 1.125rem; transition: color 0.2s;">
+                        <span>${state.lang === 'es' ? 'Alcance y Metodología' : 'Scope & Methodology'}</span>
+                    </a>` : ''}
                     <a href="#incidents" style="display: flex; justify-content: space-between; text-decoration: none; color: ${c.textMuted}; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted ${c.borderLight}; font-size: 1.125rem; transition: color 0.2s;">
                         <span>${t.incidentsSectionTitle}</span>
                     </a>
@@ -1243,6 +2172,9 @@ function renderPreview() {
                 </div>
             </div>
             
+            <!-- ALCANCE Y METODOLOGÍA -->
+            ${renderScopeMethodologyPreview(c, t)}
+
             <!-- RESUMEN EJECUTIVO + INCIDENCIAS (misma página) -->
             <div style="padding: 2rem 0; page-break-inside: avoid; background: ${c.pageBg};">
                 <div id="summary" style="margin-bottom: 3rem;">
@@ -1251,6 +2183,7 @@ function renderPreview() {
                         ${renderTlpPageBadge(d)}
                     </div>
                     ${renderCvssSummary()}
+                    ${renderRiskMatrix(c, t)}
                 </div>
 
                 <div id="incidents">
@@ -1279,9 +2212,15 @@ function renderPreview() {
                 ${state.findings.map((f, idx) => `
                     <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: ${c.cardBg}; padding: 2rem; border-radius: 12px; border: 1px solid ${c.border}; ${state.pdfShowSeverityBars ? `border-left: 6px solid var(--severity-${f.severity});` : ''} box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid ${c.border}; padding-bottom: 1rem; page-break-after: avoid;">
-                            <h3 style="font-size: 1.5rem; font-weight: 800; color: ${c.textHeading}; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
-                            <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap; margin-left: 1rem;">
-                                ${t.severityLevels[f.severity]}
+                            <div style="min-width:0;">
+                                <span style="display:inline-block;font-family:ui-monospace,monospace;font-size:0.7rem;font-weight:700;color:${c.textGray};border:1px solid ${c.border};border-radius:5px;padding:0.1rem 0.45rem;margin-bottom:0.4rem;">${findingCode(idx)}</span>
+                                <h3 style="font-size: 1.5rem; font-weight: 800; color: ${c.textHeading}; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem;margin-left:1rem;">
+                                <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap;">
+                                    ${t.severityLevels[f.severity]}
+                                </div>
+                                ${findingStatusBadge(f.status)}
                             </div>
                         </div>
 
@@ -1303,6 +2242,8 @@ function renderPreview() {
                                 <p style="font-size: 0.875rem; font-weight: 500; color: #3b82f6; margin: 0; word-break: break-all;">${f.reference ? `<a href="${escapeHTML(f.reference)}" target="_blank" style="color: #3b82f6; text-decoration: none;">${escapeHTML(f.reference)}</a>` : t.na}</p>
                             </div>
                         </div>
+
+                        ${renderFindingProMeta(f, c, t)}
 
                         ${f.description ? `
                             <div style="margin-bottom: 1.5rem;">
@@ -1408,6 +2349,9 @@ function renderPreview() {
                 ` : ''}
             </div>
             ` : ''}
+
+            <!-- CONTROL DE VERSIONES -->
+            ${renderRevisionHistoryPreview(c, t)}
         </div>
     `;
 }
@@ -1502,36 +2446,47 @@ function renderSettingsModal() {
                 </div>
 
                 <div class="settings-section">
-                    <p class="settings-section-title">${isEs ? 'Tema del informe' : 'Report theme'}</p>
-                    <div class="settings-option-row">
-                        <button class="settings-theme-btn ${isLight ? 'selected' : ''}" onclick="setReportTheme('light')">
-                            <span class="settings-theme-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                            </span>
-                            <span>${isEs ? 'Claro' : 'Light'}</span>
-                            ${isLight ? `<svg class="settings-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-                        </button>
-                        <button class="settings-theme-btn ${isDark ? 'selected' : ''}" onclick="setReportTheme('dark')">
-                            <span class="settings-theme-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                            </span>
-                            <span>${isEs ? 'Oscuro' : 'Dark'}</span>
-                            ${isDark ? `<svg class="settings-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-                        </button>
-                        <button class="settings-theme-btn htb-theme-btn ${isHtb ? 'selected' : ''}" onclick="setReportTheme('htb')">
-                            <span class="settings-theme-icon">
-                                <svg width="20" height="20" viewBox="0 0 72 82" fill="none">
-                                    <polygon points="36,3 69,21 69,57 36,75 3,57 3,21" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
-                                    <polygon points="36,3 69,21 36,39 3,21" fill="currentColor" fill-opacity="0.3"/>
-                                    <polygon points="3,21 36,39 36,75 3,57" fill="currentColor" fill-opacity="0.5"/>
-                                    <polygon points="69,21 36,39 36,75 69,57" fill="currentColor" fill-opacity="0.15"/>
-                                    <line x1="36" y1="39" x2="36" y2="75" stroke="currentColor" stroke-width="4"/>
-                                </svg>
-                            </span>
-                            <span>HTB</span>
-                            ${isHtb ? `<svg class="settings-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-                        </button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <p class="settings-section-title" style="margin:0;">${isEs ? 'Tema del informe' : 'Report theme'}</p>
+                        <div style="display:flex;gap:0.4rem;">
+                            <button class="btn-sm btn-secondary" onclick="openThemeEditor(null)" title="${isEs ? 'Crear tema' : 'New theme'}">+ ${isEs ? 'Nuevo' : 'New'}</button>
+                            <button class="btn-sm btn-secondary" onclick="document.getElementById('theme-import-input').click()" title="${isEs ? 'Importar tema' : 'Import theme'}">${isEs ? 'Importar' : 'Import'}</button>
+                            <input type="file" id="theme-import-input" accept=".json,application/json" style="display:none" onchange="importThemeFile(this)">
+                        </div>
                     </div>
+                    <div class="theme-card-grid">
+                        ${listAllThemes().map(th => {
+                            const selected = state.reportTheme === th.slug;
+                            const pal = resolveThemePalette(th.slug);
+                            return `
+                            <div class="theme-card ${selected ? 'selected' : ''}" onclick="setReportTheme('${th.slug}')">
+                                <div class="theme-card-swatch" style="background:${pal.pageBg};">
+                                    <span style="background:${pal.accentLine};"></span>
+                                    <span style="background:${pal.cardBg};border:1px solid ${pal.border};"></span>
+                                    <span style="background:${pal.textHeading};"></span>
+                                </div>
+                                <div class="theme-card-name">
+                                    <span>${escapeHTML(th.name)}</span>
+                                    ${selected ? `<svg class="settings-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+                                </div>
+                                ${!th.builtin ? `
+                                <div class="theme-card-actions" onclick="event.stopPropagation()">
+                                    <button title="${isEs ? 'Editar' : 'Edit'}" onclick="openThemeEditor('${th.slug}')">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button title="${isEs ? 'Exportar' : 'Export'}" onclick="exportTheme('${th.slug}')">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    </button>
+                                    <button title="${isEs ? 'Eliminar' : 'Delete'}" onclick="deleteCustomTheme(${th.id}, '${th.slug}')">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
+                                </div>` : `<button title="${isEs ? 'Exportar' : 'Export'}" class="theme-card-export-only" onclick="event.stopPropagation(); exportTheme('${th.slug}')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                </button>`}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    ${state.themeManagerSuccess ? `<div class="login-success" style="margin-top:0.6rem;">${escapeHTML(state.themeManagerSuccess)}</div>` : ''}
                 </div>
 
                 <div class="settings-divider"></div>
@@ -1856,8 +2811,8 @@ function renderPdfPreviewHtml(previewTheme, showBars, contentWidth) {
                 background: ${c2.pageBg} !important;
             }
         </style>
-        <div style="background:${c2.pageBg};">
-            <div id="_pdf_inner" style="zoom:${ZOOM};background:${c2.pageBg};">
+        <div data-rt-theme="${escapeHTML(previewTheme)}" style="background:${c2.pageBg};">
+            <div id="_pdf_inner" data-rt-theme="${escapeHTML(previewTheme)}" style="zoom:${ZOOM};background:${c2.pageBg};">
                 ${html}
             </div>
         </div>`;
@@ -2044,6 +2999,8 @@ function renderApp() {
             ${renderPreview()}
         </main>
         ${renderSettingsModal()}
+        ${renderThemeEditorModal()}
+        ${renderCvssCalcModal()}
         ${renderDemoModal()}
         ${renderPdfModal()}
     `;
@@ -2235,11 +3192,25 @@ function setTab(tab) {
 }
 
 
-function setReportTheme(theme) {
-    state.reportTheme = theme;
+// Aplica el atributo del tema activo al documento. data-rt-theme controla las
+// variables CSS del informe; data-theme controla el aspecto de la propia
+// interfaz (claro/oscuro) según el tema base.
+function applyThemeAttributes(slug) {
+    const base = themeBaseOf(slug);
+    document.documentElement.setAttribute('data-rt-theme', slug);
     document.documentElement.removeAttribute('data-theme');
-    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    if (theme === 'htb')  document.documentElement.setAttribute('data-theme', 'htb');
+    if (base === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    if (base === 'htb')  document.documentElement.setAttribute('data-theme', 'htb');
+}
+
+function setReportTheme(theme) {
+    // Si el tema ya no existe (p.ej. tras eliminar uno personalizado), caemos a 'light'.
+    const exists = listAllThemes().some(t => t.slug === theme);
+    if (!exists) theme = 'light';
+    state.reportTheme = theme;
+    state.auditData.reportTheme = theme;
+    state.isDirty = true;
+    applyThemeAttributes(theme);
     localStorage.setItem('pentestify_theme', theme);
     renderApp();
 }
@@ -2337,6 +3308,16 @@ function updateCurrentFinding(field, value) {
     }
 }
 
+// Campo multilínea -> array (una entrada por línea, sin vacíos).
+function updateCurrentFindingList(field, value) {
+    state.currentFinding[field] = value.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+// Campo separado por comas -> array.
+function updateCurrentFindingCsv(field, value) {
+    state.currentFinding[field] = value.split(',').map(s => s.trim()).filter(Boolean);
+}
+
 function applyTemplate(key) {
     if (key === 'custom') return;
 
@@ -2357,8 +3338,10 @@ function applyTemplate(key) {
         impact: t.impact,
         remediation: t.remediation,
         cvss: t.cvss,
+        cvssVector: t.cvss_vector || t.cvssVector || state.currentFinding.cvssVector || '',
         reference: t.reference,
-        cwe: t.cwe || state.currentFinding.cwe || ''
+        cwe: t.cwe || state.currentFinding.cwe || '',
+        owasp: t.owasp || state.currentFinding.owasp || ''
     };
 
     renderApp();
@@ -2422,20 +3405,30 @@ document.addEventListener('click', function(e) {
 function handleFindingSubmit(e) {
     e.preventDefault();
 
+    const cf = state.currentFinding;
     const finding = {
         id: state.editingFindingIndex !== null ? state.findings[state.editingFindingIndex].id : Date.now(),
-        templateKey: state.currentFinding.templateKey,
+        templateKey: cf.templateKey,
         title: $('#findingTitle').value,
         severity: $('#findingSeverity').value,
         description: $('#findingDescription').value,
         cvss: $('#findingCvss').value,
+        cvssVector: cf.cvssVector || '',
         poc: $('#findingPoc').value,
         impact: $('#findingImpact').value,
         remediation: $('#findingRemediation').value,
         reference: $('#findingReference').value,
+        references: cf.references || [],
         cve: $('#findingCve').value,
-        cwe: $('#findingCwe') ? $('#findingCwe').value : (state.currentFinding.cwe || ''),
-        images: state.currentFinding.images
+        cwe: $('#findingCwe') ? $('#findingCwe').value : (cf.cwe || ''),
+        status: cf.status || 'open',
+        affectedAssets: cf.affectedAssets || '',
+        likelihood: cf.likelihood || '',
+        impactRating: cf.impactRating || '',
+        owasp: cf.owasp || '',
+        compliance: cf.compliance || [],
+        retestNotes: cf.retestNotes || '',
+        images: cf.images
     };
 
     if (state.editingFindingIndex !== null) {
@@ -2465,12 +3458,21 @@ function resetFindingForm() {
         severity: 'med',
         description: '',
         cvss: '',
+        cvssVector: '',
         poc: '',
         impact: '',
         remediation: '',
         reference: '',
+        references: [],
         cve: '',
         cwe: '',
+        status: 'open',
+        affectedAssets: '',
+        likelihood: '',
+        impactRating: '',
+        owasp: '',
+        compliance: [],
+        retestNotes: '',
         images: []
     };
 }
@@ -2485,18 +3487,28 @@ function editFinding(index) {
     const finding = state.findings[index];
     if (!finding) return;
 
+    normalizeFinding(finding);
     state.currentFinding = {
         templateKey: finding.templateKey || 'custom',
         title: finding.title || '',
         severity: finding.severity || 'med',
         description: finding.description || '',
         cvss: finding.cvss || '',
+        cvssVector: finding.cvssVector || '',
         poc: finding.poc || '',
         impact: finding.impact || '',
         remediation: finding.remediation || '',
         reference: finding.reference || '',
+        references: Array.isArray(finding.references) ? [...finding.references] : [],
         cve: finding.cve || '',
         cwe: finding.cwe || '',
+        status: finding.status || 'open',
+        affectedAssets: finding.affectedAssets || '',
+        likelihood: finding.likelihood || '',
+        impactRating: finding.impactRating || '',
+        owasp: finding.owasp || '',
+        compliance: Array.isArray(finding.compliance) ? [...finding.compliance] : [],
+        retestNotes: finding.retestNotes || '',
         images: finding.images ? [...finding.images] : []
     };
 
@@ -2615,14 +3627,30 @@ async function loadReport(id) {
             version: report.version,
             date: report.date,
             lang: report.lang,
+            auditType: report.audit_type || 'pentesting_web',
             hasIncidents: report.has_incidents === true || report.has_incidents === 'true' || report.has_incidents === 1,
             incidentsText: report.incidents_text || '',
             auditSummary: report.audit_summary || '',
             testsPerformed: report.tests_performed || '',
-            recommendedSolutions: report.recommended_solutions || ''
+            recommendedSolutions: report.recommended_solutions || '',
+            reportTheme: report.report_theme || 'light',
+            scopeIn: report.scope_in || '',
+            scopeOut: report.scope_out || '',
+            methodologyNotes: report.methodology_notes || '',
+            methodologyStandards: Array.isArray(report.methodology_standards) ? report.methodology_standards : [],
+            toolsUsed: report.tools_used || '',
+            engagementStart: report.engagement_start || '',
+            engagementEnd: report.engagement_end || '',
+            revisionHistory: Array.isArray(report.revision_history) ? report.revision_history : []
         };
         state.lang = report.lang;
-        state.findings = sortFindingsBySeverity(report.findings || []);
+        // Aplica el tema guardado en el reporte.
+        if (report.report_theme && listAllThemes().some(t => t.slug === report.report_theme)) {
+            state.reportTheme = report.report_theme;
+            applyThemeAttributes(state.reportTheme);
+            localStorage.setItem('pentestify_theme', state.reportTheme);
+        }
+        state.findings = sortFindingsBySeverity(normalizeFindings(report.findings || []));
 
         const draft = localStorage.getItem('report_' + report.id + '_draft');
         if (draft) {
@@ -2737,7 +3765,17 @@ async function saveCurrentReport(silent = false) {
             incidents_text: state.auditData.incidentsText || '',
             audit_summary: state.auditData.auditSummary || '',
             tests_performed: state.auditData.testsPerformed || '',
-            recommended_solutions: state.auditData.recommendedSolutions || ''
+            recommended_solutions: state.auditData.recommendedSolutions || '',
+            audit_type: state.auditData.auditType || 'pentesting_web',
+            report_theme: state.reportTheme || state.auditData.reportTheme || 'light',
+            scope_in: state.auditData.scopeIn || '',
+            scope_out: state.auditData.scopeOut || '',
+            methodology_notes: state.auditData.methodologyNotes || '',
+            methodology_standards: state.auditData.methodologyStandards || [],
+            tools_used: state.auditData.toolsUsed || '',
+            engagement_start: state.auditData.engagementStart || '',
+            engagement_end: state.auditData.engagementEnd || '',
+            revision_history: state.auditData.revisionHistory || []
         };
 
         if (!state.currentReportId) {
@@ -2765,12 +3803,21 @@ async function saveCurrentReport(silent = false) {
                 severity: finding.severity,
                 description: finding.description || '',
                 cvss: finding.cvss || '',
+                cvss_vector: finding.cvssVector || finding.cvss_vector || '',
                 poc: finding.poc || '',
                 impact: finding.impact || '',
                 remediation: finding.remediation || '',
                 reference: finding.reference || '',
+                references: finding.references || [],
                 cve: finding.cve || '',
                 cwe: finding.cwe || '',
+                status: finding.status || 'open',
+                affected_assets: finding.affectedAssets || finding.affected_assets || '',
+                likelihood: finding.likelihood || '',
+                impact_rating: finding.impactRating || finding.impact_rating || '',
+                owasp: finding.owasp || '',
+                compliance: finding.compliance || [],
+                retest_notes: finding.retestNotes || finding.retest_notes || '',
                 images: finding.images || [],
                 order_index: i
             };
@@ -2800,15 +3847,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const printMode = params.get('print_mode');
     const reportId = params.get('report_id');
 
-    if (!printMode) {
-        const savedTheme = localStorage.getItem('pentestify_theme');
-        if (savedTheme && ['light', 'dark', 'htb'].includes(savedTheme)) {
-            state.reportTheme = savedTheme;
-            document.documentElement.removeAttribute('data-theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-            if (savedTheme === 'htb')  document.documentElement.setAttribute('data-theme', 'htb');
-        }
-    }
+    // Inyectamos los bloques CSS de los temas de fábrica de inmediato (los
+    // personalizados se añaden cuando se cargan desde la API).
+    injectThemeStyles();
 
     const themeParam = params.get('theme');
     if (printMode === 'true' && reportId) {
@@ -2818,16 +3859,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.isAuthenticated = true;
         state.activeTab = 'preview';
         state.currentReportId = parseInt(reportId);
-        if (themeParam === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            state.reportTheme = 'dark';
-        } else if (themeParam === 'htb') {
-            document.documentElement.setAttribute('data-theme', 'htb');
-            state.reportTheme = 'htb';
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-            state.reportTheme = 'light';
-        }
+        // Cargamos los temas personalizados para que el PDF pueda usar cualquiera.
+        await loadCustomThemes();
+        state.reportTheme = (themeParam && listAllThemes().some(t => t.slug === themeParam)) ? themeParam : 'light';
+        applyThemeAttributes(state.reportTheme);
         if (params.get('show_severity_bars') === 'false') {
             state.pdfShowSeverityBars = false;
         }
@@ -2859,11 +3894,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 state.auditData.classificationMode = remoteReport.classification_mode;
             }
 
-            state.findings = remoteReport.findings ? sortFindingsBySeverity(remoteReport.findings) : [];
+            state.findings = remoteReport.findings ? sortFindingsBySeverity(normalizeFindings(remoteReport.findings)) : [];
         } catch (e) {
             console.error("Error cargando reporte para imprimir", e);
         }
         renderApp();
+        // Pintamos el fondo de la página con el color del tema para que el lienzo
+        // del PDF (márgenes incluidos) coincida con cualquier tema, incluso los
+        // personalizados.
+        applyPrintBackground();
     } else {
         // Modo normal: comprobamos si ya hay una sesión válida (cookie) antes de
         // decidir entre mostrar el login o la aplicación.
@@ -2874,6 +3913,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const me = await API.auth.me();
             state.isAuthenticated = true;
             state.authUsername = me.username;
+            // Cargamos los temas personalizados del usuario y aplicamos el guardado.
+            await loadCustomThemes();
+            const savedTheme = localStorage.getItem('pentestify_theme');
+            state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
+            applyThemeAttributes(state.reportTheme);
             // En la página de cuenta cargamos la lista de usuarios.
             if (state.isAccountView) {
                 await loadUsers();
@@ -2885,3 +3929,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderApp();
     }
 });
+
+// Aplica el fondo del tema activo a html/body (usado en modo impresión para que
+// el PDF no muestre franjas blancas con temas oscuros o personalizados).
+function applyPrintBackground() {
+    try {
+        const probe = document.querySelector('.preview-container') || document.documentElement;
+        const bg = getComputedStyle(probe).getPropertyValue('--rt-pageBg').trim();
+        if (bg) {
+            document.documentElement.style.background = bg;
+            document.body.style.background = bg;
+        }
+    } catch (e) { /* sin variables: dejamos el fondo por defecto */ }
+}

@@ -66,18 +66,41 @@ class UserInfo(BaseModel):
         from_attributes = True
 
 
+def _clean_str_list(values, limit: int = 50, maxlen: int = 500) -> List[str]:
+    """Lista de cadenas saneada: descarta vacíos, recorta longitud y nº de ítems."""
+    out: List[str] = []
+    for v in (values or []):
+        if not isinstance(v, str):
+            continue
+        v = v.strip()
+        if v:
+            out.append(v[:maxlen])
+        if len(out) >= limit:
+            break
+    return out
+
+
 class FindingBase(BaseModel):
     template_key: str = "custom"
     title: str
     severity: str = "med"
     description: str = ""
     cvss: str = ""
+    cvss_vector: str = ""
     poc: str = ""
     impact: str = ""
     remediation: str = ""
     reference: str = ""
+    references: List[str] = []
     cve: str = ""
     cwe: str = ""
+    status: str = "open"
+    affected_assets: str = ""
+    likelihood: str = ""
+    impact_rating: str = ""
+    owasp: str = ""
+    compliance: List[str] = []
+    retest_notes: str = ""
     images: List[str] = []
     order_index: int = 0
 
@@ -85,6 +108,11 @@ class FindingBase(BaseModel):
     @classmethod
     def _sanitize_images(cls, v):
         return sanitize_image_list(v)
+
+    @field_validator('references', 'compliance')
+    @classmethod
+    def _sanitize_str_lists(cls, v):
+        return _clean_str_list(v)
 
 
 class FindingCreate(FindingBase):
@@ -105,6 +133,13 @@ class FindingResponse(FindingBase):
         from_attributes = True
 
 
+class RevisionEntry(BaseModel):
+    version: str = ""
+    date: str = ""
+    author: str = ""
+    changes: str = ""
+
+
 class ReportBase(BaseModel):
     document_title: str = "Reporte Técnico de Vulnerabilidades"
     client_company: str = "Empresa Cliente S.A."
@@ -119,18 +154,33 @@ class ReportBase(BaseModel):
     version: str = "1.0"
     date: str = ""
     lang: str = "es"
-    theme: str = "corporate"  # corporate, ctf, certification
+    theme: str = "corporate"  # corporate, ctf, certification (legacy)
+    report_theme: str = "light"
     client_logo: List[str] = []
     has_incidents: bool = False
     incidents_text: str = ""
     audit_summary: str = ""
     tests_performed: str = ""
     recommended_solutions: str = ""
+    audit_type: str = "pentesting_web"
+    scope_in: str = ""
+    scope_out: str = ""
+    methodology_notes: str = ""
+    methodology_standards: List[str] = []
+    tools_used: str = ""
+    engagement_start: str = ""
+    engagement_end: str = ""
+    revision_history: List[RevisionEntry] = []
 
     @field_validator('client_logo')
     @classmethod
     def _sanitize_client_logo(cls, v):
         return sanitize_image_list(v, keep_slots=True)
+
+    @field_validator('methodology_standards')
+    @classmethod
+    def _sanitize_methodology(cls, v):
+        return _clean_str_list(v, limit=30, maxlen=80)
 
 
 class ReportCreate(ReportBase):
@@ -159,6 +209,114 @@ class ReportList(BaseModel):
     date: str
     created_at: datetime
     findings_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+# --------------------------------------------------------------------------- #
+# Temas de informe (estilos CSS personalizables)
+# --------------------------------------------------------------------------- #
+# Slug seguro: se inserta en un selector CSS [data-rt-theme="..."], así que sólo
+# permitimos caracteres inertes para cerrar la inyección de CSS/HTML.
+_SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]{0,48}$')
+
+# Valor de variable CSS: rechazamos llaves, punto y coma, dos puntos extra y
+# secuencias que permitan salir del valor de la propiedad o inyectar reglas.
+_CSS_VALUE_RE = re.compile(r'^[#a-zA-Z0-9 ,.\-%()]{0,120}$')
+
+
+def _sanitize_theme_vars(vars_dict) -> dict:
+    if not isinstance(vars_dict, dict):
+        return {}
+    clean = {}
+    for k, v in vars_dict.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            continue
+        k = k.strip()
+        v = v.strip()
+        # Las claves deben ser variables CSS de nuestro espacio de nombres.
+        if not re.match(r'^--rt-[a-zA-Z0-9-]{1,40}$', k):
+            continue
+        if not _CSS_VALUE_RE.match(v):
+            continue
+        clean[k] = v
+        if len(clean) >= 80:
+            break
+    return clean
+
+
+class ThemeBase(BaseModel):
+    slug: str
+    name: str
+    base: str = "light"
+    vars: dict = {}
+
+    @field_validator('slug')
+    @classmethod
+    def _valid_slug(cls, v):
+        v = (v or '').strip().lower()
+        if not _SLUG_RE.match(v):
+            raise ValueError('Slug inválido (solo minúsculas, números y guiones)')
+        return v
+
+    @field_validator('base')
+    @classmethod
+    def _valid_base(cls, v):
+        return v if v in ('light', 'dark', 'htb') else 'light'
+
+    @field_validator('vars')
+    @classmethod
+    def _clean_vars(cls, v):
+        return _sanitize_theme_vars(v)
+
+
+class ThemeCreate(ThemeBase):
+    pass
+
+
+class ThemeResponse(ThemeBase):
+    id: int
+    is_builtin: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+# --------------------------------------------------------------------------- #
+# Plantillas de hallazgo del usuario
+# --------------------------------------------------------------------------- #
+class FindingTemplateBase(BaseModel):
+    slug: str
+    name: str
+    title: str = ""
+    severity: str = "med"
+    cvss: str = ""
+    cvss_vector: str = ""
+    description: str = ""
+    poc: str = ""
+    impact: str = ""
+    remediation: str = ""
+    reference: str = ""
+    cwe: str = ""
+    cve: str = ""
+    owasp: str = ""
+
+    @field_validator('slug')
+    @classmethod
+    def _valid_slug(cls, v):
+        v = (v or '').strip().lower()
+        if not _SLUG_RE.match(v):
+            raise ValueError('Slug inválido (solo minúsculas, números y guiones)')
+        return v
+
+
+class FindingTemplateCreate(FindingTemplateBase):
+    pass
+
+
+class FindingTemplateResponse(FindingTemplateBase):
+    id: int
 
     class Config:
         from_attributes = True

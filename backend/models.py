@@ -31,13 +31,26 @@ class Report(Base):
     version = Column(String, default="1.0")
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")
-    theme = Column(String, default="corporate")  # corporate, ctf, certification
+    theme = Column(String, default="corporate")  # corporate, ctf, certification (legacy)
+    report_theme = Column(String, default="light")  # slug del tema de estilos del informe (light/dark/htb/custom-*)
     client_logo = Column(JSON, default=list)
     has_incidents = Column(Integer, default=0)  # 0 = false, 1 = true
     incidents_text = Column(Text, default="")
     audit_summary = Column(Text, default="")
     tests_performed = Column(Text, default="")
     recommended_solutions = Column(Text, default="")
+
+    # --- Tipo de auditoría y alcance / metodología (informe profesional) ---
+    audit_type = Column(String, default="pentesting_web")
+    scope_in = Column(Text, default="")          # activos dentro del alcance
+    scope_out = Column(Text, default="")         # exclusiones / fuera de alcance
+    methodology_notes = Column(Text, default="") # notas de metodología
+    methodology_standards = Column(JSON, default=list)  # ["owasp_wstg", "ptes", ...]
+    tools_used = Column(Text, default="")
+    engagement_start = Column(String, default="")
+    engagement_end = Column(String, default="")
+    revision_history = Column(JSON, default=list)  # [{version, date, author, changes}]
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -56,20 +69,70 @@ class Finding(Base):
     severity = Column(String, default="med")  # crit, high, med, low, info
     description = Column(Text, default="")
     cvss = Column(String, default="")
+    cvss_vector = Column(String, default="")  # Ej: CVSS:3.1/AV:N/AC:L/...
     poc = Column(Text, default="")  # Proof of Concept
     impact = Column(Text, default="")
     remediation = Column(Text, default="")
-    reference = Column(String, default="")
+    reference = Column(String, default="")       # legacy: una sola referencia
+    references = Column(JSON, default=list)       # lista de referencias (URLs/recursos)
     cve = Column(String, default="")
     cwe = Column(String, default="")  # Ej: "CWE-89" o "CWE-89, CWE-564"
-    
+
+    # --- Informe profesional ---
+    status = Column(String, default="open")        # open, remediated, accepted_risk, false_positive
+    affected_assets = Column(Text, default="")     # hosts/URLs/parámetros afectados
+    likelihood = Column(String, default="")        # high, med, low  (matriz de riesgo)
+    impact_rating = Column(String, default="")     # high, med, low  (matriz de riesgo)
+    owasp = Column(String, default="")             # categoría OWASP Top 10
+    compliance = Column(JSON, default=list)        # ["PCI 6.5.1", "ISO A.14", ...]
+    retest_notes = Column(Text, default="")        # notas de re-test
+
     # Imágenes se guardan como JSON array de URLs/data URLs
     images = Column(JSON, default=list)
-    
+
     # Orden del hallazgo en el reporte
     order_index = Column(Integer, default=0)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     report = relationship("Report", back_populates="findings")
+
+
+class Theme(Base):
+    """Tema de estilos del informe. Los built-in (light/dark/htb) se siembran al
+    arrancar; los personalizados los crean los usuarios (paleta de variables CSS)."""
+    __tablename__ = "themes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    base = Column(String, default="light")     # tema base del que hereda (light/dark/htb)
+    vars = Column(JSON, default=dict)           # { "--rt-pageBg": "#fff", ... }
+    is_builtin = Column(Integer, default=0)     # 0 = personalizado, 1 = de fábrica
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FindingTemplate(Base):
+    """Plantilla de hallazgo reutilizable creada por el usuario (su propia base de
+    conocimiento). Las 30 plantillas de fábrica siguen viviendo en plantillas.json."""
+    __tablename__ = "finding_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    title = Column(String, default="")
+    severity = Column(String, default="med")
+    cvss = Column(String, default="")
+    cvss_vector = Column(String, default="")
+    description = Column(Text, default="")
+    poc = Column(Text, default="")
+    impact = Column(Text, default="")
+    remediation = Column(Text, default="")
+    reference = Column(String, default="")
+    cwe = Column(String, default="")
+    cve = Column(String, default="")
+    owasp = Column(String, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import Base, get_db
 from main import app
+import auth
+import models
 
 # Base de datos en memoria para tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -30,7 +32,14 @@ def override_get_db():
         db.close()
 
 
+def override_require_auth():
+    # En tests no validamos cookies de sesión: devolvemos un usuario administrador
+    # ficticio para poder ejercitar los endpoints protegidos.
+    return models.User(id=1, username="admin", password_hash="x")
+
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[auth.require_auth] = override_require_auth
 
 
 @pytest.fixture(scope="function")

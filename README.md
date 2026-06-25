@@ -14,15 +14,34 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.1-blue.svg" alt="Version 1.1.1">
+  <img src="https://img.shields.io/badge/version-1.2.0-blue.svg" alt="Version 1.2.0">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 1.1.1</strong>
+  <strong>Versión actual: 1.2.0</strong>
 </p>
+
+## ✨ Novedades de la 1.2.0 (rama `beta`)
+
+Esta versión convierte Pentestify en un generador de **informes de pentesting profesionales**:
+
+### 🎨 Temas del informe basados en CSS (personalizables)
+- Los estilos del informe ahora se controlan con **variables CSS** (`--rt-*`), no con colores incrustados en el código.
+- Se mantienen los **3 temas de fábrica** (Claro, Oscuro, HTB).
+- Los usuarios pueden **crear sus propios temas** con un editor visual (colores + vista previa en vivo), **aplicarlos**, **exportarlos** e **importarlos** como JSON, y eliminarlos. Gestor disponible en *Ajustes → Tema del informe*.
+
+### 🛡️ Funcionalidades de informe profesional
+- **Calculadora CVSS 3.1** interactiva: genera el vector, calcula el *base score* y deriva la severidad automáticamente.
+- **Alcance y Metodología**: in-scope / out-of-scope, ventana del engagement, estándares aplicados (OWASP WSTG/Top 10, PTES, NIST 800-115, OSSTMM, MITRE ATT&CK…) y herramientas utilizadas.
+- **Activos afectados** por hallazgo (host/URL/parámetro).
+- **Estado del hallazgo** (abierto / remediado / riesgo aceptado / falso positivo) y **notas de re-test**.
+- **Matriz de riesgo** Probabilidad × Impacto en el resumen ejecutivo.
+- **IDs de hallazgo** (F-01, F-02…), **vector CVSS**, **categoría OWASP Top 10**, **referencias múltiples** y **mapeo de cumplimiento** (PCI-DSS, ISO 27001, MITRE…).
+- **Historial de revisiones / control de versiones** del documento.
+- Los nuevos campos se reflejan en la **vista previa** y en el **PDF** (incluidos los temas personalizados).
 
 ## 👥 Autores
 

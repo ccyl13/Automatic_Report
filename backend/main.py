@@ -31,7 +31,7 @@ finally:
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="1.1.1"
+    version="1.2.0"
 )
 
 # URL base interna que usa el backend para renderizar PDFs con Playwright.
@@ -77,7 +77,7 @@ app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "1.1.1"}
+    return {"message": "Pentestify API", "version": "1.2.0"}
 
 
 @app.get("/")
@@ -319,6 +319,94 @@ def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depen
     return {"message": "Orden actualizado"}
 
 
+# --------------------------------------------------------------------------- #
+# Temas de informe personalizados (estilos CSS)
+# --------------------------------------------------------------------------- #
+_RESERVED_THEME_SLUGS = {"light", "dark", "htb"}
+
+
+@app.get("/api/themes", response_model=List[schemas.ThemeResponse])
+def list_themes(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    return db.query(models.Theme).order_by(models.Theme.id).all()
+
+
+@app.post("/api/themes", response_model=schemas.ThemeResponse)
+def create_theme(payload: schemas.ThemeCreate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    if payload.slug in _RESERVED_THEME_SLUGS:
+        raise HTTPException(status_code=400, detail="Ese identificador está reservado para un tema de fábrica")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre del tema no puede estar vacío")
+
+    existing = db.query(models.Theme).filter(models.Theme.slug == payload.slug).first()
+    if existing:
+        # Upsert: actualizar tema personalizado existente.
+        existing.name = name
+        existing.base = payload.base
+        existing.vars = payload.vars
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    theme = models.Theme(slug=payload.slug, name=name, base=payload.base, vars=payload.vars, is_builtin=0)
+    db.add(theme)
+    db.commit()
+    db.refresh(theme)
+    return theme
+
+
+@app.delete("/api/themes/{theme_id}")
+def delete_theme(theme_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    theme = db.query(models.Theme).filter(models.Theme.id == theme_id).first()
+    if not theme:
+        raise HTTPException(status_code=404, detail="Tema no encontrado")
+    if theme.is_builtin:
+        raise HTTPException(status_code=400, detail="No se puede eliminar un tema de fábrica")
+    db.delete(theme)
+    db.commit()
+    return {"message": "Tema eliminado correctamente"}
+
+
+# --------------------------------------------------------------------------- #
+# Plantillas de hallazgo del usuario (base de conocimiento)
+# --------------------------------------------------------------------------- #
+@app.get("/api/finding-templates", response_model=List[schemas.FindingTemplateResponse])
+def list_finding_templates(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    return db.query(models.FindingTemplate).order_by(models.FindingTemplate.name).all()
+
+
+@app.post("/api/finding-templates", response_model=schemas.FindingTemplateResponse)
+def create_finding_template(payload: schemas.FindingTemplateCreate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre de la plantilla no puede estar vacío")
+
+    data = payload.dict()
+    existing = db.query(models.FindingTemplate).filter(models.FindingTemplate.slug == payload.slug).first()
+    if existing:
+        for k, v in data.items():
+            setattr(existing, k, v)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    tpl = models.FindingTemplate(**data)
+    db.add(tpl)
+    db.commit()
+    db.refresh(tpl)
+    return tpl
+
+
+@app.delete("/api/finding-templates/{template_id}")
+def delete_finding_template(template_id: int, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    tpl = db.query(models.FindingTemplate).filter(models.FindingTemplate.id == template_id).first()
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+    db.delete(tpl)
+    db.commit()
+    return {"message": "Plantilla eliminada correctamente"}
+
+
 @app.get("/api/reports/{report_id}/pdf")
 async def generate_pdf(
     report_id: int,
@@ -520,6 +608,18 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
         audit_summary="Se ha realizado una auditoría de caja negra sobre la plataforma de comercio electrónico AcmeShop. Durante el engagement se identificaron 6 vulnerabilidades, 2 de ellas de severidad crítica que permiten comprometer completamente el sistema. El vector de ataque principal fue la inyección SQL en el formulario de autenticación, seguido de una escalada de privilegios por command injection en el módulo de gestión de archivos.",
         tests_performed="• Reconocimiento pasivo y activo (Shodan, Google Dorks, subfinder)\n• Fuzzing de directorios y parámetros (ffuf, gobuster)\n• Análisis de parámetros GET/POST con Burp Suite Pro\n• Pruebas de autenticación y autorización\n• Inyección SQL manual y automatizada (sqlmap)\n• Pruebas XSS reflejado y almacenado\n• Análisis de cabeceras HTTP y configuración TLS\n• Pruebas de escalada de privilegios en servidor",
         recommended_solutions="1. Aplicar parches críticos de SQLi y Command Injection de forma inmediata.\n2. Implementar WAF (ModSecurity o Cloudflare) como medida preventiva urgente.\n3. Revisar todos los endpoints que reciben input de usuario y aplicar prepared statements.\n4. Implementar un SIEM para detección temprana de intrusiones.\n5. Realizar un segundo ciclo de pentesting tras aplicar los parches para validar efectividad.",
+        audit_type="caja_negra",
+        scope_in="https://shop.acmeshop.com\nhttps://admin.acmeshop.com\n203.0.113.0/24 (infraestructura web pública)",
+        scope_out="Infraestructura interna corporativa\nServicios de terceros (pasarela de pago Stripe)\nAtaques de denegación de servicio (DoS/DDoS)",
+        methodology_notes="Auditoría de caja negra sin credenciales previas. Ventana de pruebas pactada de 10 días laborables con la cláusula de parada de emergencia activada.",
+        methodology_standards=["owasp_wstg", "owasp_top10", "ptes", "nist_800_115"],
+        tools_used="Burp Suite Pro, sqlmap, ffuf, gobuster, nmap, nuclei, subfinder, GTFOBins",
+        engagement_start=datetime.today().strftime("%Y-%m-%d"),
+        engagement_end=datetime.today().strftime("%Y-%m-%d"),
+        revision_history=[
+            {"version": "0.1", "date": datetime.today().strftime("%Y-%m-%d"), "author": "Security Research Team", "changes": "Borrador inicial de hallazgos"},
+            {"version": "1.0", "date": datetime.today().strftime("%Y-%m-%d"), "author": "Security Research Team", "changes": "Versión final entregada al cliente"},
+        ],
     )
     report = models.Report(**report_data.dict())
     db.add(report)
@@ -532,9 +632,17 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
             "title": "Inyección SQL en formulario de login",
             "severity": "crit",
             "cvss": "9.8",
+            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
             "cve": "N/A",
             "cwe": "CWE-89",
+            "owasp": "A03:2021 – Injection",
+            "status": "open",
+            "likelihood": "high",
+            "impact_rating": "high",
+            "affected_assets": "POST https://shop.acmeshop.com/admin/login\nparam: username",
+            "compliance": ["PCI-DSS 6.5.1", "ISO 27001 A.14.2", "MITRE ATT&CK T1190"],
             "reference": "https://owasp.org/www-community/attacks/SQL_Injection",
+            "references": ["https://cwe.mitre.org/data/definitions/89.html", "https://portswigger.net/web-security/sql-injection"],
             "description": "Se detectó una vulnerabilidad de Inyección SQL en el parámetro `username` del formulario de autenticación. El atacante puede manipular la consulta SQL para bypassear la autenticación, extraer toda la base de datos de usuarios (incluyendo contraseñas hasheadas) y, dependiendo de los permisos del usuario de base de datos, ejecutar comandos del sistema operativo mediante `xp_cmdshell`.",
             "poc": "1. Acceder al panel de login en /admin/login\n2. Introducir el siguiente payload en el campo usuario:\n   ' OR '1'='1' --\n3. Observar que el login se completa sin contraseña\n4. Para extracción de datos con sqlmap:\n   sqlmap -u 'https://shop.acmeshop.com/login' --data='user=test&pass=test' -p user --dbs --batch\n5. Resultado: dump completo de la base de datos 'acmeshop_prod'",
             "impact": "Un atacante podría obtener acceso completo a la plataforma de administración, extraer todas las credenciales de usuarios (más de 45.000 registros), modificar datos de pedidos y precios, y potencialmente comprometer el servidor subyacente. El impacto en el negocio es crítico, con riesgo de multas por violación del GDPR y pérdida de confianza de clientes.",
@@ -545,8 +653,15 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
             "title": "Command Injection y escalada de privilegios (GTFOBins)",
             "severity": "crit",
             "cvss": "9.0",
+            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
             "cve": "N/A",
             "cwe": "CWE-78",
+            "owasp": "A03:2021 – Injection",
+            "status": "open",
+            "likelihood": "high",
+            "impact_rating": "high",
+            "affected_assets": "GET https://shop.acmeshop.com/admin/file-manager/preview\nparam: file",
+            "compliance": ["PCI-DSS 6.5.1", "MITRE ATT&CK T1059"],
             "reference": "https://gtfobins.github.io/",
             "description": "El módulo de gestión de archivos del panel de administración permite ejecutar comandos del sistema operativo sin sanitizar el input. A través del parámetro `file` del endpoint `/admin/preview`, un atacante autenticado puede inyectar comandos arbitrarios. Combinado con la vulnerabilidad de SQLi anterior, el ataque no requiere credenciales previas.",
             "poc": "1. Autenticarse usando el bypass SQLi de la vulnerabilidad anterior\n2. Navegar a /admin/file-manager/preview\n3. Inyectar en el parámetro file:\n   ; id; whoami; cat /etc/passwd\n4. Escalar privilegios usando python3 desde GTFOBins:\n   python3 -c 'import os; os.system(\"/bin/bash\")'\n5. Resultado: shell interactiva como www-data con posibilidad de escalar a root",
@@ -597,8 +712,15 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
             "title": "Cabeceras de seguridad HTTP ausentes",
             "severity": "low",
             "cvss": "3.7",
+            "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N",
             "cve": "N/A",
             "cwe": "CWE-693",
+            "owasp": "A05:2021 – Security Misconfiguration",
+            "status": "remediated",
+            "likelihood": "low",
+            "impact_rating": "low",
+            "retest_notes": "Re-test (v1.0): el cliente añadió todas las cabeceras recomendadas en la configuración de nginx. Verificado con securityheaders.com (calificación A). Hallazgo cerrado.",
+            "compliance": ["ISO 27001 A.14.1"],
             "reference": "https://securityheaders.com/",
             "description": "El servidor web no incluye las cabeceras de seguridad HTTP recomendadas. Analizando las respuestas HTTP se observa la ausencia de: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy. Esto facilita ataques de clickjacking, MIME sniffing y fuga de información de referrer.",
             "poc": "Verificación con curl:\n  curl -I https://shop.acmeshop.com/\n\nCabeceras ausentes observadas:\n  ✗ Content-Security-Policy: no presente\n  ✗ X-Frame-Options: no presente\n  ✗ X-Content-Type-Options: no presente\n  ✗ Referrer-Policy: no presente\n  ✗ Permissions-Policy: no presente\n\nVerificación online: https://securityheaders.com → Resultado: F",
@@ -615,13 +737,22 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
             title=f["title"],
             severity=f["severity"],
             cvss=f["cvss"],
+            cvss_vector=f.get("cvss_vector", ""),
             cve=f["cve"],
             cwe=f["cwe"],
             reference=f["reference"],
+            references=f.get("references", []),
             description=f["description"],
             poc=f["poc"],
             impact=f["impact"],
             remediation=f["remediation"],
+            status=f.get("status", "open"),
+            affected_assets=f.get("affected_assets", ""),
+            likelihood=f.get("likelihood", ""),
+            impact_rating=f.get("impact_rating", ""),
+            owasp=f.get("owasp", ""),
+            compliance=f.get("compliance", []),
+            retest_notes=f.get("retest_notes", ""),
             images=f["images"],
             order_index=order,
         )
@@ -697,17 +828,39 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
 
             _sanitize_json_column("reports", "client_logo", keep_slots=True)
             _sanitize_json_column("findings", "images", keep_slots=False)
+
+            # Saneamos las variables CSS de temas importados: se inyectan en un
+            # <style> del frontend, así que un .db malicioso podría colar CSS/HTML.
+            if "themes" in tables:
+                cursor.execute("SELECT id, vars FROM themes")
+                for row_id, raw in cursor.fetchall():
+                    try:
+                        parsed = json.loads(raw) if raw else {}
+                    except (TypeError, ValueError):
+                        parsed = {}
+                    cleaned = schemas._sanitize_theme_vars(parsed)
+                    cursor.execute("UPDATE themes SET vars = ? WHERE id = ?", (json.dumps(cleaned), row_id))
+
             conn.commit()
             conn.close()
         except sqlite3.Error as e:
             raise HTTPException(status_code=400, detail=f"Archivo no es una base de datos SQLite válida: {str(e)}")
         
         db.close()
-        
+
         shutil.copy2(temp_path, db_path)
-        
+
         os.remove(temp_path)
-        
+
+        # El .db importado puede ser de una versión anterior: aseguramos que
+        # tenga todas las tablas/columnas nuevas (themes, finding_templates, …).
+        try:
+            models.Base.metadata.create_all(bind=engine)
+            from migrations import run_migrations as _run_migrations
+            _run_migrations(engine)
+        except Exception as _e:
+            print(f"⚠️  Post-import schema sync: {_e}")
+
         return JSONResponse(
             content={
                 "message": "Base de datos importada correctamente",

@@ -3567,31 +3567,21 @@ button {
     }
 }
 
-/* ==================== DARK / HTB THEME PRINT OVERRIDES ==================== */
-/* Override the white-background print rules for dark/htb themes */
+/* ==================== REPORT THEME PRINT BACKGROUNDS ==================== */
+/* El fondo del informe en impresión sale de la variable del tema activo
+   (--rt-pageBg), de modo que vale para los 3 temas de fábrica y para cualquier
+   tema personalizado que cree el usuario. */
 @media print {
-    [data-theme="dark"] body,
-    [data-theme="dark"] .cover-page,
-    [data-theme="dark"] .index-page,
-    [data-theme="dark"] #summary,
-    [data-theme="dark"] #incidents,
-    [data-theme="dark"] .main-content,
-    [data-theme="dark"] .preview-container,
-    [data-theme="dark"] .findings-preview {
-        background: #0f172a !important;
-        color: #e2e8f0 !important;
-    }
-
-    [data-theme="htb"] body,
-    [data-theme="htb"] .cover-page,
-    [data-theme="htb"] .index-page,
-    [data-theme="htb"] #summary,
-    [data-theme="htb"] #incidents,
-    [data-theme="htb"] .main-content,
-    [data-theme="htb"] .preview-container,
-    [data-theme="htb"] .findings-preview {
-        background: #1a2332 !important;
-        color: #e2e8f0 !important;
+    [data-rt-theme] body,
+    [data-rt-theme] .cover-page,
+    [data-rt-theme] .index-page,
+    [data-rt-theme] #summary,
+    [data-rt-theme] #incidents,
+    [data-rt-theme] .main-content,
+    [data-rt-theme] .preview-container,
+    [data-rt-theme] .findings-preview {
+        background: var(--rt-pageBg) !important;
+        color: var(--rt-textBody) !important;
     }
 }
 
@@ -4949,3 +4939,108 @@ button {
     color: var(--gray-400);
     letter-spacing: 0.05em;
 }
+
+/* ============================================================ */
+/* v1.2.0 — Gestor de temas, calculadora CVSS y campos pro      */
+/* ============================================================ */
+
+/* ---- Tarjetas de temas en Ajustes ---- */
+.theme-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+}
+.theme-card {
+    position: relative;
+    border: 2px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    background: var(--card, #fff);
+}
+.theme-card:hover { transform: translateY(-1px); border-color: #94a3b8; }
+.theme-card.selected { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+.theme-card-swatch {
+    height: 38px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    margin-bottom: 0.45rem;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+.theme-card-swatch span {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-block;
+}
+.theme-card-name {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 0.8rem; font-weight: 600; color: var(--text, #0f172a);
+}
+.theme-card-actions {
+    display: flex; gap: 0.25rem; margin-top: 0.4rem;
+}
+.theme-card-actions button,
+.theme-card-export-only {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.2rem; border: 1px solid var(--border, #e2e8f0);
+    border-radius: 5px; background: transparent; cursor: pointer;
+    color: var(--text-muted, #64748b);
+}
+.theme-card-export-only { margin-top: 0.4rem; width: 100%; }
+.theme-card-actions button:hover,
+.theme-card-export-only:hover { background: rgba(59,130,246,0.1); color: #3b82f6; }
+
+[data-theme="dark"] .theme-card,
+[data-theme="htb"] .theme-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .theme-card-name,
+[data-theme="htb"] .theme-card-name { color: #e2e8f0; }
+
+/* ---- Calculadora CVSS ---- */
+.cvss-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem 1.25rem;
+}
+.cvss-metric { display: flex; flex-direction: column; gap: 0.3rem; }
+.cvss-metric > span { font-size: 0.75rem; font-weight: 700; color: var(--text-muted, #64748b); }
+.cvss-metric-opts { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.cvss-opt {
+    padding: 0.3rem 0.55rem; border: 1px solid var(--border, #e2e8f0);
+    border-radius: 6px; background: transparent; cursor: pointer;
+    font-size: 0.78rem; font-weight: 600; color: var(--text, #334155);
+}
+.cvss-opt.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.cvss-score-badge {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
+}
+.cvss-score-num { font-size: 2rem; font-weight: 900; line-height: 1; }
+.cvss-vector-text {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem;
+    word-break: break-all; color: var(--text-muted, #64748b);
+}
+[data-theme="dark"] .cvss-opt,
+[data-theme="htb"] .cvss-opt { color: #e2e8f0; border-color: #334155; }
+
+/* ---- Etiquetas/badges de estado y cumplimiento en el editor ---- */
+.pro-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pro-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600;
+    background: rgba(59,130,246,0.1); color: #2563eb;
+}
+.pro-tag button { border: none; background: none; cursor: pointer; color: inherit; font-size: 0.85rem; line-height: 1; padding: 0; }
+
+.finding-status-badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 6px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.status-open { background: #fee2e2; color: #b91c1c; }
+.status-remediated { background: #dcfce7; color: #15803d; }
+.status-accepted_risk { background: #fef3c7; color: #b45309; }
+.status-false_positive { background: #e5e7eb; color: #4b5563; }

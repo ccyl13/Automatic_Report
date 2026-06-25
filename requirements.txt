@@ -1,8 +1,9 @@
-fastapi==0.109.2
+fastapi==0.115.6
 uvicorn[standard]==0.27.1
 sqlalchemy==2.0.27
 pydantic==2.6.1
-python-multipart==0.0.9
+starlette==0.41.3  # >=0.40.0 corrige CVE-2024-47874 (DoS por campos multipart sin límite de tamaño)
+python-multipart==0.0.32  # >=0.0.18 corrige CVE-2024-53981 (DoS por boundary multipart malformado)
 playwright==1.58.0
 
 # Testing

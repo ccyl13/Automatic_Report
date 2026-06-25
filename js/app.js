@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 
 const state = {
     lang: 'es',
@@ -1920,7 +1920,7 @@ function renderAccountPage() {
                     </div>
                     ${isSelf
                         ? ''
-                        : `<button class="account-user-delete" onclick="deleteUser(${u.id}, '${escapeHTML(u.username).replace(/'/g, "\\'")}')" title="${t.deleteLabel}">
+                        : `<button class="account-user-delete" onclick="deleteUser(${u.id})" title="${t.deleteLabel}">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                            </button>`
                     }
@@ -2132,8 +2132,12 @@ async function createUser(event) {
     renderApp();
 }
 
-async function deleteUser(userId, username) {
+async function deleteUser(userId) {
     const t = UI[state.lang];
+    // El nombre se resuelve desde el estado (no se interpola en el handler inline)
+    // para evitar inyección de JavaScript a través del username.
+    const target = state.users.find(u => u.id === userId);
+    const username = target ? target.username : '';
     if (!confirm(`${t.confirmDeleteUser} "${username}"?`)) return;
 
     state.userMgmtError = '';

@@ -31,7 +31,7 @@ finally:
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="1.1.0"
+    version="1.1.1"
 )
 
 # URL base interna que usa el backend para renderizar PDFs con Playwright.
@@ -77,7 +77,7 @@ app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "1.1.0"}
+    return {"message": "Pentestify API", "version": "1.1.1"}
 
 
 @app.get("/")

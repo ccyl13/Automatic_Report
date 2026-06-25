@@ -8,6 +8,9 @@ import re
 # se rechaza para evitar SSRF al generar el PDF y XSS al romper el atributo src.
 _DATA_IMAGE_RE = re.compile(r'^data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+$')
 
+# Caracteres permitidos en el nombre de usuario (sin comillas ni metacaracteres).
+_USERNAME_RE = re.compile(r'^[A-Za-z0-9_.\-]{3,32}$')
+
 
 def is_safe_image_src(value) -> bool:
     return isinstance(value, str) and bool(_DATA_IMAGE_RE.match(value.strip()))
@@ -42,6 +45,16 @@ class AuthResponse(BaseModel):
 class CreateUserRequest(BaseModel):
     username: str
     password: str
+
+    @field_validator('username')
+    @classmethod
+    def _valid_username(cls, v):
+        # Allowlist estricta: el username se refleja en handlers JS del frontend,
+        # así que solo permitimos caracteres seguros para cerrar la clase de XSS.
+        v = (v or '').strip()
+        if not _USERNAME_RE.match(v):
+            raise ValueError('El usuario solo admite letras, números y . _ - (3 a 32 caracteres)')
+        return v
 
 
 class UserInfo(BaseModel):

@@ -8,7 +8,6 @@ import os
 import tempfile
 import shutil
 from datetime import datetime
-from playwright.async_api import async_playwright
 import models, schemas, database, auth
 from database import engine, get_db, db_path, SessionLocal
 
@@ -31,14 +30,8 @@ finally:
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="1.2.0"
+    version="2.0.0"
 )
-
-# URL base interna que usa el backend para renderizar PDFs con Playwright.
-# Se fija desde el servidor (no desde el header Host de la petición) para evitar
-# SSRF: el destino que visita el navegador headless nunca debe ser controlable
-# por el atacante. Configurable vía APP_BASE_URL (run.py lo ajusta al puerto real).
-APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 # Orígenes permitidos para CORS. Lista explícita (separada por comas en
 # ALLOWED_ORIGINS) en lugar de wildcard: "*" junto a allow_credentials=True
@@ -77,7 +70,7 @@ app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "1.2.0"}
+    return {"message": "Pentestify API", "version": "2.0.0"}
 
 
 @app.get("/")
@@ -214,7 +207,7 @@ def get_report(report_id: int, db: Session = Depends(get_db), _user: models.User
 
 @app.post("/api/reports", response_model=schemas.ReportResponse)
 def create_report(report: schemas.ReportCreate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
-    db_report = models.Report(**report.dict())
+    db_report = models.Report(**report.model_dump())
     db.add(db_report)
     db.commit()
     db.refresh(db_report)
@@ -227,7 +220,7 @@ def update_report(report_id: int, report: schemas.ReportUpdate, db: Session = De
     if not db_report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     
-    for key, value in report.dict().items():
+    for key, value in report.model_dump().items():
         setattr(db_report, key, value)
     
     db.commit()
@@ -261,7 +254,7 @@ def create_finding(report_id: int, finding: schemas.FindingCreate, db: Session =
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     
     db_finding = models.Finding(
-        **finding.dict(exclude={'order_index'}),
+        **finding.model_dump(exclude={'order_index'}),
         report_id=report_id,
         order_index=finding.order_index
     )
@@ -277,7 +270,7 @@ def update_finding(finding_id: int, finding: schemas.FindingUpdate, db: Session 
     if not db_finding:
         raise HTTPException(status_code=404, detail="Hallazgo no encontrado")
     
-    for key, value in finding.dict().items():
+    for key, value in finding.model_dump().items():
         setattr(db_finding, key, value)
     
     db.commit()
@@ -369,6 +362,37 @@ def delete_theme(theme_id: int, db: Session = Depends(get_db), _user: models.Use
 
 
 # --------------------------------------------------------------------------- #
+# Preferencias globales de la aplicación (en la BD → se exportan con todo lo demás)
+# --------------------------------------------------------------------------- #
+def _get_or_create_settings(db: Session) -> "models.AppSettings":
+    settings = db.query(models.AppSettings).first()
+    if settings is None:
+        settings = models.AppSettings(id=1)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+
+@app.get("/api/settings", response_model=schemas.AppSettingsResponse)
+def get_settings(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    return _get_or_create_settings(db)
+
+
+@app.put("/api/settings", response_model=schemas.AppSettingsResponse)
+def update_settings(payload: schemas.AppSettingsUpdate, db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    settings = _get_or_create_settings(db)
+    data = payload.model_dump()
+    for key, value in data.items():
+        if key == 'pdf_show_severity_bars':
+            value = 1 if value else 0
+        setattr(settings, key, value)
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+
+# --------------------------------------------------------------------------- #
 # Plantillas de hallazgo del usuario (base de conocimiento)
 # --------------------------------------------------------------------------- #
 @app.get("/api/finding-templates", response_model=List[schemas.FindingTemplateResponse])
@@ -382,7 +406,7 @@ def create_finding_template(payload: schemas.FindingTemplateCreate, db: Session 
     if not name:
         raise HTTPException(status_code=400, detail="El nombre de la plantilla no puede estar vacío")
 
-    data = payload.dict()
+    data = payload.model_dump()
     existing = db.query(models.FindingTemplate).filter(models.FindingTemplate.slug == payload.slug).first()
     if existing:
         for k, v in data.items():
@@ -408,173 +432,15 @@ def delete_finding_template(template_id: int, db: Session = Depends(get_db), _us
     return {"message": "Plantilla eliminada correctamente"}
 
 
-@app.get("/api/reports/{report_id}/pdf")
-async def generate_pdf(
-    report_id: int,
-    db: Session = Depends(get_db),
-    user: models.User = Depends(auth.require_auth),
-    theme: str = "light",
-    show_severity_bars: bool = True,
-    content_width: int = 820,
-):
-    report = db.query(models.Report).filter(models.Report.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="Reporte no encontrado")
-
-    try:
-        # Usamos una URL base fija del servidor (APP_BASE_URL), NUNCA request.base_url:
-        # request.base_url deriva del header Host, controlable por el atacante, lo que
-        # permitiría SSRF (escaneo interno, metadata cloud, etc.) al hacer que el
-        # navegador headless visite un destino arbitrario.
-        base_url = APP_BASE_URL
-        target_url = (
-            f"{base_url}/?report_id={report_id}&print_mode=true&theme={theme}"
-            f"&show_severity_bars={'true' if show_severity_bars else 'false'}"
-            f"&content_width={content_width}"
-        )
-
-        async with async_playwright() as p:
-            try:
-                browser = await p.chromium.launch(args=['--no-sandbox', '--disable-setuid-sandbox'])
-            except Exception as launch_error:
-                error_msg = str(launch_error)
-                if "Executable doesn't exist" in error_msg or "browserType.launch" in error_msg:
-                    raise HTTPException(
-                        status_code=503,
-                        detail={
-                            "error": "Playwright browsers not installed",
-                            "message": "Los navegadores de Playwright no están instalados.",
-                            "solution": "Ejecuta el siguiente comando en tu terminal:",
-                            "command": "playwright install chromium",
-                            "alternative": "O usa el botón 'Generar PDF' en el frontend que usa la impresión nativa del navegador."
-                        }
-                    )
-                raise
-            # Set viewport height to match A4 paper (~1123px at 96dpi) so min-height:100vh fills one page
-            context = await browser.new_context(viewport={"width": 1280, "height": 1123})
-
-            # Inyectamos la cookie de sesión del usuario autenticado para que la
-            # página en modo impresión pueda consultar la API protegida (que ahora
-            # requiere autenticación). El token es de un solo uso de facto: vive
-            # sólo durante la generación del PDF.
-            await context.add_cookies([{
-                "name": auth.COOKIE_NAME,
-                "value": auth.create_token(user),
-                "url": base_url,
-            }])
-
-            page = await context.new_page()
-
-            await page.goto(target_url, wait_until="networkidle")
-
-            await page.wait_for_timeout(2000)
-
-            # Map content_width (580-1100px) to horizontal padding percentage for print mode.
-            # @media print forces max-width:100% so we control width via padding instead.
-            # content_width=1100 (widest) → 0% padding; content_width=580 (narrowest) → 15% padding.
-            padding_pct = round(max(0.0, (1100 - content_width) / 520.0 * 15), 2)
-
-            # Ensure data-theme attribute matches the requested PDF theme before any injection.
-            # For light theme we explicitly remove data-theme so no dark/htb CSS rules fire.
-            if theme in ('dark', 'htb'):
-                await page.evaluate(f"document.documentElement.setAttribute('data-theme', '{theme}');")
-            else:
-                await page.evaluate("document.documentElement.removeAttribute('data-theme');")
-
-            # Inject a <style> block AFTER the existing stylesheet.
-            # Only adjusts content width via padding — finding-card colors are handled
-            # by the comprehensive @media print rules already in styles.css.
-            await page.evaluate(f"""
-                var s = document.createElement('style');
-                s.textContent = [
-                    '@media print {{',
-                    '  .preview-container {{',
-                    '    padding-left:  {padding_pct}% !important;',
-                    '    padding-right: {padding_pct}% !important;',
-                    '    margin: 0 auto !important;',
-                    '  }}'
-                ].join('\\n') + '}}';
-                document.head.appendChild(s);
-            """)
-
-            # For dark/htb: set page and body background colours so the PDF canvas matches the theme.
-            if theme in ('dark', 'htb'):
-                bg = '#0f172a' if theme == 'dark' else '#1a2332'
-                await page.evaluate(f"""
-                    document.documentElement.style.background = '{bg}';
-                    document.body.style.background = '{bg}';
-                    document.body.style.color = '#e2e8f0';
-                    document.body.style.margin = '0';
-                    var style = document.createElement('style');
-                    style.textContent = [
-                        'html, body {{ background: {bg} !important; color: #e2e8f0 !important; }}',
-                        '@page {{ background: {bg}; }}'
-                    ].join('\\n');
-                    document.head.appendChild(style);
-                """)
-                await page.wait_for_timeout(500)
-
-            # If severity bars are disabled, hide the coloured left border and the bar chart.
-            if not show_severity_bars:
-                await page.evaluate("""
-                    var s2 = document.createElement('style');
-                    s2.textContent = [
-                        '@media print {',
-                        '  .finding-preview { border-left-width: 1px !important; border-left-color: inherit !important; }',
-                        '  .cvss-summary [style*="height: 28px"], .cvss-summary [style*="height:28px"] { display: none !important; }',
-                        '}'
-                    ].join('\\n');
-                    document.head.appendChild(s2);
-                """)
-
-            fd, path = tempfile.mkstemp(suffix=".pdf")
-            os.close(fd)
-
-            if theme == 'dark':
-                footer_color = '#94a3b8'
-            elif theme == 'htb':
-                footer_color = '#9fef00'
-            else:
-                footer_color = '#6b7280'
-
-            await page.pdf(
-                path=path,
-                format="A4",
-                print_background=True,
-                margin={"top": "15mm", "right": "18mm", "bottom": "15mm", "left": "18mm"},
-                scale=0.92,
-                display_header_footer=True,
-                header_template="<span></span>",
-                footer_template=f"<div style=\"font-size:14px;font-weight:700;font-family:sans-serif;color:{footer_color};width:100%;text-align:right;padding-right:20mm;\"><span class=\"pageNumber\"></span></div>",
-            )
-            
-            await browser.close()
-            
-            return FileResponse(
-                path, 
-                media_type="application/pdf", 
-                filename=f"Report_{report_id}.pdf"
-            )
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_msg = str(e)
-        print(f"Error generando PDF: {e}")
-        
-        if "Executable doesn't exist" in error_msg or "browserType.launch" in error_msg:
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "error": "Playwright browsers not installed",
-                    "message": "Los navegadores de Playwright no están instalados.",
-                    "solution": "Ejecuta el siguiente comando en tu terminal:",
-                    "command": "playwright install chromium",
-                    "alternative": "O usa el botón 'Generar PDF' en el frontend que usa la impresión nativa del navegador."
-                }
-            )
-        
-        raise HTTPException(status_code=500, detail=f"Error de servidor generando el PDF: {error_msg}")
+# --------------------------------------------------------------------------- #
+# Generación de PDF / HTML
+# --------------------------------------------------------------------------- #
+# Desde la v2.0.0 el informe se renderiza y exporta 100% en el cliente (el SPA
+# ya monta el informe en HTML+CSS con las imágenes embebidas como data URLs):
+#   - Exportar HTML  -> documento autocontenido generado en el navegador.
+#   - Generar PDF    -> impresión nativa del navegador (Guardar como PDF) sobre
+#                       la vista de impresión (@media print / @page).
+# Se eliminó la dependencia de Playwright/Chromium del servidor.
 
 
 @app.post("/api/demo/create")
@@ -622,7 +488,7 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
             {"version": "1.0", "date": datetime.today().strftime("%Y-%m-%d"), "author": "Security Research Team", "changes": "Versión final entregada al cliente"},
         ],
     )
-    report = models.Report(**report_data.dict())
+    report = models.Report(**report_data.model_dump())
     db.add(report)
     db.commit()
     db.refresh(report)

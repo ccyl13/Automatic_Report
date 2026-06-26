@@ -1842,6 +1842,16 @@ button:disabled,
 }
 
 /* ---- Configuración de página para impresión ---- */
+/* Bloques de código / PoC: nunca deben desbordar su recuadro, ni en pantalla
+   ni en impresión. Rompe URLs, payloads base64 y comandos largos sin espacios. */
+.preview-container pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    margin: 0;
+}
+
 @page {
     margin: 10mm 20mm 18mm 20mm;
     size: A4;
@@ -3182,7 +3192,7 @@ button {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-    padding-bottom: 3.5rem;
+    padding-right: 4.5rem;
 }
 
 .report-card::before {
@@ -3233,27 +3243,46 @@ button {
     letter-spacing: 0.02em;
 }
 
-.report-card>button {
+/* Acciones de la tarjeta de reporte (candado / eliminar) */
+.report-card-actions {
     position: absolute;
-    bottom: 1rem;
-    right: 1rem;
-    background: transparent;
+    top: 0.85rem;
+    right: 0.85rem;
+    display: flex;
+    gap: 0.4rem;
+    z-index: 2;
+}
+
+.report-card-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
     border: 1px solid #e2e8f0;
-    color: #94a3b8;
-    font-size: 0.75rem;
-    padding: 0.3rem 0.625rem;
-    border-radius: 0.375rem;
-    transition: all 0.15s;
-    font-weight: 500;
+    background: #ffffff;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
     transform: none;
     box-shadow: none;
 }
 
-.report-card>button:hover {
+.report-card-icon-btn svg { width: 16px; height: 16px; max-width: none; max-height: none; flex-shrink: 0; }
+.report-card-icon-btn:active { transform: scale(0.92); }
+
+.report-card-icon-btn.lock:hover {
+    background: var(--brand-50);
+    border-color: var(--brand-100);
+    color: var(--brand-600);
+}
+
+.report-card-icon-btn.danger:hover {
     background: #fff1f2;
     border-color: #fecdd3;
     color: #e11d48;
-    transform: none;
 }
 
 /* ---- Empty State ---- */
@@ -4821,17 +4850,52 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
     border-radius: 0.5rem;
     border: 1px solid #fecaca;
     background: var(--red-50);
     color: var(--red-600);
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
-.account-user-delete:hover { background: #fee2e2; }
+/* El icono SVG colapsaba a width:0 dentro del <button> flex: la regla global
+   svg{max-width:100%} resolvía el porcentaje a 0 en ese contexto. Anulamos
+   max-width/max-height y fijamos tamaño explícito para que se vea el icono. */
+.account-user-delete svg {
+    width: 16px;
+    height: 16px;
+    max-width: none;
+    max-height: none;
+    flex-shrink: 0;
+}
+
+.account-user-delete:hover {
+    background: #fee2e2;
+    border-color: var(--red-500);
+}
+.account-user-delete:active { transform: scale(0.94); }
+
+/* Igualamos el tamaño de los iconos de avatar para robustez ante el flex. */
+.account-user-avatar svg { width: 16px; height: 16px; flex-shrink: 0; }
+.account-user-avatar--lg svg { width: 20px; height: 20px; }
+
+/* Pulido de filas de usuario */
+.account-user-row { transition: border-color 0.15s, background 0.15s; }
+.account-user-row:hover { border-color: var(--brand-100); background: #ffffff; }
+
+.account-user-count {
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--brand-600);
+    background: var(--brand-50);
+    border: 1px solid var(--brand-100);
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    margin-left: 0.4rem;
+}
 
 .account-empty {
     color: var(--gray-400);
@@ -4970,3 +5034,177 @@ button {
 .status-remediated { background: #dcfce7; color: #15803d; }
 .status-accepted_risk { background: #fef3c7; color: #b45309; }
 .status-false_positive { background: #e5e7eb; color: #4b5563; }
+
+/* ---- Menú desplegable de exportación (Exportar → PDF / HTML) ---- */
+.export-dropdown .export-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 210px;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    z-index: 1200;
+    overflow: hidden;
+    padding: 0.3rem;
+}
+.export-dropdown .export-menu button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: var(--text-muted, #334155);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.export-dropdown .export-menu button:hover {
+    background: var(--bg-subtle, #f1f5f9);
+    color: var(--text, #0f172a);
+}
+.export-dropdown .export-menu button svg {
+    flex-shrink: 0;
+    color: #2563eb;
+}
+
+/* ---- Conmutador discreto Renderizado / Código fuente (vista previa) ---- */
+.preview-view-switch {
+    max-width: 980px;
+    margin: 0 auto 0.6rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.45rem;
+}
+.preview-view-seg {
+    display: inline-flex;
+    background: var(--gray-100, #f1f5f9);
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: 8px;
+    padding: 2px;
+}
+.preview-view-seg button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--gray-500, #6b7280);
+    padding: 0.28rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.preview-view-seg button svg,
+.preview-view-copy svg { width: 13px; height: 13px; max-width: none; max-height: none; flex-shrink: 0; }
+.preview-view-seg button:hover { color: var(--gray-800, #1f2937); }
+.preview-view-seg button.active {
+    background: #ffffff;
+    color: var(--brand-600, #2563eb);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.preview-view-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    background: transparent;
+    color: var(--gray-500, #6b7280);
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.15s, color 0.15s;
+}
+.preview-view-copy:hover { background: var(--gray-100, #f1f5f9); color: var(--brand-600, #2563eb); }
+
+/* ============================================================= */
+/* Estudio de temas (página completa)                            */
+/* ============================================================= */
+.theme-studio {
+    min-height: 100vh;
+    background: var(--gray-50, #f9fafb);
+    display: flex;
+    flex-direction: column;
+}
+.theme-studio-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.4rem;
+    background: #0f172a;
+    color: #fff;
+    flex-wrap: wrap;
+}
+.theme-studio-header .ts-head-left { display: flex; align-items: center; gap: 1rem; }
+.theme-studio-header h1 { font-size: 1.05rem; font-weight: 800; margin: 0; }
+.theme-studio-header .ts-head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.theme-studio-header .account-back-btn { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2); }
+
+.theme-studio-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 0;
+}
+.ts-controls {
+    width: 420px;
+    flex-shrink: 0;
+    padding: 1.1rem 1.25rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--gray-200, #e5e7eb);
+    background: #fff;
+}
+.ts-preview {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--gray-100, #f1f5f9);
+}
+.ts-preview-title {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--gray-500, #6b7280); margin: 0 0 0.7rem;
+}
+.ts-group { border: 1px solid var(--gray-200, #e5e7eb); border-radius: 8px; margin-bottom: 0.6rem; overflow: hidden; }
+.ts-group > summary {
+    cursor: pointer; list-style: none; padding: 0.55rem 0.8rem;
+    font-size: 0.78rem; font-weight: 700; color: var(--gray-800, #1f2937);
+    background: var(--gray-50, #f9fafb); user-select: none;
+}
+.ts-group > summary::-webkit-details-marker { display: none; }
+.ts-group > summary::before { content: '▸ '; color: var(--gray-400, #9ca3af); }
+.ts-group[open] > summary::before { content: '▾ '; }
+.ts-group-body { padding: 0.4rem 0.8rem 0.6rem; }
+.ts-field { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.3rem 0; border-bottom: 1px dashed var(--gray-100, #f1f5f9); }
+.ts-field:last-child { border-bottom: none; }
+.ts-field-label { font-size: 0.78rem; color: var(--gray-600, #4b5563); }
+.ts-field-ctl { display: flex; align-items: center; gap: 0.4rem; }
+.ts-text {
+    width: 120px; font-size: 0.74rem; font-family: ui-monospace, monospace;
+    padding: 0.25rem 0.4rem; border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: 5px; background: #fff; color: var(--gray-800, #1f2937);
+}
+.ts-color { width: 30px; height: 26px; border: 1px solid var(--gray-200,#e5e7eb); border-radius: 5px; background: none; cursor: pointer; padding: 0; flex-shrink: 0; }
+.ts-swatch { width: 30px; height: 26px; border-radius: 5px; border: 1px solid var(--gray-200, #e5e7eb); display: inline-block; flex-shrink: 0; }
+.ts-code {
+    width: 100%; height: 150px; font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.74rem; line-height: 1.5; white-space: pre; overflow-wrap: normal;
+    border: 1px solid var(--gray-200, #e5e7eb); border-radius: 6px; padding: 0.6rem;
+    background: #0d1117; color: #e2e8f0;
+}
+.ts-hint { font-size: 0.72rem; color: var(--gray-500, #6b7280); line-height: 1.5; margin: 0.4rem 0 0; }
+
+@media (max-width: 860px) {
+    .theme-studio-body { flex-direction: column; }
+    .ts-controls { width: 100%; border-right: none; border-bottom: 1px solid var(--gray-200,#e5e7eb); }
+}

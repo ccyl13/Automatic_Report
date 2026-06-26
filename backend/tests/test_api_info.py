@@ -11,7 +11,7 @@ class TestAPIInfo:
 
         data = response.json()
         assert data["message"] == "Pentestify API"
-        assert data["version"] == "1.2.0"
+        assert data["version"] == "2.0.0"
 
     def test_frontend_root_endpoint(self, client):
         """Test: GET / retorna el frontend (index.html)"""

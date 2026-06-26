@@ -1,12 +1,19 @@
-fastapi==0.115.6
-uvicorn[standard]==0.27.1
-sqlalchemy==2.0.27
-pydantic==2.6.1
-starlette==0.41.3  # >=0.40.0 corrige CVE-2024-47874 (DoS por campos multipart sin límite de tamaño)
-python-multipart==0.0.32  # >=0.0.18 corrige CVE-2024-53981 (DoS por boundary multipart malformado)
-playwright==1.58.0
+# ---------------------------------------------------------------------------
+# Dependencias de ejecución (runtime)
+# ---------------------------------------------------------------------------
+# Pines en >= a versiones verificadas que instalan en Python 3.12 - 3.14.
+# (Las versiones exactas antiguas no compilaban en Python 3.14: pydantic-core
+#  fallaba al construirse desde fuente.)
+fastapi>=0.118                 # framework de la API
+uvicorn[standard]>=0.34        # servidor ASGI
+sqlalchemy>=2.0.36             # ORM
+pydantic>=2.10                 # validación de esquemas
+starlette>=0.40                # >=0.40 corrige CVE-2024-47874 (DoS multipart sin límite)
+python-multipart>=0.0.18       # subida de ficheros (FastAPI); >=0.0.18 corrige CVE-2024-53981
 
-# Testing
-pytest==8.0.2
-pytest-asyncio==0.23.5
-httpx==0.27.0
+# ---------------------------------------------------------------------------
+# Solo para la suite de tests (backend/tests/): no se necesita en producción
+# ---------------------------------------------------------------------------
+pytest>=8.0
+pytest-asyncio>=0.23
+httpx>=0.27                     # cliente usado por el TestClient de FastAPI/Starlette

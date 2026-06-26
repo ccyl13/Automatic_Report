@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '2.0.0';
 
 const state = {
     lang: 'es',
@@ -71,6 +71,7 @@ const state = {
     userFindingTemplates: [],
     showThemeManager: false,
     themeEditor: null,
+    isThemeStudio: false,
     themeManagerError: '',
     themeManagerSuccess: '',
     // Calculadora CVSS
@@ -79,6 +80,10 @@ const state = {
     isDirty: false,
     showSettings: false,
     generatingPdf: false,
+    exportingHtml: false,
+    exportMenuOpen: false,
+    previewSourceView: false,
+    dbPasswordModal: { open: false, reportId: null, title: '', busy: false },
     showDemoModal: false,
     showPdfModal: false,
     pdfPrintTheme: 'light',
@@ -133,6 +138,9 @@ const UI = {
         cancel: 'Cancelar',
         preview: 'Vista Previa',
         generatePdf: 'Generar PDF',
+        export: 'Exportar',
+        exportHtml: 'Exportar HTML',
+        exportingHtml: 'Exportando…',
         generatingPdf: 'Generando...',
         saveReport: 'Guardar Reporte',
         myReports: 'Mis Reportes',
@@ -304,6 +312,9 @@ const UI = {
         cancel: 'Cancel',
         preview: 'Preview',
         generatePdf: 'Generate PDF',
+        export: 'Export',
+        exportHtml: 'Export HTML',
+        exportingHtml: 'Exporting…',
         generatingPdf: 'Generating...',
         saveReport: 'Save Report',
         myReports: 'My Reports',
@@ -616,8 +627,44 @@ const API = {
         list: () => API.request('GET', '/api/finding-templates'),
         create: (data) => API.request('POST', '/api/finding-templates', data),
         delete: (id) => API.request('DELETE', `/api/finding-templates/${id}`)
+    },
+
+    settings: {
+        get: () => API.request('GET', '/api/settings'),
+        update: (data) => API.request('PUT', '/api/settings', data)
     }
 };
+
+// Preferencias globales (idioma, tema activo, opciones de PDF) persistidas en la
+// BD para que la exportación capture el 100% del estado. El guardado va con
+// debounce para no machacar la API en cada pulsación de un control.
+let _settingsSaveTimer = null;
+function persistSettings() {
+    clearTimeout(_settingsSaveTimer);
+    _settingsSaveTimer = setTimeout(() => {
+        API.settings.update({
+            lang: state.lang,
+            report_theme: state.reportTheme,
+            pdf_print_theme: state.pdfPrintTheme,
+            pdf_show_severity_bars: !!state.pdfShowSeverityBars,
+            pdf_content_width: state.pdfContentWidth
+        }).catch(() => { /* sin sesión / offline: se reintentará al próximo cambio */ });
+    }, 400);
+}
+
+async function loadSettings() {
+    try {
+        const s = await API.settings.get();
+        if (!s) return;
+        if (s.lang) { state.lang = s.lang; state.auditData.lang = s.lang; }
+        if (s.pdf_print_theme) state.pdfPrintTheme = s.pdf_print_theme;
+        if (typeof s.pdf_show_severity_bars !== 'undefined') state.pdfShowSeverityBars = !!s.pdf_show_severity_bars;
+        if (s.pdf_content_width) state.pdfContentWidth = s.pdf_content_width;
+        if (s.report_theme && listAllThemes().some(t => t.slug === s.report_theme)) {
+            state.reportTheme = s.report_theme;
+        }
+    } catch (e) { /* fallback: se mantienen los valores por defecto / localStorage */ }
+}
 
 function renderSplashScreen() {
     if (!state.showSplash) return '';
@@ -666,12 +713,27 @@ function renderNavbar() {
                 <button class="${state.showReportSelector ? 'active' : ''}" onclick="showReports()">${t.myReports}</button>
                 <button class="${state.activeTab === 'editor' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('editor')">${t.editor}</button>
                 <button class="${state.activeTab === 'preview' && !state.showReportSelector ? 'active' : ''}" onclick="hideReports(); setTab('preview')">${t.preview}</button>
-                <button class="btn-primary pdf-btn${state.generatingPdf ? ' pdf-btn--loading' : ''}" onclick="generatePdf()" ${state.generatingPdf ? 'disabled' : ''}>
-                    ${state.generatingPdf
-                        ? `<svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> ${t.generatingPdf}`
-                        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> ${t.generatePdf}`
-                    }
-                </button>
+                <div class="export-dropdown" style="position:relative;display:inline-block;">
+                    <button class="btn-primary pdf-btn${(state.generatingPdf || state.exportingHtml) ? ' pdf-btn--loading' : ''}" onclick="toggleExportMenu(event)" ${(state.generatingPdf || state.exportingHtml) ? 'disabled' : ''}>
+                        ${(state.generatingPdf || state.exportingHtml)
+                            ? `<svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> ${state.generatingPdf ? t.generatingPdf : t.exportingHtml}`
+                            : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${t.export}
+                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:1px;"><polyline points="6 9 12 15 18 9"/></svg>`
+                        }
+                    </button>
+                    ${state.exportMenuOpen ? `
+                        <div class="export-menu">
+                            <button onclick="chooseExport('pdf')">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                <span>${t.generatePdf}</span>
+                            </button>
+                            <button onclick="chooseExport('html')">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                                <span>${t.exportHtml}</span>
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
                 <button class="settings-btn" onclick="openSettings()" title="${state.lang === 'es' ? 'Ajustes' : 'Settings'}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
@@ -1358,23 +1420,6 @@ async function loadCustomThemes() {
     injectThemeStyles();
 }
 
-// Subconjunto de variables editables en el creador de temas (con etiqueta amable).
-const THEME_EDITOR_FIELDS = [
-    { key: 'pageBg',       es: 'Fondo de página',      en: 'Page background' },
-    { key: 'cardBg',       es: 'Fondo de tarjetas',    en: 'Card background' },
-    { key: 'metaBg',       es: 'Fondo cabecera datos', en: 'Meta header bg', plain: true },
-    { key: 'textHeading',  es: 'Títulos',              en: 'Headings' },
-    { key: 'textPrimary',  es: 'Título portada',       en: 'Cover title' },
-    { key: 'textBody',     es: 'Texto',                en: 'Body text' },
-    { key: 'textMuted',    es: 'Texto secundario',     en: 'Secondary text' },
-    { key: 'accentLine',   es: 'Color de acento',      en: 'Accent color' },
-    { key: 'versionColor', es: 'Color de versión',     en: 'Version color' },
-    { key: 'border',       es: 'Bordes',               en: 'Borders' },
-    { key: 'pocBg',        es: 'Fondo de código (PoC)', en: 'Code (PoC) bg' },
-    { key: 'pocText',      es: 'Texto de código',      en: 'Code text' },
-    { key: 'pocHeading',   es: 'Título de código',     en: 'Code heading' }
-];
-
 function slugify(str) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
@@ -1422,23 +1467,19 @@ function openThemeEditor(slug) {
         base: baseSlug,
         vars: { ...palette },
         customCss: editing ? (editing.custom_css || '') : '',
-        mode: 'visual',          // 'visual' | 'code'
         isNew: !editing
     };
     state.themeManagerError = '';
+    state.showSettings = false;     // cerramos el modal de ajustes al abrir el estudio
+    state.isThemeStudio = true;
     renderApp();
 }
 
 function closeThemeEditor() {
     state.themeEditor = null;
+    state.isThemeStudio = false;
     const live = document.getElementById('rt-editor-live');
     if (live) live.remove();
-    renderApp();
-}
-
-function themeEditorSetMode(mode) {
-    if (!state.themeEditor) return;
-    state.themeEditor.mode = mode;
     renderApp();
 }
 
@@ -1508,6 +1549,8 @@ async function saveThemeFromEditor() {
         const live = document.getElementById('rt-editor-live');
         if (live) live.remove();
         state.themeEditor = null;
+        state.isThemeStudio = false;
+        state.showSettings = true;   // volvemos a Ajustes mostrando el tema nuevo
         state.themeManagerSuccess = isEs ? 'Tema guardado' : 'Theme saved';
         setReportTheme(slug);  // aplica y re-renderiza
     } catch (err) {
@@ -1553,6 +1596,114 @@ function exportTheme(slug) {
     URL.revokeObjectURL(url);
 }
 
+// Descarga una PLANTILLA HTML autocontenida para que el usuario diseñe su propio
+// tema editando las variables CSS --rt-* y viéndolo en vivo en el navegador. El
+// fichero resultante puede importarse después con "Importar" (acepta .html).
+function downloadThemeTemplate(palOverride, nameOverride) {
+    const isEs = state.lang === 'es';
+    const pal = palOverride || resolveThemePalette(state.reportTheme) || BUILTIN_THEMES.light;
+    const themeName = (nameOverride || 'Mi tema personalizado').toString();
+    const labelOf = {};
+    THEME_KEY_LABELS && Object.keys(THEME_KEY_LABELS).forEach(k => { labelOf[k] = isEs ? THEME_KEY_LABELS[k].es : THEME_KEY_LABELS[k].en; });
+
+    const varLines = THEME_KEYS.map(k => {
+        const comment = labelOf[k] ? `  /* ${labelOf[k]} */` : '';
+        return `    ${cssVarName(k)}: ${pal[k] || ''};${comment}`;
+    }).join('\n');
+
+    const tpl = `<!DOCTYPE html>
+<html lang="${state.lang}" data-theme-name="${escapeHTML(themeName)}" data-theme-base="${escapeHTML(palOverride && state.themeEditor ? state.themeEditor.base : 'light')}">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHTML(themeName)} — Plantilla de tema Pentestify</title>
+<!--
+  ${isEs ? 'PLANTILLA DE TEMA PENTESTIFY' : 'PENTESTIFY THEME TEMPLATE'}
+  ${isEs
+    ? '1) Edita los colores de las variables --rt-* de abajo (bloque :root).\n       2) Abre este archivo en el navegador para previsualizar el resultado en vivo.\n       3) Cambia data-theme-name (arriba) por el nombre de tu tema.\n       4) (Opcional) Escribe CSS extra en el bloque <style id="pentestify-custom-css">.\n       5) En Pentestify: Ajustes -> Tema del informe -> Importar, y selecciona este .html.'
+    : '1) Edit the --rt-* color variables below (:root block).\n       2) Open this file in a browser to preview live.\n       3) Change data-theme-name (above) to your theme name.\n       4) (Optional) Add extra CSS in the <style id="pentestify-custom-css"> block.\n       5) In Pentestify: Settings -> Report theme -> Import, and choose this .html.'}
+-->
+<style id="pentestify-theme-vars">
+:root {
+${varLines}
+}
+</style>
+<!-- ${isEs ? 'CSS adicional opcional (se aplicará al informe)' : 'Optional extra CSS (applied to the report)'} -->
+<style id="pentestify-custom-css">
+</style>
+<style>
+  body { margin:0; background:var(--rt-pageBg); color:var(--rt-textBody);
+         font-family:'Inter',system-ui,sans-serif; padding:2.5rem; }
+  .wrap { max-width:780px; margin:0 auto; }
+  .hint { background:#fef9c3; border:1px solid #fde047; color:#713f12; border-radius:10px;
+          padding:0.9rem 1.1rem; font-size:0.85rem; margin-bottom:2rem; }
+  h1 { color:var(--rt-textPrimary); font-size:2.2rem; font-weight:900; margin:0 0 0.4rem; }
+  .bar { width:64px; height:5px; border-radius:5px; background:var(--rt-accentBar,var(--rt-accentLine)); margin-bottom:1.6rem; }
+  .card { background:var(--rt-cardBg); border:1px solid var(--rt-border); border-radius:12px; padding:1.2rem 1.4rem; margin-bottom:1.2rem; }
+  .card h2 { color:var(--rt-textHeading); margin:0 0 0.5rem; font-size:1.15rem; }
+  .card p { color:var(--rt-textBody); margin:0 0 0.4rem; line-height:1.6; }
+  .muted { color:var(--rt-textMuted); font-size:0.82rem; }
+  .poc { background:var(--rt-pocBg); border:1px solid var(--rt-pocBorder); border-radius:10px; padding:1rem 1.2rem; }
+  .poc .t { color:var(--rt-pocHeading); font-weight:700; font-size:0.8rem; margin-bottom:0.4rem; }
+  .poc pre { color:var(--rt-pocText); font-family:ui-monospace,monospace; font-size:0.82rem; margin:0; white-space:pre-wrap; }
+  .ver { color:var(--rt-versionColor,var(--rt-accentLine)); font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hint">${isEs
+        ? 'Plantilla de tema · edita las variables <b>--rt-*</b> del <b>&lt;style id="pentestify-theme-vars"&gt;</b> y vuelve a importar este archivo en Pentestify.'
+        : 'Theme template · edit the <b>--rt-*</b> variables in <b>&lt;style id="pentestify-theme-vars"&gt;</b> and import this file back into Pentestify.'}</div>
+    <h1>${isEs ? 'Informe de ejemplo' : 'Sample report'}</h1>
+    <div class="bar"></div>
+    <div class="card">
+      <h2>${isEs ? 'Hallazgo de ejemplo' : 'Sample finding'}</h2>
+      <p>${isEs ? 'Así se verá el texto del cuerpo de tu informe con este tema.' : 'This is how your report body text will look with this theme.'}</p>
+      <p class="muted">${isEs ? 'Texto secundario · CVSS 7.5 · ' : 'Secondary text · CVSS 7.5 · '}<span class="ver">v1.0</span></p>
+    </div>
+    <div class="poc">
+      <div class="t">${isEs ? 'Pasos para Reproducir (PoC)' : 'Steps to Reproduce (PoC)'}</div>
+      <pre>$ id; whoami
+www-data</pre>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([tpl], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pentestify-plantilla-tema.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Extrae un tema (name/base/vars/custom_css) de una plantilla HTML.
+function parseThemeFromHtml(text) {
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const root = doc.documentElement;
+    const name = (root.getAttribute('data-theme-name') || doc.title || 'Tema HTML').toString().trim().slice(0, 60) || 'Tema HTML';
+    const baseAttr = root.getAttribute('data-theme-base');
+    const base = ['light', 'dark', 'htb'].includes(baseAttr) ? baseAttr : 'light';
+
+    const styleEl = doc.getElementById('pentestify-theme-vars')
+        || Array.from(doc.querySelectorAll('style')).find(s => (s.textContent || '').includes('--rt-'));
+    const vars = {};
+    if (styleEl) {
+        const m = (styleEl.textContent || '').match(/:root\s*\{([\s\S]*?)\}/);
+        const body = m ? m[1] : (styleEl.textContent || '');
+        body.replace(/(--rt-[a-zA-Z0-9-]+)\s*:\s*([^;]+);/g, (all, k, v) => {
+            vars[k.trim()] = v.trim();
+            return '';
+        });
+    }
+    const cssEl = doc.getElementById('pentestify-custom-css');
+    const custom_css = cssEl ? (cssEl.textContent || '').trim() : '';
+    return { name, base, vars, custom_css };
+}
+
 async function importThemeFile(input) {
     const file = input.files && input.files[0];
     input.value = '';
@@ -1560,9 +1711,15 @@ async function importThemeFile(input) {
     const isEs = state.lang === 'es';
     try {
         const text = await file.text();
-        const data = JSON.parse(text);
-        if (!data || typeof data !== 'object' || !data.vars) {
-            throw new Error(isEs ? 'El archivo no es un tema válido' : 'File is not a valid theme');
+        const isHtml = /\.html?$/i.test(file.name) || /^\s*<!doctype html|<html[\s>]/i.test(text);
+        let data;
+        if (isHtml) {
+            data = parseThemeFromHtml(text);
+        } else {
+            data = JSON.parse(text);
+        }
+        if (!data || typeof data !== 'object' || !data.vars || !Object.keys(data.vars).length) {
+            throw new Error(isEs ? 'El archivo no contiene un tema válido (sin variables --rt-*)' : 'File has no valid theme (no --rt-* variables)');
         }
         const name = (data.name || 'Tema importado').toString().slice(0, 60);
         const base = ['light', 'dark', 'htb'].includes(data.base) ? data.base : 'light';
@@ -1762,94 +1919,159 @@ function renderCvssCalcModal() {
         </div>`;
 }
 
-function renderThemeEditorModal() {
-    if (!state.themeEditor) return '';
+// Etiquetas y agrupación de TODAS las variables del tema para el Estudio de temas.
+const THEME_KEY_LABELS = {
+    pageBg:        { es: 'Fondo de página',        en: 'Page background' },
+    cardBg:        { es: 'Fondo de tarjetas',      en: 'Card background' },
+    cardBgAlt:     { es: 'Fondo tarjeta (alt)',    en: 'Card background (alt)' },
+    greenBg:       { es: 'Fondo verde',            en: 'Green background' },
+    orangeBg:      { es: 'Fondo naranja',          en: 'Orange background' },
+    purpleBg:      { es: 'Fondo morado',           en: 'Purple background' },
+    metaBg:        { es: 'Fondo cabecera datos',   en: 'Meta header bg' },
+    textPrimary:   { es: 'Título de portada',      en: 'Cover title' },
+    textHeading:   { es: 'Títulos',                en: 'Headings' },
+    textBody:      { es: 'Texto del cuerpo',       en: 'Body text' },
+    textMuted:     { es: 'Texto secundario',       en: 'Secondary text' },
+    textFaint:     { es: 'Texto tenue',            en: 'Faint text' },
+    textSubtle:    { es: 'Texto sutil',            en: 'Subtle text' },
+    textGray:      { es: 'Texto gris',             en: 'Gray text' },
+    textGrayMed:   { es: 'Texto gris medio',       en: 'Medium gray text' },
+    coverAccent:   { es: 'Acento de portada',      en: 'Cover accent' },
+    accentLine:    { es: 'Línea de acento',        en: 'Accent line' },
+    accentBar:     { es: 'Barra de acento',        en: 'Accent bar' },
+    versionColor:  { es: 'Color de versión',       en: 'Version color' },
+    textRed:       { es: 'Texto rojo',             en: 'Red text' },
+    textOrange:    { es: 'Texto naranja',          en: 'Orange text' },
+    textOrangeDark:{ es: 'Texto naranja oscuro',   en: 'Dark orange text' },
+    textGreen:     { es: 'Texto verde',            en: 'Green text' },
+    textGreenDark: { es: 'Texto verde oscuro',     en: 'Dark green text' },
+    border:        { es: 'Bordes',                 en: 'Borders' },
+    borderLight:   { es: 'Borde claro',            en: 'Light border' },
+    borderMeta:    { es: 'Borde cabecera datos',   en: 'Meta border' },
+    borderMetaSub: { es: 'Borde cabecera (sub)',   en: 'Meta border (sub)' },
+    borderGreen:   { es: 'Borde verde',            en: 'Green border' },
+    borderOrange:  { es: 'Borde naranja',          en: 'Orange border' },
+    borderPurple:  { es: 'Borde morado',           en: 'Purple border' },
+    borderFaint:   { es: 'Borde tenue',            en: 'Faint border' },
+    classifBg:     { es: 'Fondo clasificación',    en: 'Classification bg' },
+    classifBorder: { es: 'Borde clasificación',    en: 'Classification border' },
+    classifText:   { es: 'Texto clasificación',    en: 'Classification text' },
+    pocBg:         { es: 'Fondo de código (PoC)',  en: 'Code (PoC) bg' },
+    pocBorder:     { es: 'Borde de código',        en: 'Code border' },
+    pocText:       { es: 'Texto de código',        en: 'Code text' },
+    pocHeading:    { es: 'Título de código',       en: 'Code heading' }
+};
+
+const THEME_GROUPS = [
+    { es: 'Fondos',        en: 'Backgrounds', keys: ['pageBg', 'cardBg', 'cardBgAlt', 'metaBg', 'greenBg', 'orangeBg', 'purpleBg'] },
+    { es: 'Texto',         en: 'Text',        keys: ['textPrimary', 'textHeading', 'textBody', 'textMuted', 'textFaint', 'textSubtle', 'textGray', 'textGrayMed'] },
+    { es: 'Acentos',       en: 'Accents',     keys: ['coverAccent', 'accentLine', 'accentBar', 'versionColor'] },
+    { es: 'Estados (texto)',en: 'Status (text)', keys: ['textRed', 'textOrange', 'textOrangeDark', 'textGreen', 'textGreenDark'] },
+    { es: 'Bordes',        en: 'Borders',     keys: ['border', 'borderLight', 'borderMeta', 'borderMetaSub', 'borderGreen', 'borderOrange', 'borderPurple', 'borderFaint'] },
+    { es: 'Clasificación', en: 'Classification', keys: ['classifBg', 'classifBorder', 'classifText'] },
+    { es: 'Código / PoC',  en: 'Code / PoC',  keys: ['pocBg', 'pocBorder', 'pocText', 'pocHeading'] }
+];
+
+// Página completa de personalización de tema (Estudio de temas). Reutiliza el
+// estado y los setters de themeEditor; se abre desde "+ Nuevo" o al editar un tema.
+function renderThemeStudio() {
     const ed = state.themeEditor;
+    if (!ed) return '';
     const isEs = state.lang === 'es';
 
-    const fieldInputs = THEME_EDITOR_FIELDS.map(f => {
-        const val = ed.vars[f.key] || '#000000';
+    const field = (key) => {
+        const val = ed.vars[key] || '';
         const isHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(val);
-        const label = isEs ? f.es : f.en;
-        // Para valores no hex (p.ej. degradados) ofrecemos un campo de texto.
-        const control = (isHex || !f.plain)
-            ? `<input type="color" value="${isHex ? val : '#888888'}" oninput="themeEditorSetVar('${f.key}', this.value)" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0;">`
-            : '';
+        const label = (THEME_KEY_LABELS[key] ? (isEs ? THEME_KEY_LABELS[key].es : THEME_KEY_LABELS[key].en) : key);
+        const colorCtl = isHex
+            ? `<input type="color" value="${val}" oninput="themeEditorSetVar('${key}', this.value)" class="ts-color">`
+            : `<span class="ts-swatch" style="background:${escapeHTML(val)};"></span>`;
         return `
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.3rem 0;">
-                <span style="font-size:0.8rem;color:var(--text-muted,#64748b);">${label}</span>
-                <div style="display:flex;align-items:center;gap:0.4rem;">
-                    <input type="text" value="${escapeHTML(val)}" oninput="themeEditorSetVar('${f.key}', this.value)"
-                        style="width:120px;font-size:0.75rem;font-family:monospace;padding:0.25rem 0.4rem;border:1px solid var(--border,#e2e8f0);border-radius:5px;background:transparent;color:inherit;">
-                    ${control}
+            <div class="ts-field">
+                <span class="ts-field-label" title="${escapeHTML(key)}">${label}</span>
+                <div class="ts-field-ctl">
+                    <input type="text" value="${escapeHTML(val)}" spellcheck="false" oninput="themeEditorSetVar('${key}', this.value)" class="ts-text">
+                    ${colorCtl}
                 </div>
             </div>`;
-    }).join('');
+    };
 
-    const tabBtn = (mode, label) => `
-        <button type="button" onclick="themeEditorSetMode('${mode}')"
-            style="flex:1;padding:0.4rem;border:1px solid var(--border,#e2e8f0);background:${ed.mode === mode ? '#3b82f6' : 'transparent'};color:${ed.mode === mode ? '#fff' : 'inherit'};border-radius:6px;cursor:pointer;font-weight:600;font-size:0.8rem;">${label}</button>`;
-
-    const visualPanel = `<div style="border-top:1px solid var(--border,#e2e8f0);margin:0.5rem 0;"></div>${fieldInputs}`;
+    const groups = THEME_GROUPS.map(g => `
+        <details class="ts-group" open>
+            <summary>${isEs ? g.es : g.en}</summary>
+            <div class="ts-group-body">${g.keys.map(field).join('')}</div>
+        </details>`).join('');
 
     const codePanel = `
-        <div class="form-group" style="margin-bottom:0.75rem;">
-            <label>${isEs ? 'Variables CSS del informe' : 'Report CSS variables'}</label>
-            <textarea spellcheck="false" oninput="themeEditorSetVarsCode(this.value)"
-                style="width:100%;height:200px;font-family:ui-monospace,Menlo,monospace;font-size:0.74rem;line-height:1.5;white-space:pre;overflow-wrap:normal;border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.6rem;background:#0d1117;color:#e2e8f0;">${escapeHTML(serializeThemeVars(ed.vars))}</textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:0.4rem;">
-            <label>${isEs ? 'CSS avanzado (control total)' : 'Advanced CSS (full control)'}</label>
-            <textarea spellcheck="false" placeholder=".finding-preview h3 { letter-spacing:-.02em; }\n.cover-page h1 { text-transform: uppercase; }" oninput="themeEditorSetCustomCss(this.value)"
-                style="width:100%;height:150px;font-family:ui-monospace,Menlo,monospace;font-size:0.74rem;line-height:1.5;white-space:pre;overflow-wrap:normal;border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.6rem;background:#0d1117;color:#e2e8f0;">${escapeHTML(ed.customCss || '')}</textarea>
-        </div>
-        <p style="font-size:0.72rem;color:var(--text-muted,#64748b);line-height:1.5;margin:0 0 0.4rem;">
-            ${isEs
-                ? 'Estas reglas se aplican <b>solo a este tema</b>. Selectores del informe: <code>.cover-page</code>, <code>.index-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>.cvss-summary</code>, <code>h1/h2/h3/h4</code>.'
-                : 'These rules apply <b>only to this theme</b>. Report selectors: <code>.cover-page</code>, <code>.index-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>.cvss-summary</code>, <code>h1/h2/h3/h4</code>.'}
-        </p>`;
+        <details class="ts-group">
+            <summary>${isEs ? 'CSS avanzado (control total)' : 'Advanced CSS (full control)'}</summary>
+            <div class="ts-group-body">
+                <textarea spellcheck="false" class="ts-code" placeholder=".cover-page h1 { text-transform: uppercase; }\n.finding-preview h3 { letter-spacing:-.02em; }" oninput="themeEditorSetCustomCss(this.value)">${escapeHTML(ed.customCss || '')}</textarea>
+                <p class="ts-hint">${isEs
+                    ? 'Se aplica solo a este tema. Selectores: <code>.cover-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>h1..h4</code>.'
+                    : 'Applies only to this theme. Selectors: <code>.cover-page</code>, <code>.finding-preview</code>, <code>.preview-container</code>, <code>h1..h4</code>.'}</p>
+            </div>
+        </details>`;
 
     return `
-        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeThemeEditor()">
-            <div class="settings-modal" style="width:100%;max-width:820px;display:flex;flex-direction:column;max-height:92vh;" onclick="event.stopPropagation()">
-                <div class="settings-modal-header">
-                    <span>${ed.isNew ? (isEs ? 'Nuevo tema de informe' : 'New report theme') : (isEs ? 'Editar tema' : 'Edit theme')}</span>
-                    <button class="settings-close-btn" onclick="closeThemeEditor()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <div class="theme-studio">
+            <header class="theme-studio-header">
+                <div class="ts-head-left">
+                    <button class="account-back-btn" onclick="closeThemeEditor()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        ${isEs ? 'Volver' : 'Back'}
                     </button>
+                    <h1>${ed.isNew ? (isEs ? 'Estudio de temas — nuevo' : 'Theme studio — new') : (isEs ? 'Estudio de temas — editar' : 'Theme studio — edit')}</h1>
                 </div>
-                <div style="display:flex;min-height:0;flex:1;overflow:hidden;">
-                    <div style="width:380px;flex-shrink:0;border-right:1px solid var(--border,#e2e8f0);padding:1.1rem;overflow-y:auto;">
-                        <div class="form-group" style="margin-bottom:0.75rem;">
-                            <label>${isEs ? 'Nombre' : 'Name'}</label>
-                            <input type="text" value="${escapeHTML(ed.name)}" oninput="state.themeEditor.name = this.value" placeholder="${isEs ? 'Mi tema corporativo' : 'My corporate theme'}">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0.75rem;">
-                            <label>${isEs ? 'Basado en' : 'Based on'}</label>
-                            <select onchange="themeEditorSetBase(this.value)">
-                                <option value="light" ${ed.base === 'light' ? 'selected' : ''}>${isEs ? 'Claro' : 'Light'}</option>
-                                <option value="dark" ${ed.base === 'dark' ? 'selected' : ''}>${isEs ? 'Oscuro' : 'Dark'}</option>
-                                <option value="htb" ${ed.base === 'htb' ? 'selected' : ''}>HTB</option>
-                            </select>
-                        </div>
-                        <div style="display:flex;gap:0.4rem;margin-bottom:0.75rem;">
-                            ${tabBtn('visual', isEs ? 'Visual' : 'Visual')}
-                            ${tabBtn('code', isEs ? 'Código (CSS)' : 'Code (CSS)')}
-                        </div>
-                        ${ed.mode === 'code' ? codePanel : visualPanel}
-                        ${state.themeManagerError ? `<div class="login-error" style="margin-top:0.75rem;">${escapeHTML(state.themeManagerError)}</div>` : ''}
-                        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                            <button class="btn-primary" style="flex:1;justify-content:center;" onclick="saveThemeFromEditor()">${isEs ? 'Guardar tema' : 'Save theme'}</button>
-                            <button class="btn-secondary" onclick="closeThemeEditor()">${isEs ? 'Cancelar' : 'Cancel'}</button>
-                        </div>
+                <div class="ts-head-actions">
+                    <button class="btn-secondary" onclick="downloadThemeStudioJson()">JSON</button>
+                    <button class="btn-secondary" onclick="downloadThemeStudioTemplate()">${isEs ? 'Plantilla HTML' : 'HTML template'}</button>
+                    <button class="btn-primary" onclick="saveThemeFromEditor()">${isEs ? 'Guardar en la app' : 'Save to app'}</button>
+                </div>
+            </header>
+
+            <div class="theme-studio-body">
+                <div class="ts-controls">
+                    <div class="ts-field" style="border:none;">
+                        <span class="ts-field-label">${isEs ? 'Nombre' : 'Name'}</span>
+                        <input type="text" class="ts-text" style="width:170px;" value="${escapeHTML(ed.name)}" oninput="state.themeEditor.name = this.value" placeholder="${isEs ? 'Mi tema corporativo' : 'My corporate theme'}">
                     </div>
-                    <div style="flex:1;padding:1.1rem;overflow-y:auto;background:var(--bg-subtle,#f1f5f9);">
-                        <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted,#64748b);margin-bottom:0.6rem;">${isEs ? 'Vista previa' : 'Preview'}</p>
-                        ${renderThemeEditorPreview()}
+                    <div class="ts-field">
+                        <span class="ts-field-label">${isEs ? 'Basado en' : 'Based on'}</span>
+                        <select class="ts-text" style="width:170px;" onchange="themeEditorSetBase(this.value)">
+                            <option value="light" ${ed.base === 'light' ? 'selected' : ''}>${isEs ? 'Claro' : 'Light'}</option>
+                            <option value="dark" ${ed.base === 'dark' ? 'selected' : ''}>${isEs ? 'Oscuro' : 'Dark'}</option>
+                            <option value="htb" ${ed.base === 'htb' ? 'selected' : ''}>HTB</option>
+                        </select>
                     </div>
+                    ${groups}
+                    ${codePanel}
+                    ${state.themeManagerError ? `<div class="login-error" style="margin-top:0.6rem;">${escapeHTML(state.themeManagerError)}</div>` : ''}
+                </div>
+                <div class="ts-preview">
+                    <p class="ts-preview-title">${isEs ? 'Vista previa en vivo' : 'Live preview'}</p>
+                    ${renderThemeEditorPreview()}
                 </div>
             </div>
         </div>`;
+}
+
+// Exporta el tema en edición como JSON importable.
+function downloadThemeStudioJson() {
+    const ed = state.themeEditor;
+    if (!ed) return;
+    const vars = {};
+    THEME_KEYS.forEach(k => { if (ed.vars[k]) vars[cssVarName(k)] = ed.vars[k]; });
+    const data = { pentestify_theme: true, name: ed.name || 'Tema', base: ed.base || 'light', vars, custom_css: ed.customCss || '' };
+    _downloadBytes(new TextEncoder().encode(JSON.stringify(data, null, 2)),
+        `pentestify-theme-${slugify(ed.name) || 'tema'}.json`, 'application/json');
+}
+
+// Exporta el tema en edición como plantilla HTML editable.
+function downloadThemeStudioTemplate() {
+    const ed = state.themeEditor;
+    if (!ed) return;
+    downloadThemeTemplate(ed.vars, ed.name || 'Mi tema personalizado');
 }
 
 function renderCvssSummary() {
@@ -2346,12 +2568,12 @@ function renderPreview() {
                         ` : ''}
 
                         ${f.poc ? `
-                            <div style="margin-bottom: 1.5rem; background: ${c.pocBg}; color: ${c.pocText}; padding: 1.5rem; border-radius: 8px; border: 1px solid ${c.pocBorder};">
+                            <div style="margin-bottom: 1.5rem; background: ${c.pocBg}; color: ${c.pocText}; padding: 1.5rem; border-radius: 8px; border: 1px solid ${c.pocBorder}; overflow: hidden; max-width: 100%; break-inside: avoid;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: ${c.pocHeading}; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c.pocHeading}" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                                     ${t.pocSteps}
                                 </h4>
-                                <p style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.75; font-size: 0.875rem; color: ${c.pocText}; margin: 0; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.poc)}</span></p>
+                                <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.7; font-size: 0.82rem; color: ${c.pocText}; margin: 0; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%;">${formatMultiline(f.poc)}</pre>
                             </div>
                         ` : ''}
 
@@ -2494,7 +2716,7 @@ function renderReportsPage() {
                         </svg>
                         ${tImpExp.importDb}
                     </button>
-                    <input type="file" id="db-import-input" accept=".db" style="display:none" onchange="importDatabase(this)">
+                    <input type="file" id="db-import-input" accept=".db,.pdb" style="display:none" onchange="importDatabase(this)">
                 </div>
             </div>
 
@@ -2506,10 +2728,17 @@ function renderReportsPage() {
                     </div>
                 ` : state.savedReports.map(r => `
                     <div class="report-card" onclick="loadReport(${r.id})">
+                        <div class="report-card-actions" onclick="event.stopPropagation()">
+                            <button class="report-card-icon-btn lock" title="${state.lang === 'es' ? 'Proteger la base de datos con contraseña' : 'Protect the database with a password'}" onclick="openDbPasswordModal(${r.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </button>
+                            <button class="report-card-icon-btn danger" title="${state.lang === 'es' ? 'Eliminar reporte' : 'Delete report'}" onclick="deleteReport(${r.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
                         <h3>${escapeHTML(r.document_title)}</h3>
                         <p>${escapeHTML(r.client_company)}</p>
-                        <span>${r.findings_count || 0} hallazgos</span>
-                        <button onclick="event.stopPropagation(); deleteReport(${r.id})">Eliminar</button>
+                        <span>${r.findings_count || 0} ${state.lang === 'es' ? 'hallazgos' : 'findings'}</span>
                     </div>
                 `).join('')}
             </div>
@@ -2534,10 +2763,11 @@ function renderSettingsModal() {
                 <div class="settings-section">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                         <p class="settings-section-title" style="margin:0;">${isEs ? 'Tema del informe' : 'Report theme'}</p>
-                        <div style="display:flex;gap:0.4rem;">
-                            <button class="btn-sm btn-secondary" onclick="openThemeEditor(null)" title="${isEs ? 'Crear tema' : 'New theme'}">+ ${isEs ? 'Nuevo' : 'New'}</button>
-                            <button class="btn-sm btn-secondary" onclick="document.getElementById('theme-import-input').click()" title="${isEs ? 'Importar tema' : 'Import theme'}">${isEs ? 'Importar' : 'Import'}</button>
-                            <input type="file" id="theme-import-input" accept=".json,application/json" style="display:none" onchange="importThemeFile(this)">
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                            <button class="btn-sm btn-secondary" onclick="openThemeEditor(null)" title="${isEs ? 'Abrir el estudio para crear y personalizar un tema' : 'Open the studio to create and customize a theme'}">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>${isEs ? 'Crear / Personalizar' : 'Create / Customize'}</button>
+                            <button class="btn-sm btn-secondary" onclick="document.getElementById('theme-import-input').click()" title="${isEs ? 'Importar tema (.json o .html)' : 'Import theme (.json or .html)'}">${isEs ? 'Importar' : 'Import'}</button>
+                            <input type="file" id="theme-import-input" accept=".json,application/json,.html,.htm,text/html" style="display:none" onchange="importThemeFile(this)">
                         </div>
                     </div>
                     <div class="theme-card-grid">
@@ -2804,9 +3034,7 @@ function renderPdfModal() {
 }
 
 function openPdfModal() {
-    state.pdfPrintTheme = state.reportTheme;
-    state.pdfShowSeverityBars = true;
-    state.pdfContentWidth = 820;
+    // Usamos las preferencias persistidas en la BD (no reseteamos en cada apertura).
     state.showPdfModal = true;
     renderApp();
 }
@@ -2830,6 +3058,7 @@ function pdfModalSetTheme(theme) {
         btn.style.color       = isActive ? activeText : c.textMuted;
         btn.style.fontWeight  = isActive ? '700'      : '500';
     });
+    persistSettings();
     updatePdfModalPreview();
 }
 
@@ -2840,6 +3069,7 @@ function pdfModalSetBars(checked) {
     const thumb = document.getElementById('pdf-toggle-thumb');
     if (bg)    bg.style.background = checked ? '#3b82f6' : c.border;
     if (thumb) thumb.style.left    = checked ? '22px'   : '2px';
+    persistSettings();
     updatePdfModalPreview();
 }
 
@@ -2849,6 +3079,7 @@ function pdfModalSetContentWidth(v) {
     state.pdfContentWidth = parseInt(v);
     const el = document.getElementById('pdf-content-width-val');
     if (el) el.textContent = v + ' px';
+    persistSettings();
     clearTimeout(_pdfWidthTimer);
     _pdfWidthTimer = setTimeout(updatePdfModalPreview, 200);
 }
@@ -3027,7 +3258,7 @@ function renderAccountPage() {
                     <div class="account-card">
                         <h2 class="account-section-title">${t.manageUsers}</h2>
 
-                        <p class="account-subsection-title">${t.existingUsers}</p>
+                        <p class="account-subsection-title">${t.existingUsers}${state.users.length ? `<span class="account-user-count">${state.users.length}</span>` : ''}</p>
                         <div class="account-user-list">
                             ${userRows}
                         </div>
@@ -3054,6 +3285,76 @@ function renderAccountPage() {
     `;
 }
 
+// Sustituye las imágenes data URL (base64) por un marcador para que el código
+// fuente sea legible (si no, cada evidencia añadiría megas de base64).
+function reportSourceForView(html) {
+    return html.replace(
+        /(data:image\/[a-zA-Z0-9.+-]+;base64,)[A-Za-z0-9+/=\s]+/g,
+        '$1…(base64 de la imagen omitido en la vista de código)…'
+    );
+}
+
+function setPreviewView(mode) {
+    state.previewSourceView = (mode === 'source');
+    renderApp();
+}
+
+async function copyReportSource() {
+    const isEs = state.lang === 'es';
+    try {
+        await navigator.clipboard.writeText(renderPreview());
+        alert(isEs ? 'Código fuente copiado al portapapeles' : 'Source code copied to clipboard');
+    } catch (e) {
+        alert((isEs ? 'No se pudo copiar: ' : 'Could not copy: ') + e.message);
+    }
+}
+
+// Pestaña "Vista Previa": añade un selector para alternar entre el reporte
+// renderizado y su código fuente HTML. La barra es no-print y se omite en modo
+// impresión (PDF / exportación HTML) para no contaminar el documento final.
+function renderPreviewArea() {
+    if (state.activeTab !== 'preview' || state.showSplash || state.showReportSelector) return '';
+
+    const reportHtml = renderPreview();
+
+    const printMode = new URLSearchParams(window.location.search).get('print_mode') === 'true';
+    if (printMode) return reportHtml; // exportación/impresión: solo el reporte
+
+    const isEs = state.lang === 'es';
+    const src = !!state.previewSourceView;
+
+    // Conmutador discreto (segmentado) alineado a la derecha sobre el informe.
+    const toolbar = `
+        <div class="preview-view-switch no-print">
+            <div class="preview-view-seg" role="tablist">
+                <button class="${!src ? 'active' : ''}" onclick="setPreviewView('rendered')" title="${isEs ? 'Vista renderizada' : 'Rendered view'}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+                    <span>${isEs ? 'Renderizado' : 'Rendered'}</span>
+                </button>
+                <button class="${src ? 'active' : ''}" onclick="setPreviewView('source')" title="${isEs ? 'Código fuente HTML' : 'HTML source'}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    <span>${isEs ? 'Código' : 'Source'}</span>
+                </button>
+            </div>
+            ${src ? `<button class="preview-view-copy" onclick="copyReportSource()" title="${isEs ? 'Copiar código' : 'Copy source'}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>` : ''}
+        </div>`;
+
+    if (!src) return toolbar + reportHtml;
+
+    const code = escapeHTML(reportSourceForView(reportHtml));
+    const sourceView = `
+        <div class="no-print" style="max-width:980px;margin:0 auto;background:#0d1117;border:1px solid #1e293b;border-radius:10px;overflow:hidden;">
+            <div style="padding:0.6rem 1rem;border-bottom:1px solid #1e293b;color:#93c5fd;font-family:ui-monospace,monospace;font-size:0.75rem;">
+                ${isEs ? 'Código fuente del reporte (HTML)' : 'Report source code (HTML)'}
+            </div>
+            <pre style="margin:0;padding:1.1rem;overflow:auto;max-height:75vh;"><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:0.78rem;line-height:1.6;color:#e2e8f0;white-space:pre;">${code}</code></pre>
+        </div>`;
+
+    return toolbar + sourceView;
+}
+
 function renderApp() {
     const app = $('#app');
 
@@ -3076,19 +3377,25 @@ function renderApp() {
         return;
     }
 
+    // Estudio de temas a página completa.
+    if (state.isThemeStudio && state.themeEditor) {
+        app.innerHTML = renderThemeStudio();
+        return;
+    }
+
     app.innerHTML = `
         ${renderSplashScreen()}
         ${renderNavbar()}
         <main class="main-content">
             ${renderReportsPage()}
             ${renderEditor()}
-            ${renderPreview()}
+            ${renderPreviewArea()}
         </main>
         ${renderSettingsModal()}
-        ${renderThemeEditorModal()}
         ${renderCvssCalcModal()}
         ${renderDemoModal()}
         ${renderPdfModal()}
+        ${renderDbPasswordModal()}
     `;
 }
 
@@ -3118,6 +3425,7 @@ async function doLogin(event) {
         await loadCustomThemes();
         const savedTheme = localStorage.getItem('pentestify_theme');
         state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
+        await loadSettings();
         applyThemeAttributes(state.reportTheme);
         // Si se inició sesión directamente en la página de cuenta, cargamos usuarios.
         if (state.isAccountView) {
@@ -3269,6 +3577,7 @@ function closeSettings() {
 function setLang(lang) {
     state.lang = lang;
     state.auditData.lang = lang;
+    persistSettings();
 
     if (state.currentFinding.templateKey && state.currentFinding.templateKey !== 'custom') {
         applyTemplate(state.currentFinding.templateKey);
@@ -3303,7 +3612,8 @@ function setReportTheme(theme) {
     state.auditData.reportTheme = theme;
     state.isDirty = true;
     applyThemeAttributes(theme);
-    localStorage.setItem('pentestify_theme', theme);
+    localStorage.setItem('pentestify_theme', theme); // cache local rápida (no afecta a la exportación)
+    persistSettings();
     renderApp();
 }
 
@@ -3311,10 +3621,27 @@ function generatePdf() {
     openPdfModal();
 }
 
+// Parámetros de la vista de impresión del informe (compartidos por PDF y export HTML).
+function _reportPrintParams(extra) {
+    return new URLSearchParams(Object.assign({
+        report_id: state.currentReportId,
+        print_mode: 'true',
+        theme: state.pdfPrintTheme,
+        show_severity_bars: state.pdfShowSeverityBars,
+        content_width: state.pdfContentWidth
+    }, extra || {}));
+}
+
+function _reportFileName() {
+    return [state.auditData.documentTitle, state.auditData.clientCompany]
+        .filter(Boolean).join(' - ').replace(/[^a-zA-Z0-9_\-. ]/g, '').trim() || `Report_${state.currentReportId}`;
+}
+
+// Genera el PDF mediante la impresión nativa del navegador (Guardar como PDF)
+// sobre la vista de impresión del informe. Sin dependencias de servidor.
 async function executePdfGeneration() {
     if (state.generatingPdf) return;
     const isEs = state.lang === 'es';
-    const t = UI[state.lang];
 
     state.showPdfModal = false;
     state.generatingPdf = true;
@@ -3322,50 +3649,104 @@ async function executePdfGeneration() {
 
     try {
         await saveCurrentReport(true);
-
         if (!state.currentReportId) {
             throw new Error(isEs ? 'No se pudo guardar el reporte' : 'Could not save the report');
         }
-
-        const params = new URLSearchParams({
-            theme: state.pdfPrintTheme,
-            show_severity_bars: state.pdfShowSeverityBars,
-            content_width: state.pdfContentWidth
-        });
-        const response = await fetch(`/api/reports/${state.currentReportId}/pdf?${params}`);
-
-        if (!response.ok) {
-            let errorData;
-            try { errorData = await response.json(); } catch (e) { errorData = null; }
-
-            if (response.status === 503 && errorData?.detail?.error === 'Playwright browsers not installed') {
-                const cmd = errorData.detail.command || 'playwright install chromium';
-                alert(isEs
-                    ? `⚠️ Playwright no está instalado.\n\nEjecuta este comando en la terminal y vuelve a intentarlo:\n\n  ${cmd}`
-                    : `⚠️ Playwright is not installed.\n\nRun this command in your terminal and try again:\n\n  ${cmd}`
-                );
-                return;
-            }
-
-            throw new Error(errorData?.detail?.message || errorData?.detail || `Error ${response.status}`);
+        const win = window.open('/?' + _reportPrintParams({ auto_print: '1' }).toString(), '_blank');
+        if (!win) {
+            alert(isEs
+                ? 'Permite las ventanas emergentes para generar el PDF (se abrirá el diálogo de impresión → Guardar como PDF).'
+                : 'Allow pop-ups to generate the PDF (the print dialog will open → Save as PDF).');
         }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const name = [state.auditData.documentTitle, state.auditData.clientCompany]
-            .filter(Boolean).join(' - ').replace(/[^a-zA-Z0-9_\-. ]/g, '').trim() || `Report_${state.currentReportId}`;
-        a.download = `${name}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
     } catch (e) {
         alert((isEs ? 'Error al generar PDF: ' : 'Error generating PDF: ') + e.message);
     } finally {
         state.generatingPdf = false;
+        renderApp();
+    }
+}
+
+// Construye, en el cliente, un documento HTML autocontenido del informe. Reutiliza
+// el render real cargando la vista de impresión en un iframe oculto, incrusta el
+// CSS y aísla el informe. Las imágenes ya son data URLs => fichero portable.
+function buildSelfContainedReportHtml() {
+    const url = '/?' + _reportPrintParams().toString();
+    return fetch('/css/styles.css').then(r => r.text()).then(cssText => new Promise((resolve, reject) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:1280px;height:1200px;border:0;';
+        let tries = 0;
+        const cleanup = () => { try { document.body.removeChild(iframe); } catch (_) {} };
+        const attempt = () => {
+            try {
+                const doc = iframe.contentDocument;
+                const report = doc && doc.querySelector('.preview-container');
+                if (!report) {
+                    if (++tries > 50) { cleanup(); reject(new Error('No se pudo renderizar el informe')); return; }
+                    setTimeout(attempt, 150);
+                    return;
+                }
+                doc.querySelectorAll('script').forEach(s => s.remove());
+                doc.querySelectorAll('link[rel="stylesheet"]').forEach(l => {
+                    if ((l.getAttribute('href') || '').indexOf('styles.css') !== -1) l.remove();
+                });
+                const st = doc.createElement('style');
+                st.textContent = cssText;
+                doc.head.appendChild(st);
+                Array.from(doc.body.children).forEach(el => el.remove());
+                doc.body.appendChild(report);
+                doc.body.style.cssText = 'margin:0;display:flex;justify-content:center;';
+                const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+                cleanup();
+                resolve(html);
+            } catch (e) { cleanup(); reject(e); }
+        };
+        iframe.onload = () => setTimeout(attempt, 500);
+        iframe.src = url;
+        document.body.appendChild(iframe);
+    }));
+}
+
+function toggleExportMenu(e) {
+    if (e) e.stopPropagation();
+    state.exportMenuOpen = !state.exportMenuOpen;
+    renderApp();
+}
+
+function chooseExport(kind) {
+    state.exportMenuOpen = false;
+    if (kind === 'pdf') {
+        generatePdf();
+    } else {
+        exportHtml();
+    }
+}
+
+// Cierra el menú de exportación al hacer clic fuera de él.
+document.addEventListener('click', (e) => {
+    if (state.exportMenuOpen && !e.target.closest('.export-dropdown')) {
+        state.exportMenuOpen = false;
+        renderApp();
+    }
+});
+
+async function exportHtml() {
+    if (state.exportingHtml) return;
+    const isEs = state.lang === 'es';
+
+    state.exportingHtml = true;
+    renderApp();
+
+    try {
+        await saveCurrentReport(true);
+        if (!state.currentReportId) {
+            throw new Error(isEs ? 'No se pudo guardar el reporte' : 'Could not save the report');
+        }
+        const html = await buildSelfContainedReportHtml();
+        _downloadBytes(new TextEncoder().encode(html), `${_reportFileName()}.html`, 'text/html;charset=utf-8');
+    } catch (e) {
+        alert((isEs ? 'Error al exportar HTML: ' : 'Error exporting HTML: ') + e.message);
+    } finally {
+        state.exportingHtml = false;
         renderApp();
     }
 }
@@ -3777,65 +4158,193 @@ async function deleteReport(id) {
     }
 }
 
-async function exportDatabase() {
-    try {
-        const response = await fetch('/api/database/export');
-        if (!response.ok) throw new Error('Error al exportar');
-        
+// Magia que identifica un backup cifrado de Pentestify (8 bytes).
+const DB_ENC_MAGIC = 'PENTDB01';
+
+// Deriva una clave AES-GCM de 256 bits a partir de la contraseña (PBKDF2-SHA256).
+async function deriveDbKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+function _downloadBytes(bytes, filename, mime) {
+    const blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Exporta la base de datos. Si se pasa contraseña, la cifra (AES-256-GCM)
+// produciendo un fichero .pdb protegido; si no, exporta el .db en claro.
+async function exportDatabase(password) {
+    const isEs = state.lang === 'es';
+    const response = await fetch('/api/database/export');
+    if (!response.ok) throw new Error(isEs ? 'Error al exportar' : 'Export error');
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '').slice(0, 13);
+
+    if (!password) {
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'pentestify_backup.db';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-    } catch (err) {
-        alert(state.lang === 'es' ? 'Error al exportar: ' + err.message : 'Error exporting: ' + err.message);
+        const name = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'pentestify_backup.db';
+        _downloadBytes(new Uint8Array(await blob.arrayBuffer()), name, 'application/x-sqlite3');
+        return;
     }
+
+    const buf = await response.arrayBuffer();
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveDbKey(password, salt);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buf));
+    const magic = new TextEncoder().encode(DB_ENC_MAGIC); // 8 bytes
+    const out = new Uint8Array(magic.length + salt.length + iv.length + ct.length);
+    out.set(magic, 0);
+    out.set(salt, magic.length);
+    out.set(iv, magic.length + salt.length);
+    out.set(ct, magic.length + salt.length + iv.length);
+    _downloadBytes(out, `pentestify_backup_${stamp}.pdb`, 'application/octet-stream');
 }
 
 async function importDatabase(input) {
     const file = input.files[0];
     if (!file) return;
-    
-    const tImpExp = state.lang === 'es' ? {
+    const isEs = state.lang === 'es';
+
+    const tImpExp = isEs ? {
         importConfirm: '¿Estás seguro? Esto reemplazará todos los reportes actuales.',
         importSuccess: 'Base de datos importada correctamente. Recargando...',
-        importError: 'Error al importar: '
+        importError: 'Error al importar: ',
+        askPw: 'Esta base de datos está protegida. Introduce la contraseña:',
+        badPw: 'Contraseña incorrecta o archivo dañado.'
     } : {
         importConfirm: 'Are you sure? This will replace all current reports.',
         importSuccess: 'Database imported successfully. Reloading...',
-        importError: 'Error importing: '
+        importError: 'Error importing: ',
+        askPw: 'This database is password-protected. Enter the password:',
+        badPw: 'Wrong password or corrupted file.'
     };
-    
-    if (!confirm(tImpExp.importConfirm)) {
-        input.value = '';
-        return;
-    }
-    
+
     try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch('/api/database/import', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Error desconocido');
+        let bytes = new Uint8Array(await file.arrayBuffer());
+        const magic = new TextDecoder().decode(bytes.slice(0, 8));
+
+        if (magic === DB_ENC_MAGIC) {
+            const pw = prompt(tImpExp.askPw);
+            if (pw === null) { input.value = ''; return; }
+            try {
+                const salt = bytes.slice(8, 24);
+                const iv = bytes.slice(24, 36);
+                const ct = bytes.slice(36);
+                const key = await deriveDbKey(pw, salt);
+                const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+                bytes = new Uint8Array(dec);
+            } catch (e) {
+                alert(tImpExp.badPw);
+                input.value = '';
+                return;
+            }
         }
-        
+
+        if (!confirm(tImpExp.importConfirm)) { input.value = ''; return; }
+
+        const formData = new FormData();
+        formData.append('file', new Blob([bytes], { type: 'application/x-sqlite3' }), 'imported.db');
+        const response = await fetch('/api/database/import', { method: 'POST', body: formData });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Error');
+        }
         alert(tImpExp.importSuccess);
         window.location.reload();
     } catch (err) {
         alert(tImpExp.importError + err.message);
     }
-    
     input.value = '';
+}
+
+// ---- Modal: proteger la base de datos exportada con contraseña ---- //
+function openDbPasswordModal(reportId) {
+    const r = (state.savedReports || []).find(x => x.id === reportId);
+    state.dbPasswordModal = { open: true, reportId, title: r ? r.document_title : '', busy: false };
+    renderApp();
+}
+
+function closeDbPasswordModal() {
+    state.dbPasswordModal = { open: false, reportId: null, title: '', busy: false };
+    renderApp();
+}
+
+async function submitDbPassword(event) {
+    if (event) event.preventDefault();
+    const isEs = state.lang === 'es';
+    const pw = (document.getElementById('dbPw') || {}).value || '';
+    const pw2 = (document.getElementById('dbPw2') || {}).value || '';
+    const errEl = document.getElementById('dbPwError');
+    const setErr = (m) => { if (errEl) { errEl.textContent = m; errEl.style.display = m ? 'block' : 'none'; } };
+
+    if (pw.length < 4) { setErr(isEs ? 'La contraseña debe tener al menos 4 caracteres.' : 'Password must be at least 4 characters.'); return; }
+    if (pw !== pw2) { setErr(isEs ? 'Las contraseñas no coinciden.' : 'Passwords do not match.'); return; }
+    setErr('');
+
+    try {
+        state.dbPasswordModal.busy = true; renderApp();
+        await exportDatabase(pw);
+        closeDbPasswordModal();
+        alert(isEs ? 'Base de datos exportada y cifrada correctamente.' : 'Database exported and encrypted successfully.');
+    } catch (err) {
+        state.dbPasswordModal.busy = false; renderApp();
+        alert((isEs ? 'Error al exportar: ' : 'Error exporting: ') + err.message);
+    }
+}
+
+function renderDbPasswordModal() {
+    const m = state.dbPasswordModal;
+    if (!m || !m.open) return '';
+    const isEs = state.lang === 'es';
+    return `
+        <div class="settings-overlay" onclick="closeDbPasswordModal()">
+            <div class="settings-modal" style="max-width:440px;" onclick="event.stopPropagation()">
+                <div class="settings-modal-header">
+                    <span style="display:inline-flex;align-items:center;gap:0.5rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        ${isEs ? 'Proteger base de datos' : 'Protect database'}
+                    </span>
+                    <button class="settings-close-btn" onclick="closeDbPasswordModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="settings-section">
+                    <p style="font-size:0.85rem;color:var(--gray-500,#6b7280);line-height:1.55;margin:0 0 1rem;">
+                        ${isEs
+                            ? 'Se exportará toda la base de datos SQLite cifrada con AES-256. Necesitarás esta contraseña para volver a importarla. <b>Si la pierdes, no podrás recuperar los datos.</b>'
+                            : 'The whole SQLite database will be exported encrypted with AES-256. You will need this password to import it again. <b>If you lose it, the data cannot be recovered.</b>'}
+                    </p>
+                    <form onsubmit="submitDbPassword(event)">
+                        <label class="login-label">${isEs ? 'Contraseña' : 'Password'}</label>
+                        <input type="password" id="dbPw" class="login-input" autocomplete="new-password" autofocus>
+                        <label class="login-label" style="margin-top:0.6rem;">${isEs ? 'Confirmar contraseña' : 'Confirm password'}</label>
+                        <input type="password" id="dbPw2" class="login-input" autocomplete="new-password">
+                        <div id="dbPwError" class="login-error" style="display:none;margin-top:0.6rem;"></div>
+                        <div style="display:flex;gap:0.6rem;margin-top:1.1rem;">
+                            <button type="button" class="btn-secondary" style="flex:1;" onclick="closeDbPasswordModal()">${isEs ? 'Cancelar' : 'Cancel'}</button>
+                            <button type="submit" class="login-btn" style="flex:1;margin:0;" ${m.busy ? 'disabled' : ''}>
+                                ${m.busy ? (isEs ? 'Cifrando…' : 'Encrypting…') : (isEs ? 'Exportar cifrada' : 'Export encrypted')}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>`;
 }
 
 async function saveCurrentReport(silent = false) {
@@ -3995,6 +4504,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // del PDF (márgenes incluidos) coincida con cualquier tema, incluso los
         // personalizados.
         applyPrintBackground();
+        // Generación de PDF: impresión nativa del navegador (Guardar como PDF).
+        // Damos un margen para que imágenes y estilos terminen de pintar.
+        if (params.get('auto_print') === '1') {
+            setTimeout(() => { try { window.print(); } catch (e) {} }, 900);
+        }
     } else {
         // Modo normal: comprobamos si ya hay una sesión válida (cookie) antes de
         // decidir entre mostrar el login o la aplicación.
@@ -4005,10 +4519,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const me = await API.auth.me();
             state.isAuthenticated = true;
             state.authUsername = me.username;
-            // Cargamos los temas personalizados del usuario y aplicamos el guardado.
+            // Cargamos los temas personalizados y las preferencias guardadas en la
+            // BD (idioma, tema activo, opciones de PDF). La BD es la fuente de verdad
+            // para que la exportación capture el 100% del estado.
             await loadCustomThemes();
             const savedTheme = localStorage.getItem('pentestify_theme');
             state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
+            await loadSettings();
             applyThemeAttributes(state.reportTheme);
             // En la página de cuenta cargamos la lista de usuarios.
             if (state.isAccountView) {

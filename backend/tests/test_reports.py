@@ -10,7 +10,7 @@ class TestReportsAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Pentestify API"
-        assert data["version"] == "1.2.0"
+        assert data["version"] == "2.0.0"
     
     def test_create_report(self, client):
         """Test: POST /api/reports crea un reporte"""

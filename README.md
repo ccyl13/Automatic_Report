@@ -10,21 +10,33 @@
 
 <p align="center">
   <strong>Generador interactivo de reportes de pentesting.</strong><br>
-  Registra vulnerabilidades, visualiza estadísticas de riesgo en tiempo real y exporta informes corporativos estructurados en PDF.
+  Registra vulnerabilidades, visualiza estadísticas de riesgo en tiempo real y exporta informes corporativos como HTML autocontenido o PDF (impresión nativa del navegador).
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.0-blue.svg" alt="Version 1.2.0">
+  <img src="https://img.shields.io/badge/version-2.0.0-blue.svg" alt="Version 2.0.0">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 1.2.0</strong>
+  <strong>Versión actual: 2.0.0</strong>
 </p>
 
-## ✨ Novedades de la 1.2.0 (rama `beta`)
+## 🚀 Novedades de la 2.0.0
+
+- **Sin Playwright/Chromium**: el informe se renderiza y exporta 100% en el navegador. Despliegue mucho más ligero (sin descargar navegadores).
+  - **Exportar HTML**: documento HTML autocontenido (CSS incrustado e imágenes embebidas), se ve perfecto y se abre en cualquier navegador (estilo SysReptor).
+  - **Generar PDF**: impresión nativa del navegador (Guardar como PDF) sobre la vista de impresión.
+- **Estudio de temas a página completa**: personaliza *todas* las variables de estilo del informe con vista previa en vivo, y **guárdalo como un tema nuevo** en la app o **expórtalo** (JSON o plantilla HTML).
+- **Vista previa con conmutador Renderizado / Código fuente** del informe.
+- **Botón único “Exportar”** con menú (PDF / HTML).
+- **Base de datos protegida con contraseña**: exportación cifrada (AES-256-GCM, cliente) desde *Mis Reportes*.
+- **Todo se guarda en SQLite** (reportes, hallazgos, usuarios, temas, plantillas y *preferencias*: idioma, tema activo y opciones de PDF). Exportar la BD captura el 100% del estado.
+- Arregla el desbordamiento del recuadro de PoC y el icono de eliminar usuario.
+
+## ✨ Novedades de la 1.2.0
 
 Esta versión convierte Pentestify en un generador de **informes de pentesting profesionales**:
 
@@ -112,7 +124,7 @@ Pentestify/
 
 ## 🐳 Instalación y Uso (Docker - Recomendado)
 
-Docker es la forma **más rápida y sencilla** de ejecutar Pentestify. La imagen incluye todas las dependencias incluyendo los navegadores necesarios para la generación de PDFs.
+Docker es la forma **más rápida y sencilla** de ejecutar Pentestify. Desde la v2.0.0 la imagen es ligera: ya no incluye navegadores, porque la exportación a HTML/PDF se hace en el navegador del usuario.
 
 ### Comando rápido (copiar y pegar)
 
@@ -142,7 +154,6 @@ Si prefieres no usar Docker, puedes instalar manualmente:
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium  # Necesario para generación de PDFs
 python3 run.py
 ```
 
@@ -214,7 +225,7 @@ La suite de tests incluye:
 - **Reportes**: CRUD completo de reportes
 - **Hallazgos**: CRUD y reordenamiento de hallazgos
 - **Reordenamiento**: Tests específicos para orden de hallazgos
-- **PDF**: Generación de reportes PDF
+- **Ajustes**: Preferencias globales persistidas en la BD
 - **Base de Datos**: Import/export de backups SQLite
 - **Archivos Estáticos**: CSS, JS y assets
 

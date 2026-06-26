@@ -1,39 +1,18 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema para Playwright y otras librerías
-RUN apt-get update && apt-get install -y \
+# Dependencias del sistema mínimas (compilación de wheels si hiciera falta).
+# Desde la v2.0.0 el informe se exporta a HTML/PDF 100% en el cliente, así que
+# ya NO se necesita Playwright/Chromium ni sus librerías del sistema.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libpq-dev \
-    # Dependencias para Playwright/Chromium
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libatspi2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements primero para aprovechar cache de Docker
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Instalar navegadores de Playwright (chromium es suficiente para PDF)
-RUN playwright install chromium
 
 # Copiar código del backend
 COPY backend/ ./backend/
@@ -51,9 +30,6 @@ RUN mkdir -p /app/data
 ENV PYTHONPATH=/app/backend
 ENV DATABASE_URL=sqlite:///./data/pentestify.db
 ENV PORT=8000
-# URL base interna fija para la generación de PDFs (Playwright). Anclar a loopback
-# evita el SSRF derivado de confiar en el header Host de la petición.
-ENV APP_BASE_URL=http://127.0.0.1:8000
 # Orígenes CORS permitidos (lista explícita). Ajustar al dominio real en producción.
 ENV ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 

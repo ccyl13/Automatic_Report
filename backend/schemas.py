@@ -353,3 +353,34 @@ class FindingTemplateResponse(FindingTemplateBase):
 
     class Config:
         from_attributes = True
+
+
+class AppSettingsBase(BaseModel):
+    lang: str = "es"
+    report_theme: str = "light"
+    pdf_print_theme: str = "light"
+    pdf_show_severity_bars: bool = True
+    pdf_content_width: int = 820
+
+    @field_validator('lang')
+    @classmethod
+    def _valid_lang(cls, v):
+        return v if v in ('es', 'en') else 'es'
+
+    @field_validator('pdf_content_width')
+    @classmethod
+    def _clamp_width(cls, v):
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            return 820
+        return max(400, min(1400, v))
+
+
+class AppSettingsUpdate(AppSettingsBase):
+    pass
+
+
+class AppSettingsResponse(AppSettingsBase):
+    class Config:
+        from_attributes = True

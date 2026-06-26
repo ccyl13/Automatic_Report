@@ -137,3 +137,18 @@ class FindingTemplate(Base):
     owasp = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AppSettings(Base):
+    """Preferencias globales de la aplicación (idioma, tema activo, opciones de PDF).
+    Fila única (id=1). Vive en la BD para que la exportación capture el 100% del
+    estado y no se pierda nada al exportar/importar."""
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True)
+    lang = Column(String, default="es")
+    report_theme = Column(String, default="light")
+    pdf_print_theme = Column(String, default="light")
+    pdf_show_severity_bars = Column(Integer, default=1)  # 0/1
+    pdf_content_width = Column(Integer, default=820)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

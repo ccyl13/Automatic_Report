@@ -1548,6 +1548,19 @@ textarea {
     resize: vertical;
 }
 
+/* Textarea para fragmentos de código (campo Exploit): monospace, sin ajuste de
+   línea y con scroll horizontal para no romper la indentación del código. */
+textarea.code-input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
 /* Estilos para select */
 select {
     cursor: pointer;
@@ -2900,6 +2913,65 @@ input[type="file"]:hover {
     }
 }
 
+/* ---- Tarjetas de revisión (modal Historial de revisiones) ---- */
+.revision-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.revision-card {
+    position: relative;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.9rem 2.4rem 0.9rem 0.9rem;
+}
+
+.revision-grid {
+    display: grid;
+    grid-template-columns: 90px 150px 1fr;
+    gap: 0.75rem;
+    align-items: end;
+}
+.revision-grid .form-group { margin: 0; }
+.revision-grid .revision-changes { grid-column: 1 / -1; }
+
+@media (max-width: 560px) {
+    .revision-grid { grid-template-columns: 1fr 1fr; }
+    .revision-grid .revision-changes { grid-column: 1 / -1; }
+}
+
+.revision-remove {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    box-shadow: none;
+}
+.revision-remove:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: none;
+}
+
+[data-theme="dark"] .revision-card,
+[data-theme="htb"] .revision-card {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
 /* ---- Incidents toggle ---- */
 .incidents-toggle label {
     font-size: 0.875rem;
@@ -2995,10 +3067,74 @@ button {
     gap: 0.5rem;
 }
 
+/* Sección de findings a ancho completo (fuera de la columna del editor) */
+.findings-section {
+    max-width: 1400px;
+    margin: 1.5rem auto 0;
+}
+
+/* Cabecera de la sección de findings (título + contador), centrada */
+.findings-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    margin-bottom: 1.4rem;
+}
+
+.findings-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+    text-align: center;
+}
+.findings-section-title svg { color: #3b82f6; flex-shrink: 0; }
+
+.findings-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7rem;
+    height: 1.7rem;
+    padding: 0 0.55rem;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 0.8rem;
+    font-weight: 800;
+    border-radius: 999px;
+    border: 1px solid #dbeafe;
+}
+
+.findings-empty {
+    margin: 0;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1.25rem 0;
+}
+
+/* Rejilla de dos columnas para los findings */
+.findings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+}
+
+@media (max-width: 640px) {
+    .findings-grid { grid-template-columns: 1fr; }
+}
+
 .finding-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     background: white;
-    border-radius: 0.625rem;
-    padding: 0.8125rem 1rem;
+    border-radius: 0.75rem;
+    padding: 0.8125rem 0.9rem;
     border: 1px solid #f1f5f9;
     border-left: 3px solid;
     transition: all 0.2s;
@@ -3006,8 +3142,8 @@ button {
 }
 
 .finding-item:hover {
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
-    transform: translateX(2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
 }
 
 .finding-item.severity-crit {
@@ -3038,21 +3174,22 @@ button {
 .finding-header {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0.5rem;
 }
 
 .finding-number {
     font-weight: 700;
     color: #94a3b8;
     font-size: 0.75rem;
-    min-width: 22px;
 }
 
 .finding-title {
-    flex: 1;
+    display: block;
     font-weight: 600;
     color: #1e293b;
     font-size: 0.875rem;
+    line-height: 1.35;
+    word-break: break-word;
 }
 
 .finding-severity {
@@ -3092,6 +3229,7 @@ button {
 .finding-actions {
     display: flex;
     gap: 0.25rem;
+    margin-left: auto;
 }
 
 .finding-actions .btn-edit,
@@ -3966,6 +4104,8 @@ button {
 [data-theme="dark"] .finding-item.severity-info { background: linear-gradient(135deg,#18202e 0%,#1e293b 60%) !important; }
 [data-theme="dark"] .finding-title { color: #e2e8f0 !important; }
 [data-theme="dark"] .finding-number { color: #64748b !important; }
+[data-theme="dark"] .findings-section-title { color: #e2e8f0 !important; }
+[data-theme="dark"] .findings-count { background: #1e3a5f !important; color: #93c5fd !important; border-color: #2d4a6e !important; }
 [data-theme="dark"] .report-card {
     background: #1e293b !important;
     border-color: #334155 !important;
@@ -4093,6 +4233,9 @@ button {
 [data-theme="htb"] .finding-item.severity-info { background: linear-gradient(135deg,#0d1117 0%,#111922 60%) !important; }
 [data-theme="htb"] .finding-title { color: #e2e8f0 !important; }
 [data-theme="htb"] .finding-number { color: #3d5570 !important; }
+[data-theme="htb"] .findings-section-title { color: #e2e8f0 !important; }
+[data-theme="htb"] .findings-section-title svg { color: #9fef00 !important; }
+[data-theme="htb"] .findings-count { background: #0a1f0d !important; color: #9fef00 !important; border-color: #1a2f1a !important; }
 [data-theme="htb"] .report-card {
     background: #0d1117 !important;
     border-color: #2d3f55 !important;
@@ -4908,6 +5051,68 @@ button {
 /* ============================================================= */
 /* Badge de versión de la app                                    */
 /* ============================================================= */
+/* Footer "hecho con ❤️ por ..." en la página de Mis Reportes */
+.made-by-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.32rem;
+    margin: 3.5rem auto 1.5rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid #e5e7eb;
+    max-width: 540px;
+    font-size: 0.9rem;
+    color: #64748b;
+    letter-spacing: 0.01em;
+}
+
+.made-by-heart {
+    color: #ef4444;
+    flex-shrink: 0;
+    transform: translateY(1px);
+    animation: heartbeat 1.6s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: translateY(1px) scale(1); }
+    15%      { transform: translateY(1px) scale(1.22); }
+    30%      { transform: translateY(1px) scale(1); }
+    45%      { transform: translateY(1px) scale(1.16); }
+    60%      { transform: translateY(1px) scale(1); }
+}
+
+.made-by-footer a {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+.made-by-footer a:hover {
+    color: #1d4ed8;
+    border-bottom-color: currentColor;
+}
+
+[data-theme="dark"] .made-by-footer,
+[data-theme="htb"] .made-by-footer { border-top-color: rgba(255,255,255,0.1) !important; color: #94a3b8 !important; }
+[data-theme="dark"] .made-by-footer a { color: #60a5fa !important; }
+[data-theme="htb"] .made-by-footer a { color: #9fef00 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    .made-by-heart { animation: none; }
+}
+
+.app-name {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.3rem;
+    letter-spacing: 0.015em;
+    line-height: 1;
+    margin-left: -0.15rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 .app-version-badge {
     font-size: 0.62rem;
     font-weight: 700;

@@ -14,15 +14,24 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.0-blue.svg" alt="Version 2.0.0">
+  <img src="https://img.shields.io/badge/version-2.0.1-blue.svg" alt="Version 2.0.1">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.0.0</strong>
+  <strong>Versión actual: 2.0.1</strong>
 </p>
+
+## 🚀 Novedades de la 2.0.1
+
+- **Campo "Exploit" por hallazgo**: pega un fragmento de código y se imprime en el informe (vista previa y PDF) como un bloque de código con estilo de terminal, respetando indentación y saltos de línea. Campo opcional.
+- **Cambio de idioma en el informe exportado**: corregido un bug por el que el PDF/HTML exportado salía siempre en español; ahora respeta el idioma elegido.
+- **Editor más claro**: la sección **Findings / Vulnerabilidades** ahora ocupa todo el ancho, con título centrado y los hallazgos en dos columnas; el **historial de revisiones** se gestiona desde un modal.
+- **Contraseña al exportar la BD**: la protección con contraseña se establece al pulsar *Exportar BD* (cifrado opcional AES-256), ya que la base de datos contiene todo (reportes, ajustes, temas y usuarios).
+- **Detalles de marca**: nombre **Pentestify** en la cabecera y footer de autoría en *Mis Reportes*.
+- **Dependencias más ligeras**: eliminados paquetes obsoletos del entorno (Playwright, pypdf, cryptography y transitivos).
 
 ## 🚀 Novedades de la 2.0.0
 

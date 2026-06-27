@@ -14,6 +14,7 @@ def run_migrations(engine):
     _migrate_add_pro_report_fields(engine)
     _migrate_add_pro_finding_fields(engine)
     _migrate_add_theme_custom_css(engine)
+    _migrate_add_exploit_field(engine)
 
 
 def _add_columns(engine, table, columns):
@@ -78,6 +79,25 @@ def _migrate_add_pro_finding_fields(engine):
         ("compliance", "TEXT DEFAULT '[]'"),
         ("retest_notes", "TEXT DEFAULT ''"),
     ])
+
+
+def _migrate_add_exploit_field(engine):
+    """Migration: campo exploit (fragmento de código) en findings y plantillas."""
+    _add_columns(engine, "findings", [
+        ("exploit", "TEXT DEFAULT ''"),
+    ])
+    # finding_templates puede no existir en bases antiguas; create_all la crea con
+    # la columna, así que sólo cubrimos bases que ya tenían la tabla.
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(finding_templates)"))
+            existing = [row[1] for row in result]
+            if existing and 'exploit' not in existing:
+                conn.execute(text("ALTER TABLE finding_templates ADD COLUMN exploit TEXT DEFAULT ''"))
+                conn.commit()
+                print("✅ Columna exploit agregada a finding_templates")
+    except Exception as e:
+        print(f"⚠️  Migración exploit (templates): {e}")
 
 
 def _migrate_add_auditor_contact_fields(engine):

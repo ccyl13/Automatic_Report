@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 
 const state = {
     lang: 'es',
@@ -51,6 +51,7 @@ const state = {
         cvss: '',
         cvssVector: '',
         poc: '',
+        exploit: '',
         impact: '',
         remediation: '',
         reference: '',
@@ -86,6 +87,7 @@ const state = {
     dbPasswordModal: { open: false, reportId: null, title: '', busy: false },
     showDemoModal: false,
     showPdfModal: false,
+    showRevisionModal: false,
     pdfPrintTheme: 'light',
     pdfShowSeverityBars: true,
     pdfContentWidth: 820,
@@ -126,6 +128,7 @@ const UI = {
         description: 'Descripción de la Vulnerabilidad',
         cvss: 'Puntuación CVSS (0-10)',
         poc: 'Pasos para Reproducir (PoC)',
+        exploit: 'Exploit (opcional)',
         impact: 'Impacto en el Negocio',
         remediation: 'Solución y Remediación',
         reference: 'Referencias (URLs)',
@@ -242,6 +245,7 @@ const UI = {
         cweId: 'CWE',
         referenceUrl: 'URL de Referencia',
         pocSteps: 'Pasos para Reproducir (PoC)',
+        exploitCode: 'Exploit',
         evidence: 'Evidencias',
         businessImpact: 'Impacto en el Negocio',
         solutionRemediation: 'Solución y Remediación',
@@ -300,6 +304,7 @@ const UI = {
         description: 'Vulnerability Description',
         cvss: 'CVSS Score (0-10)',
         poc: 'Steps to Reproduce (PoC)',
+        exploit: 'Exploit (optional)',
         impact: 'Business Impact',
         remediation: 'Solution and Remediation',
         reference: 'References (URLs)',
@@ -416,6 +421,7 @@ const UI = {
         cweId: 'CWE',
         referenceUrl: 'Reference URL',
         pocSteps: 'Steps to Reproduce (PoC)',
+        exploitCode: 'Exploit',
         evidence: 'Evidence',
         businessImpact: 'Business Impact',
         solutionRemediation: 'Solution and Remediation',
@@ -705,6 +711,7 @@ function renderNavbar() {
         <header class="navbar">
             <div class="navbar-brand">
                 <img src="/assets/logo-transparent.png" alt="Pentestify" style="height: 38px; width: 38px; object-fit: contain; flex-shrink: 0;">
+                <span class="app-name">Pentestify</span>
                 <span class="app-version-badge">v${APP_VERSION}</span>
                 ${state.isDirty ? '<span class="dirty-indicator">•</span>' : ''}
             </div>
@@ -752,6 +759,7 @@ function renderEditor() {
     const t = UI[state.lang];
 
     return `
+        <div class="editor-page">
         <div class="editor-container">
             <div class="editor-left">
                 <div class="card">
@@ -840,7 +848,12 @@ function renderEditor() {
                             <label>${t.poc}</label>
                             <textarea id="findingPoc" rows="4" oninput="updateCurrentFinding('poc', this.value)">${escapeHTML(state.currentFinding.poc)}</textarea>
                         </div>
-                        
+
+                        <div class="form-group">
+                            <label>${t.exploit}</label>
+                            <textarea id="findingExploit" class="code-input" rows="6" spellcheck="false" placeholder="${state.lang === 'es' ? 'Pega aquí el código del exploit (se imprimirá como bloque de código en el informe)' : 'Paste the exploit code here (it will be printed as a code block in the report)'}" oninput="updateCurrentFinding('exploit', this.value)">${escapeHTML(state.currentFinding.exploit || '')}</textarea>
+                        </div>
+
                         <div class="form-group">
                             <label>${t.impact}</label>
                             <textarea id="findingImpact" rows="3" oninput="updateCurrentFinding('impact', this.value)">${escapeHTML(state.currentFinding.impact)}</textarea>
@@ -945,8 +958,11 @@ function renderEditor() {
             
             <div class="editor-right">
                 ${renderAuditData()}
-                ${renderFindingsList()}
             </div>
+        </div>
+        <div class="findings-section">
+            ${renderFindingsList()}
+        </div>
         </div>
     `;
 }
@@ -1205,66 +1221,145 @@ function removeRevisionRow(idx) {
     renderApp();
 }
 
+function openRevisionModal() {
+    state.showRevisionModal = true;
+    renderApp();
+}
+
+function closeRevisionModal() {
+    state.showRevisionModal = false;
+    renderApp();
+}
+
+// Sección contraída: sólo un resumen y un botón que abre el modal de gestión.
 function renderRevisionHistorySection() {
     const isEs = state.lang === 'es';
     const rows = state.auditData.revisionHistory || [];
+    const count = rows.length;
+    const summary = count
+        ? rows.map(r => escapeHTML(r.version || '?')).join(' · ')
+        : (isEs ? 'Sin revisiones registradas.' : 'No revisions recorded.');
     return `
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-            <h3 style="margin:0;">${isEs ? 'Historial de revisiones' : 'Revision history'}</h3>
-            <button type="button" class="btn-sm btn-secondary" onclick="addRevisionRow()">+ ${isEs ? 'Añadir' : 'Add'}</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <h3 style="margin:0;">${isEs ? 'Historial de revisiones' : 'Revision history'}</h3>
+                ${count ? `<span class="findings-count">${count}</span>` : ''}
+            </div>
+            <button type="button" class="btn-sm btn-secondary" onclick="openRevisionModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:0.3rem;">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>${count ? (isEs ? 'Gestionar' : 'Manage') : (isEs ? 'Añadir' : 'Add')}
+            </button>
         </div>
-        ${rows.length === 0 ? `<p class="text-muted" style="font-size:0.85rem;">${isEs ? 'Sin revisiones registradas.' : 'No revisions recorded.'}</p>` : rows.map((r, idx) => `
-            <div class="form-row" style="align-items:flex-end;gap:0.5rem;">
-                <div class="form-group" style="flex:0.6;">
-                    <label>${isEs ? 'Ver.' : 'Ver.'}</label>
+        <p class="text-muted" style="font-size:0.82rem;margin:0.55rem 0 0;">${summary}</p>
+    `;
+}
+
+function renderRevisionRowsEditor() {
+    const isEs = state.lang === 'es';
+    const rows = state.auditData.revisionHistory || [];
+    if (rows.length === 0) {
+        return `<p class="text-muted" style="font-size:0.9rem;text-align:center;padding:1.5rem 0;">${isEs ? 'Sin revisiones registradas. Añade la primera con el botón de abajo.' : 'No revisions recorded. Add the first one with the button below.'}</p>`;
+    }
+    return `<div class="revision-list">${rows.map((r, idx) => `
+        <div class="revision-card">
+            <button type="button" class="revision-remove" onclick="removeRevisionRow(${idx})" title="${isEs ? 'Eliminar' : 'Delete'}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <div class="revision-grid">
+                <div class="form-group">
+                    <label>${isEs ? 'Versión' : 'Version'}</label>
                     <input type="text" value="${escapeHTML(r.version || '')}" oninput="updateRevisionRow(${idx},'version',this.value)">
                 </div>
-                <div class="form-group" style="flex:1;">
+                <div class="form-group">
                     <label>${isEs ? 'Fecha' : 'Date'}</label>
                     <input type="date" value="${escapeHTML(r.date || '')}" oninput="updateRevisionRow(${idx},'date',this.value)">
                 </div>
-                <div class="form-group" style="flex:1;">
+                <div class="form-group">
                     <label>${isEs ? 'Autor' : 'Author'}</label>
                     <input type="text" value="${escapeHTML(r.author || '')}" oninput="updateRevisionRow(${idx},'author',this.value)">
                 </div>
-                <div class="form-group" style="flex:2;">
+                <div class="form-group revision-changes">
                     <label>${isEs ? 'Cambios' : 'Changes'}</label>
                     <input type="text" value="${escapeHTML(r.changes || '')}" oninput="updateRevisionRow(${idx},'changes',this.value)">
                 </div>
-                <button type="button" class="btn-delete" style="margin-bottom:0.75rem;" onclick="removeRevisionRow(${idx})" title="${isEs ? 'Eliminar' : 'Delete'}">×</button>
             </div>
-        `).join('')}
-    `;
+        </div>
+    `).join('')}</div>`;
+}
+
+function renderRevisionModal() {
+    if (!state.showRevisionModal) return '';
+    const isEs = state.lang === 'es';
+    return `
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeRevisionModal()">
+            <div class="settings-modal" style="width:100%;max-width:760px;display:flex;flex-direction:column;max-height:90vh;" onclick="event.stopPropagation()">
+                <div class="settings-modal-header">
+                    <span>${isEs ? 'Historial de revisiones' : 'Revision history'}</span>
+                    <button class="settings-close-btn" onclick="closeRevisionModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div style="padding:1.25rem;overflow-y:auto;">
+                    ${renderRevisionRowsEditor()}
+                    <button type="button" class="btn-sm btn-secondary" onclick="addRevisionRow()" style="margin-top:0.5rem;">+ ${isEs ? 'Añadir revisión' : 'Add revision'}</button>
+                </div>
+                <div style="display:flex;gap:0.5rem;justify-content:flex-end;padding:1rem 1.25rem;border-top:1px solid #f1f5f9;">
+                    <button class="btn-primary" onclick="closeRevisionModal()">${isEs ? 'Hecho' : 'Done'}</button>
+                </div>
+            </div>
+        </div>`;
 }
 
 function renderFindingsList() {
     const t = UI[state.lang];
+    const isEs = state.lang === 'es';
+    const title = isEs ? 'Findings / Vulnerabilidades' : 'Findings / Vulnerabilities';
+
+    const header = `
+        <div class="findings-section-header">
+            <h3 class="findings-section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9.5 12l1.8 1.8 3.5-3.6"/>
+                </svg>
+                ${title}
+            </h3>
+            <span class="findings-count">${state.findings.length}</span>
+        </div>`;
 
     if (state.findings.length === 0) {
-        return `<div class="card"><p class="text-muted">${t.noFindings}</p></div>`;
+        return `
+            <div class="card findings-card">
+                ${header}
+                <p class="text-muted findings-empty">${t.noFindings}</p>
+            </div>`;
     }
 
     return `
-        <div class="findings-list">
-            ${state.findings.map((f, idx) => `
-                <div class="finding-item severity-${f.severity}">
-                    <div class="finding-header">
-                        <span class="finding-number">#${idx + 1}</span>
-                        <span class="finding-title">${escapeHTML(f.title)}</span>
-                        <span class="finding-severity">${t.severityLevels[f.severity]}</span>
-                        <div class="finding-actions">
-                            <button class="btn-edit" onclick="editFinding(${idx})" title="${state.lang === 'es' ? 'Editar' : 'Edit'}">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                            </button>
-                            <button class="btn-delete" onclick="deleteFinding(${idx})" title="${state.lang === 'es' ? 'Eliminar' : 'Delete'}">×</button>
+        <div class="card findings-card">
+            ${header}
+            <div class="findings-grid">
+                ${state.findings.map((f, idx) => `
+                    <div class="finding-item severity-${f.severity}">
+                        <div class="finding-header">
+                            <span class="finding-number">#${idx + 1}</span>
+                            <span class="finding-severity">${t.severityLevels[f.severity]}</span>
+                            <div class="finding-actions">
+                                <button class="btn-edit" onclick="editFinding(${idx})" title="${isEs ? 'Editar' : 'Edit'}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-delete" onclick="deleteFinding(${idx})" title="${isEs ? 'Eliminar' : 'Delete'}">×</button>
+                            </div>
                         </div>
+                        <span class="finding-title">${escapeHTML(f.title)}</span>
                     </div>
-                </div>
-            `).join('')}
+                `).join('')}
+            </div>
         </div>
     `;
 }
@@ -2577,6 +2672,21 @@ function renderPreview() {
                             </div>
                         ` : ''}
 
+                        ${f.exploit ? `
+                            <div style="margin-bottom: 1.5rem; background: ${c.pocBg}; color: ${c.pocText}; border-radius: 8px; border: 1px solid ${c.pocBorder}; overflow: hidden; max-width: 100%; break-inside: avoid;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; border-bottom: 1px solid ${c.pocBorder};">
+                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #ff5f56; display: inline-block;"></span>
+                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #ffbd2e; display: inline-block;"></span>
+                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #27c93f; display: inline-block;"></span>
+                                    <span style="margin-left: 0.5rem; font-size: 0.78rem; font-weight: 700; color: ${c.pocHeading}; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c.pocHeading}" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                                        ${t.exploitCode}
+                                    </span>
+                                </div>
+                                <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.6; font-size: 0.82rem; color: ${c.pocText}; margin: 0; padding: 1rem 1.2rem; tab-size: 4; -moz-tab-size: 4; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%;">${escapeHTML(f.exploit)}</pre>
+                            </div>
+                        ` : ''}
+
                         ${f.images && f.images.length > 0 ? `
                             <div style="margin-bottom: 1.5rem;">
                                 <h4 style="font-size: 1.125rem; font-weight: 700; color: ${c.textMuted}; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -2700,7 +2810,7 @@ function renderReportsPage() {
                         </svg>
                         ${t.generateDemoDb}
                     </button>
-                    <button class="btn-secondary" onclick="exportDatabase()">
+                    <button class="btn-secondary" onclick="openDbPasswordModal()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
@@ -2729,9 +2839,6 @@ function renderReportsPage() {
                 ` : state.savedReports.map(r => `
                     <div class="report-card" onclick="loadReport(${r.id})">
                         <div class="report-card-actions" onclick="event.stopPropagation()">
-                            <button class="report-card-icon-btn lock" title="${state.lang === 'es' ? 'Proteger la base de datos con contraseña' : 'Protect the database with a password'}" onclick="openDbPasswordModal(${r.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            </button>
                             <button class="report-card-icon-btn danger" title="${state.lang === 'es' ? 'Eliminar reporte' : 'Delete report'}" onclick="deleteReport(${r.id})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
@@ -2742,6 +2849,17 @@ function renderReportsPage() {
                     </div>
                 `).join('')}
             </div>
+
+            <footer class="made-by-footer">
+                <span>${state.lang === 'es' ? 'Un proyecto hecho con' : 'A project made with'}</span>
+                <svg class="made-by-heart" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-label="${state.lang === 'es' ? 'amor' : 'love'}">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                <span>${state.lang === 'es' ? 'por' : 'by'}</span>
+                <a href="https://www.linkedin.com/in/maalfer1/" target="_blank" rel="noopener noreferrer">Mario Álvarez</a>
+                <span>${state.lang === 'es' ? 'y' : 'and'}</span>
+                <a href="https://es.linkedin.com/in/thomasoneil%C3%A1lvarez" target="_blank" rel="noopener noreferrer">Thomas O'Neill</a>
+            </footer>
         </div>
     `;
 }
@@ -3396,6 +3514,7 @@ function renderApp() {
         ${renderDemoModal()}
         ${renderPdfModal()}
         ${renderDbPasswordModal()}
+        ${renderRevisionModal()}
     `;
 }
 
@@ -3579,8 +3698,13 @@ function setLang(lang) {
     state.auditData.lang = lang;
     persistSettings();
 
-    if (state.currentFinding.templateKey && state.currentFinding.templateKey !== 'custom') {
-        applyTemplate(state.currentFinding.templateKey);
+    // Si se está editando un hallazgo cargado desde una plantilla de fábrica,
+    // re-aplicamos su prosa en el nuevo idioma. Solo si la plantilla existe de
+    // verdad; en caso contrario applyTemplate retornaría sin re-renderizar y el
+    // cambio de idioma "se perdería".
+    const tk = state.currentFinding.templateKey;
+    if (tk && tk !== 'custom' && templates[tk]) {
+        applyTemplate(tk);
         return;
     }
 
@@ -3626,6 +3750,7 @@ function _reportPrintParams(extra) {
     return new URLSearchParams(Object.assign({
         report_id: state.currentReportId,
         print_mode: 'true',
+        lang: state.lang,
         theme: state.pdfPrintTheme,
         show_severity_bars: state.pdfShowSeverityBars,
         content_width: state.pdfContentWidth
@@ -3808,6 +3933,7 @@ function applyTemplate(key) {
         severity: calculatedSeverity,
         description: t.description,
         poc: t.poc || '',
+        exploit: t.exploit || state.currentFinding.exploit || '',
         impact: t.impact,
         remediation: t.remediation,
         cvss: t.cvss,
@@ -3888,6 +4014,7 @@ function handleFindingSubmit(e) {
         cvss: $('#findingCvss').value,
         cvssVector: cf.cvssVector || '',
         poc: $('#findingPoc').value,
+        exploit: $('#findingExploit') ? $('#findingExploit').value : (cf.exploit || ''),
         impact: $('#findingImpact').value,
         remediation: $('#findingRemediation').value,
         reference: $('#findingReference').value,
@@ -3933,6 +4060,7 @@ function resetFindingForm() {
         cvss: '',
         cvssVector: '',
         poc: '',
+        exploit: '',
         impact: '',
         remediation: '',
         reference: '',
@@ -3969,6 +4097,7 @@ function editFinding(index) {
         cvss: finding.cvss || '',
         cvssVector: finding.cvssVector || '',
         poc: finding.poc || '',
+        exploit: finding.exploit || '',
         impact: finding.impact || '',
         remediation: finding.remediation || '',
         reference: finding.reference || '',
@@ -4273,15 +4402,27 @@ async function importDatabase(input) {
 }
 
 // ---- Modal: proteger la base de datos exportada con contraseña ---- //
-function openDbPasswordModal(reportId) {
-    const r = (state.savedReports || []).find(x => x.id === reportId);
-    state.dbPasswordModal = { open: true, reportId, title: r ? r.document_title : '', busy: false };
+function openDbPasswordModal() {
+    state.dbPasswordModal = { open: true, busy: false };
     renderApp();
 }
 
 function closeDbPasswordModal() {
-    state.dbPasswordModal = { open: false, reportId: null, title: '', busy: false };
+    state.dbPasswordModal = { open: false, busy: false };
     renderApp();
+}
+
+// Exporta la BD completa SIN contraseña (en claro) desde el modal.
+async function exportDbPlain() {
+    const isEs = state.lang === 'es';
+    try {
+        state.dbPasswordModal.busy = true; renderApp();
+        await exportDatabase();
+        closeDbPasswordModal();
+    } catch (err) {
+        state.dbPasswordModal.busy = false; renderApp();
+        alert((isEs ? 'Error al exportar: ' : 'Error exporting: ') + err.message);
+    }
 }
 
 async function submitDbPassword(event) {
@@ -4312,12 +4453,12 @@ function renderDbPasswordModal() {
     if (!m || !m.open) return '';
     const isEs = state.lang === 'es';
     return `
-        <div class="settings-overlay" onclick="closeDbPasswordModal()">
-            <div class="settings-modal" style="max-width:440px;" onclick="event.stopPropagation()">
+        <div class="settings-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="closeDbPasswordModal()">
+            <div class="settings-modal" style="width:100%;max-width:460px;" onclick="event.stopPropagation()">
                 <div class="settings-modal-header">
                     <span style="display:inline-flex;align-items:center;gap:0.5rem;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        ${isEs ? 'Proteger base de datos' : 'Protect database'}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        ${isEs ? 'Exportar base de datos' : 'Export database'}
                     </span>
                     <button class="settings-close-btn" onclick="closeDbPasswordModal()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -4326,19 +4467,26 @@ function renderDbPasswordModal() {
                 <div class="settings-section">
                     <p style="font-size:0.85rem;color:var(--gray-500,#6b7280);line-height:1.55;margin:0 0 1rem;">
                         ${isEs
-                            ? 'Se exportará toda la base de datos SQLite cifrada con AES-256. Necesitarás esta contraseña para volver a importarla. <b>Si la pierdes, no podrás recuperar los datos.</b>'
-                            : 'The whole SQLite database will be exported encrypted with AES-256. You will need this password to import it again. <b>If you lose it, the data cannot be recovered.</b>'}
+                            ? 'Se exportará <b>toda</b> la base de datos: todos los reportes, ajustes, temas y usuarios. Puedes protegerla con una contraseña (cifrado AES-256) o exportarla sin cifrar.'
+                            : 'The <b>whole</b> database will be exported: all reports, settings, themes and users. You can protect it with a password (AES-256) or export it unencrypted.'}
                     </p>
                     <form onsubmit="submitDbPassword(event)">
-                        <label class="login-label">${isEs ? 'Contraseña' : 'Password'}</label>
-                        <input type="password" id="dbPw" class="login-input" autocomplete="new-password" autofocus>
+                        <label class="login-label">${isEs ? 'Contraseña (opcional)' : 'Password (optional)'}</label>
+                        <input type="password" id="dbPw" class="login-input" autocomplete="new-password" placeholder="${isEs ? 'Déjala en blanco para no cifrar' : 'Leave blank to skip encryption'}" autofocus>
                         <label class="login-label" style="margin-top:0.6rem;">${isEs ? 'Confirmar contraseña' : 'Confirm password'}</label>
                         <input type="password" id="dbPw2" class="login-input" autocomplete="new-password">
+                        <p style="font-size:0.78rem;color:var(--gray-500,#6b7280);line-height:1.5;margin:0.7rem 0 0;">
+                            ${isEs
+                                ? 'Si estableces contraseña, la necesitarás para volver a importar el fichero. <b>Si la pierdes, no podrás recuperar los datos.</b>'
+                                : 'If you set a password, you will need it to import the file again. <b>If you lose it, the data cannot be recovered.</b>'}
+                        </p>
                         <div id="dbPwError" class="login-error" style="display:none;margin-top:0.6rem;"></div>
                         <div style="display:flex;gap:0.6rem;margin-top:1.1rem;">
-                            <button type="button" class="btn-secondary" style="flex:1;" onclick="closeDbPasswordModal()">${isEs ? 'Cancelar' : 'Cancel'}</button>
+                            <button type="button" class="btn-secondary" style="flex:1;" onclick="exportDbPlain()" ${m.busy ? 'disabled' : ''}>
+                                ${isEs ? 'Exportar sin cifrar' : 'Export unencrypted'}
+                            </button>
                             <button type="submit" class="login-btn" style="flex:1;margin:0;" ${m.busy ? 'disabled' : ''}>
-                                ${m.busy ? (isEs ? 'Cifrando…' : 'Encrypting…') : (isEs ? 'Exportar cifrada' : 'Export encrypted')}
+                                ${m.busy ? (isEs ? 'Exportando…' : 'Exporting…') : (isEs ? 'Exportar protegida' : 'Export protected')}
                             </button>
                         </div>
                     </form>
@@ -4406,6 +4554,7 @@ async function saveCurrentReport(silent = false) {
                 cvss: finding.cvss || '',
                 cvss_vector: finding.cvssVector || finding.cvss_vector || '',
                 poc: finding.poc || '',
+                exploit: finding.exploit || '',
                 impact: finding.impact || '',
                 remediation: finding.remediation || '',
                 reference: finding.reference || '',
@@ -4460,6 +4609,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.isAuthenticated = true;
         state.activeTab = 'preview';
         state.currentReportId = parseInt(reportId);
+        // Idioma del informe exportado: viene en la URL para reflejar EXACTAMENTE
+        // el idioma elegido en la app (sin depender del guardado debounced de
+        // ajustes, que podría no haberse persistido aún al exportar).
+        const langParam = params.get('lang');
+        if (langParam === 'es' || langParam === 'en') {
+            state.lang = langParam;
+            state.auditData.lang = langParam;
+        }
         // Cargamos los temas personalizados para que el PDF pueda usar cualquiera.
         await loadCustomThemes();
         state.reportTheme = (themeParam && listAllThemes().some(t => t.slug === themeParam)) ? themeParam : 'light';

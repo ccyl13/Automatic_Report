@@ -71,6 +71,7 @@ class Finding(Base):
     cvss = Column(String, default="")
     cvss_vector = Column(String, default="")  # Ej: CVSS:3.1/AV:N/AC:L/...
     poc = Column(Text, default="")  # Proof of Concept
+    exploit = Column(Text, default="")  # Fragmento de código del exploit (opcional)
     impact = Column(Text, default="")
     remediation = Column(Text, default="")
     reference = Column(String, default="")       # legacy: una sola referencia
@@ -129,6 +130,7 @@ class FindingTemplate(Base):
     cvss_vector = Column(String, default="")
     description = Column(Text, default="")
     poc = Column(Text, default="")
+    exploit = Column(Text, default="")
     impact = Column(Text, default="")
     remediation = Column(Text, default="")
     reference = Column(String, default="")

@@ -14,15 +14,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.1-blue.svg" alt="Version 2.0.1">
+  <img src="https://img.shields.io/badge/version-2.0.2-blue.svg" alt="Version 2.0.2">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.0.1</strong>
+  <strong>Versión actual: 2.0.2</strong>
 </p>
+
+## 🚀 Novedades de la 2.0.2
+
+- **Nuevo tema "Red Team"**: cuarto tema de informe, oscuro con acento carmesí, look profesional y minimalista (portada con diana de línea y resplandor rojo). Se aplica tanto al informe (vista previa / PDF) como a **toda la interfaz** de la aplicación.
 
 ## 🚀 Novedades de la 2.0.1
 

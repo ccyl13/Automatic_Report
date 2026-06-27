@@ -4236,6 +4236,14 @@ button {
 [data-theme="htb"] .findings-section-title { color: #e2e8f0 !important; }
 [data-theme="htb"] .findings-section-title svg { color: #9fef00 !important; }
 [data-theme="htb"] .findings-count { background: #0a1f0d !important; color: #9fef00 !important; border-color: #1a2f1a !important; }
+
+/* Red Team: el cromado del editor usa el modo oscuro (data-theme="dark") y aquí
+   reemplazamos los acentos azules por rojos. Mismo specificity que las reglas
+   "dark" pero declaradas después → ganan. */
+/* (Los acentos rojos del cromado del editor se aplican en el bloque integral
+   [data-rt-theme="redteam"] al final del fichero, para ganar a las reglas
+   [data-theme="dark"] que están declaradas más abajo.) */
+
 [data-theme="htb"] .report-card {
     background: #0d1117 !important;
     border-color: #2d3f55 !important;
@@ -5413,3 +5421,89 @@ button {
     .theme-studio-body { flex-direction: column; }
     .ts-controls { width: 100%; border-right: none; border-bottom: 1px solid var(--gray-200,#e5e7eb); }
 }
+
+/* ============================================================================ */
+/* TEMA RED TEAM — aplicado a TODA la interfaz (no solo al informe).             */
+/* Red Team usa data-theme="dark" como base (cobertura total oscura) y aquí      */
+/* re-tintamos superficies y acentos a rojo. Va al final del fichero para ganar  */
+/* a las reglas [data-theme="dark"] (misma especificidad → manda el orden).      */
+/* ============================================================================ */
+
+/* Lienzo general */
+[data-rt-theme="redteam"] body,
+[data-rt-theme="redteam"] .app-wrapper,
+[data-rt-theme="redteam"] main,
+[data-rt-theme="redteam"] .main-content,
+[data-rt-theme="redteam"] #app { background: #0c0a0b !important; }
+
+/* Navbar */
+[data-rt-theme="redteam"] .navbar { background: #120d0e !important; border-bottom: 1px solid #271b1d !important; }
+[data-rt-theme="redteam"] .navbar-actions button { border-color: rgba(239,68,68,0.20) !important; color: #c4babb !important; }
+[data-rt-theme="redteam"] .navbar-actions button:hover,
+[data-rt-theme="redteam"] .navbar-actions button.active { background: rgba(239,68,68,0.14) !important; border-color: rgba(239,68,68,0.55) !important; color: #fca5a5 !important; }
+[data-rt-theme="redteam"] .app-version-badge { color: #fca5a5 !important; background: rgba(239,68,68,0.10) !important; border-color: rgba(239,68,68,0.28) !important; }
+
+/* Tarjetas */
+[data-rt-theme="redteam"] .card { background: #141011 !important; border-color: #271b1d !important; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3) !important; }
+
+/* Botones primarios (Exportar, Agregar hallazgo, Generar PDF, etc.) */
+[data-rt-theme="redteam"] .btn-primary,
+[data-rt-theme="redteam"] .navbar-actions button.btn-primary,
+[data-rt-theme="redteam"] .login-btn {
+    background: linear-gradient(135deg,#ef4444,#b91c1c) !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+    box-shadow: 0 1px 3px rgba(239,68,68,0.3) !important;
+}
+[data-rt-theme="redteam"] .btn-primary:hover,
+[data-rt-theme="redteam"] .navbar-actions button.btn-primary:hover { background: linear-gradient(135deg,#dc2626,#991b1b) !important; border-color: #991b1b !important; }
+
+/* Inputs / selects / textareas */
+[data-rt-theme="redteam"] .form-group input,
+[data-rt-theme="redteam"] .form-group select,
+[data-rt-theme="redteam"] .form-group textarea,
+[data-rt-theme="redteam"] .template-filtered-select,
+[data-rt-theme="redteam"] .template-search-input,
+[data-rt-theme="redteam"] input[type="file"] { background-color: #0c0a0b !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .form-group input:hover,
+[data-rt-theme="redteam"] .form-group select:hover,
+[data-rt-theme="redteam"] .form-group textarea:hover { border-color: #3a282b !important; }
+[data-rt-theme="redteam"] .form-group input:focus,
+[data-rt-theme="redteam"] .form-group select:focus,
+[data-rt-theme="redteam"] .form-group textarea:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.16) !important; }
+[data-rt-theme="redteam"] input[type="file"]::file-selector-button { background: #1a1214 !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] input[type="file"]::file-selector-button:hover { background: #271b1d !important; color: #fca5a5 !important; }
+
+/* Página de reportes */
+[data-rt-theme="redteam"] .report-card { background: #141011 !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .report-card::before { background: linear-gradient(90deg,#ef4444,#b91c1c) !important; }
+[data-rt-theme="redteam"] .report-card > span { color: #fca5a5 !important; background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.28) !important; }
+[data-rt-theme="redteam"] .report-card > button { border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .report-header { border-bottom-color: #271b1d !important; }
+
+/* Modal de ajustes */
+[data-rt-theme="redteam"] .settings-modal { background: #141011 !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .settings-modal-header { border-bottom-color: #271b1d !important; }
+[data-rt-theme="redteam"] .settings-divider { background: #271b1d !important; }
+[data-rt-theme="redteam"] .settings-lang-btn { background: #0c0a0b !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .settings-lang-btn:hover { border-color: #3a282b !important; background: #1a1012 !important; color: #e6e1e1 !important; }
+[data-rt-theme="redteam"] .settings-lang-btn.selected { border-color: #ef4444 !important; background: rgba(239,68,68,0.14) !important; color: #fca5a5 !important; }
+
+/* Toggle de incidencias */
+[data-rt-theme="redteam"] .incidents-toggle label { background: #141011 !important; border-color: #271b1d !important; }
+[data-rt-theme="redteam"] .incidents-toggle label:hover { border-color: #ef4444 !important; background: rgba(239,68,68,0.12) !important; color: #fca5a5 !important; }
+
+/* Tarjetas de tema en Ajustes */
+[data-rt-theme="redteam"] .theme-card { background: #141011 !important; border-color: #271b1d !important; }
+
+/* Scrollbar */
+[data-rt-theme="redteam"] ::-webkit-scrollbar-thumb { background: #3a282b !important; }
+[data-rt-theme="redteam"] ::-webkit-scrollbar-thumb:hover { background: #5b3a3f !important; }
+
+/* Acentos varios del cromado */
+[data-rt-theme="redteam"] .findings-section-title svg { color: #f87171 !important; }
+[data-rt-theme="redteam"] .findings-count { background: rgba(239,68,68,0.12) !important; color: #fca5a5 !important; border-color: rgba(239,68,68,0.28) !important; }
+[data-rt-theme="redteam"] .made-by-footer a { color: #f87171 !important; }
+[data-rt-theme="redteam"] .made-by-heart { color: #ef4444 !important; }
+[data-rt-theme="redteam"] .finding-actions .btn-edit:hover { background: rgba(239,68,68,0.14) !important; color: #f87171 !important; }
+[data-rt-theme="redteam"] hr { border-color: #271b1d !important; }

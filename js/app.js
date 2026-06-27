@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 
 const state = {
     lang: 'es',
@@ -163,6 +163,7 @@ const UI = {
         pdfModalThemeLight: 'Claro',
         pdfModalThemeDark: 'Oscuro',
         pdfModalThemeHtb: 'HTB',
+        pdfModalThemeRedteam: 'Red Team',
         pdfModalSeverityBars: 'Barras de color de severidad',
         pdfModalSeverityBarsDesc: 'Incluir indicadores de color de severidad en cada hallazgo y en el resumen',
         pdfModalContentWidth: 'Ancho del contenido',
@@ -339,6 +340,7 @@ const UI = {
         pdfModalThemeLight: 'Light',
         pdfModalThemeDark: 'Dark',
         pdfModalThemeHtb: 'HTB',
+        pdfModalThemeRedteam: 'Red Team',
         pdfModalSeverityBars: 'Severity color bars',
         pdfModalSeverityBarsDesc: 'Include severity color indicators on each finding and in the summary',
         pdfModalContentWidth: 'Content width',
@@ -1419,13 +1421,26 @@ const BUILTIN_THEMES = {
         borderMeta: '#2d3f55', borderMetaSub: '#2d3f55', borderGreen: '#9fef00', borderOrange: '#c2410c',
         borderPurple: '#a78bfa', borderFaint: '#2d3f55', classifBg: '#0d1117', classifBorder: '#9fef00',
         classifText: '#9fef00', pocBg: '#060b10', pocBorder: '#1a2332', pocText: '#e2e8f0', pocHeading: '#9fef00'
+    },
+    redteam: {
+        pageBg: '#0c0a0b', cardBg: '#141011', cardBgAlt: '#141011', greenBg: '#0a1f0d',
+        orangeBg: '#231304', purpleBg: '#1a0d16', metaBg: 'linear-gradient(135deg,#15100f 0%,#0c0a0b 100%)',
+        textPrimary: '#fafafa', textHeading: '#f87171', textBody: '#e6e1e1', textMuted: '#c4babb',
+        textFaint: '#9e9293', textSubtle: '#9e9293', textGray: '#7d7173', textGrayMed: '#f87171',
+        coverAccent: '#d4a0a3', accentLine: '#ef4444', accentBar: 'linear-gradient(90deg,#f43f5e,#b91c1c)',
+        versionColor: '#fb7185', textRed: '#fca5a5', textOrange: '#fb923c', textOrangeDark: '#fdba74',
+        textGreen: '#86efac', textGreenDark: '#86efac', border: '#271b1d', borderLight: '#271b1d',
+        borderMeta: '#271b1d', borderMetaSub: '#3a282b', borderGreen: '#166534', borderOrange: '#9a3412',
+        borderPurple: '#6b21a8', borderFaint: '#1e1517', classifBg: '#141011', classifBorder: '#7f1d1d',
+        classifText: '#fca5a5', pocBg: '#080607', pocBorder: '#271b1d', pocText: '#e6e1e1', pocHeading: '#fb7185'
     }
 };
 
 const BUILTIN_THEME_META = [
-    { slug: 'light', name: 'Claro',  nameEn: 'Light' },
-    { slug: 'dark',  name: 'Oscuro', nameEn: 'Dark' },
-    { slug: 'htb',   name: 'HTB',    nameEn: 'HTB' }
+    { slug: 'light',   name: 'Claro',    nameEn: 'Light' },
+    { slug: 'dark',    name: 'Oscuro',   nameEn: 'Dark' },
+    { slug: 'htb',     name: 'HTB',      nameEn: 'HTB' },
+    { slug: 'redteam', name: 'Red Team', nameEn: 'Red Team' }
 ];
 
 // Mapa estático key -> var(--rt-key). El informe sólo usa estas referencias CSS,
@@ -2419,6 +2434,7 @@ function renderPreview() {
     const c   = getThemeColors();
     const dk  = state.reportTheme === 'dark';
     const htb = state.reportTheme === 'htb';
+    const rt  = state.reportTheme === 'redteam';
 
     const _cw = state.pdfContentWidth || 820;
     return `
@@ -2462,6 +2478,13 @@ function renderPreview() {
                                     </div>
                                 </div>
                             </div>
+                        ` : rt ? `
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:1.75rem;">
+                                <div style="width:132px; height:132px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid rgba(239,68,68,0.35); box-shadow:0 0 70px rgba(239,68,68,0.22), inset 0 0 36px rgba(239,68,68,0.06);">
+                                    <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="1.5" x2="12" y2="5.5"/><line x1="12" y1="18.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="5.5" y2="12"/><line x1="18.5" y1="12" x2="22.5" y2="12"/><circle cx="12" cy="12" r="1.6" fill="#f87171" stroke="none"/></svg>
+                                </div>
+                                <div style="font-size:0.95rem;font-weight:600;letter-spacing:0.45em;color:#f87171;text-transform:uppercase;padding-left:0.45em;">Red Team</div>
+                            </div>
                         ` : `
                             <div style="width:160px; height:160px; background:linear-gradient(135deg,#2563eb,#1e40af); border-radius:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 15px 40px rgba(37,99,235,0.3);">
                                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
@@ -2475,7 +2498,7 @@ function renderPreview() {
                             ${escapeHTML(d.documentTitle)}
                         </h1>
 
-                        <div style="width: 80px; height: 5px; background: ${c.accentBar}; border-radius: 6px; margin-bottom: 1.5rem; box-shadow: ${htb ? '0 4px 14px rgba(159,239,0,0.4)' : '0 4px 10px rgba(37,99,235,0.3)'};"></div>
+                        <div style="width: 80px; height: 5px; background: ${c.accentBar}; border-radius: 6px; margin-bottom: 1.5rem; box-shadow: ${htb ? '0 4px 14px rgba(159,239,0,0.4)' : rt ? '0 4px 14px rgba(239,68,68,0.4)' : '0 4px 10px rgba(37,99,235,0.3)'};"></div>
 
                         <p style="font-size: 1.35rem; color: ${c.coverAccent}; font-weight: 600; margin:0; letter-spacing: -0.01em;">
                             ${escapeHTML(d.targetAsset)}
@@ -3037,10 +3060,11 @@ function renderPdfModal() {
     const sunIcon  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
     const moonIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
     const termIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`;
+    const crossIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`;
 
     function themeCard(id, label, icon) {
         const active     = state.pdfPrintTheme === id;
-        const activeBg   = id === 'htb' ? '#9fef00' : '#3b82f6';
+        const activeBg   = id === 'htb' ? '#9fef00' : id === 'redteam' ? '#ef4444' : '#3b82f6';
         const activeText = id === 'htb' ? '#1a2332' : '#ffffff';
         return `<button id="pdf-theme-btn-${id}" onclick="pdfModalSetTheme('${id}')"
             style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0.5rem;padding:0.875rem 0.5rem;border-radius:10px;
@@ -3055,7 +3079,7 @@ function renderPdfModal() {
     const toggleOn  = state.pdfShowSeverityBars;
     const toggleBg  = toggleOn ? '#3b82f6' : c.border;
     const thumbLeft = toggleOn ? '22px' : '2px';
-    const panelBg   = state.reportTheme === 'htb' ? '#04090e' : state.reportTheme === 'dark' ? '#070d18' : '#dde3ea';
+    const panelBg   = state.reportTheme === 'htb' ? '#04090e' : state.reportTheme === 'dark' ? '#070d18' : state.reportTheme === 'redteam' ? '#140809' : '#dde3ea';
     const dotMuted  = state.reportTheme !== 'light' ? '#4a5568' : '#b0bec5';
 
     return `
@@ -3082,10 +3106,11 @@ function renderPdfModal() {
                         <!-- Theme -->
                         <div>
                             <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${c.textMuted};margin-bottom:0.625rem;">${t.pdfModalTheme}</p>
-                            <div style="display:flex;gap:0.5rem;">
-                                ${themeCard('light', t.pdfModalThemeLight, sunIcon)}
-                                ${themeCard('dark',  t.pdfModalThemeDark,  moonIcon)}
-                                ${themeCard('htb',   t.pdfModalThemeHtb,   termIcon)}
+                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                                ${themeCard('light',   t.pdfModalThemeLight,   sunIcon)}
+                                ${themeCard('dark',    t.pdfModalThemeDark,    moonIcon)}
+                                ${themeCard('htb',     t.pdfModalThemeHtb,     termIcon)}
+                                ${themeCard('redteam', t.pdfModalThemeRedteam, crossIcon)}
                             </div>
                         </div>
 
@@ -3165,11 +3190,11 @@ function closePdfModal() {
 function pdfModalSetTheme(theme) {
     state.pdfPrintTheme = theme;
     const c = getThemeColors();
-    ['light', 'dark', 'htb'].forEach(id => {
+    ['light', 'dark', 'htb', 'redteam'].forEach(id => {
         const btn = document.getElementById('pdf-theme-btn-' + id);
         if (!btn) return;
         const isActive   = id === theme;
-        const activeBg   = id === 'htb' ? '#9fef00' : '#3b82f6';
+        const activeBg   = id === 'htb' ? '#9fef00' : id === 'redteam' ? '#ef4444' : '#3b82f6';
         const activeText = id === 'htb' ? '#1a2332' : '#ffffff';
         btn.style.background  = isActive ? activeBg   : c.cardBg;
         btn.style.borderColor = isActive ? activeBg   : c.border;
@@ -3724,7 +3749,9 @@ function applyThemeAttributes(slug) {
     const base = themeBaseOf(slug);
     document.documentElement.setAttribute('data-rt-theme', slug);
     document.documentElement.removeAttribute('data-theme');
-    if (base === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    // Red Team es un tema oscuro: el cromado del editor reutiliza el modo "dark"
+    // (neutro) y los acentos rojos se aplican vía [data-rt-theme="redteam"].
+    if (base === 'dark' || base === 'redteam') document.documentElement.setAttribute('data-theme', 'dark');
     if (base === 'htb')  document.documentElement.setAttribute('data-theme', 'htb');
 }
 

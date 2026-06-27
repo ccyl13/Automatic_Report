@@ -50,6 +50,8 @@ class Report(Base):
     engagement_start = Column(String, default="")
     engagement_end = Column(String, default="")
     revision_history = Column(JSON, default=list)  # [{version, date, author, changes}]
+    show_scope_section = Column(Integer, default=1)  # 1=incluir sección alcance, 0=ocultar
+    scope_fields_visibility = Column(JSON, default=dict)  # {engagementWindow,scopeIn,scopeOut,standards,methodologyNotes,toolsUsed}
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -154,3 +156,20 @@ class AppSettings(Base):
     pdf_show_severity_bars = Column(Integer, default=1)  # 0/1
     pdf_content_width = Column(Integer, default=820)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ApiKey(Base):
+    """Clave de API de larga duración para acceso programático (agentes IA, MCP).
+    El secreto nunca se guarda en claro: sólo su SHA-256. El prefijo (ptf_XXXXXXXX)
+    se almacena para identificar la clave visualmente sin exponerla."""
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    label = Column(String, nullable=False, default="Agent Key")
+    key_hash = Column(String, nullable=False, unique=True)   # SHA-256 del secreto completo
+    prefix = Column(String, nullable=False)                   # "ptf_XXXXXXXX" para mostrar
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+
+    user = relationship("User")

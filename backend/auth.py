@@ -14,6 +14,7 @@ import json
 import os
 import secrets
 import time
+from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
@@ -140,6 +141,27 @@ def get_or_create_default_user(db: Session) -> "models.User":
 
 
 # --------------------------------------------------------------------------- #
+# API Keys (acceso programático para agentes IA / MCP)
+# --------------------------------------------------------------------------- #
+API_KEY_PREFIX = "ptf_"
+
+
+def verify_api_key(key: str, db: Session) -> Optional["models.User"]:
+    """Verifica una API key y devuelve el usuario propietario, o None si no es válida."""
+    if not key.startswith(API_KEY_PREFIX):
+        return None
+    key_hash = hashlib.sha256(key.encode()).hexdigest()
+    api_key_obj = db.query(models.ApiKey).filter(
+        models.ApiKey.key_hash == key_hash
+    ).first()
+    if not api_key_obj:
+        return None
+    api_key_obj.last_used_at = datetime.utcnow()
+    db.commit()
+    return db.query(models.User).filter(models.User.id == api_key_obj.user_id).first()
+
+
+# --------------------------------------------------------------------------- #
 # Dependencia de FastAPI para proteger endpoints
 # --------------------------------------------------------------------------- #
 def require_auth(request: Request, db: Session = Depends(get_db)) -> "models.User":
@@ -152,6 +174,14 @@ def require_auth(request: Request, db: Session = Depends(get_db)) -> "models.Use
     if not token:
         raise HTTPException(status_code=401, detail="No autenticado")
 
+    # Las API keys de agentes tienen el prefijo ptf_ y se verifican por hash.
+    if token.startswith(API_KEY_PREFIX):
+        user = verify_api_key(token, db)
+        if user:
+            return user
+        raise HTTPException(status_code=401, detail="API key inválida o revocada")
+
+    # Resto de tokens: sesiones HMAC normales.
     user = verify_token(token, db)
     if user is None:
         raise HTTPException(status_code=401, detail="Sesión inválida o expirada")

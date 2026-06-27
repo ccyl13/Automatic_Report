@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.1.0';
 
 const state = {
     lang: 'es',
@@ -39,7 +39,9 @@ const state = {
         toolsUsed: '',
         engagementStart: '',
         engagementEnd: '',
-        revisionHistory: []
+        revisionHistory: [],
+        showScopeSection: true,
+        scopeFieldsVisibility: {}
     },
     findings: [],
     editingFindingIndex: null,
@@ -106,7 +108,15 @@ const state = {
     isAccountView: false,
     users: [],
     userMgmtError: '',
-    userMgmtSuccess: ''
+    userMgmtSuccess: '',
+    // MCP / Agentes IA
+    apiKeys: [],
+    mcpNewKey: null,
+    mcpKeyLabel: '',
+    mcpError: '',
+    mcpServerPath: '',
+    mcpPythonExec: 'python3',
+    mcpAvailable: null
 };
 
 const UI = {
@@ -285,7 +295,30 @@ const UI = {
         deleteLabel: 'Eliminar',
         youLabel: 'tú',
         noUsers: 'No hay usuarios registrados',
-        confirmDeleteUser: '¿Eliminar al usuario'
+        confirmDeleteUser: '¿Eliminar al usuario',
+        mcpTitle: 'MCP / Agentes IA',
+        mcpSubtitle: 'Permite que Claude y otros agentes de IA creen reportes directamente en Pentestify',
+        mcpApiKeysTitle: 'API Keys',
+        mcpApiKeysDesc: 'Genera claves de larga duración para que los agentes se autentiquen en la API de Pentestify',
+        mcpNoKeys: 'No hay API keys generadas',
+        mcpGenerateKey: 'Generar nueva API Key',
+        mcpKeyLabelField: 'Etiqueta',
+        mcpKeyLabelPlaceholder: 'p.ej. "Claude Desktop"',
+        mcpGenerate: 'Generar',
+        mcpGenerating: 'Generando...',
+        mcpRevoke: 'Revocar',
+        mcpRevokeConfirm: '¿Revocar esta API key? Los agentes que la usen dejarán de funcionar.',
+        mcpNewKeyWarning: 'Copia esta clave ahora. No se volverá a mostrar.',
+        mcpConfigTitle: 'Configuración para Claude Desktop',
+        mcpConfigDesc: 'Pega este bloque en tu archivo claude_desktop_config.json (en la sección "mcpServers"):',
+        mcpCliTitle: 'Claude Code CLI / Variables de entorno',
+        mcpCliDesc: 'Para usar con Claude Code CLI, establece estas variables antes de lanzar el servidor:',
+        mcpCopy: 'Copiar',
+        mcpCopied: '¡Copiado!',
+        mcpCreatedAt: 'Creada',
+        mcpLastUsed: 'Último uso',
+        mcpNeverUsed: 'Sin usar',
+        mcpError: 'Error al gestionar las API keys'
     },
     en: {
         appTitle: 'Pentestify',
@@ -462,7 +495,30 @@ const UI = {
         deleteLabel: 'Delete',
         youLabel: 'you',
         noUsers: 'No users registered',
-        confirmDeleteUser: 'Delete user'
+        confirmDeleteUser: 'Delete user',
+        mcpTitle: 'MCP / AI Agent Integration',
+        mcpSubtitle: 'Let Claude and other AI agents create reports directly in Pentestify',
+        mcpApiKeysTitle: 'API Keys',
+        mcpApiKeysDesc: 'Generate long-lived keys for agents to authenticate against the Pentestify API',
+        mcpNoKeys: 'No API keys generated yet',
+        mcpGenerateKey: 'Generate new API Key',
+        mcpKeyLabelField: 'Label',
+        mcpKeyLabelPlaceholder: 'e.g. "Claude Desktop"',
+        mcpGenerate: 'Generate',
+        mcpGenerating: 'Generating...',
+        mcpRevoke: 'Revoke',
+        mcpRevokeConfirm: 'Revoke this API key? Agents using it will stop working.',
+        mcpNewKeyWarning: 'Copy this key now. It will not be shown again.',
+        mcpConfigTitle: 'Claude Desktop Configuration',
+        mcpConfigDesc: 'Paste this block into your claude_desktop_config.json (under "mcpServers"):',
+        mcpCliTitle: 'Claude Code CLI / Environment Variables',
+        mcpCliDesc: 'To use with Claude Code CLI, set these environment variables before launching the server:',
+        mcpCopy: 'Copy',
+        mcpCopied: 'Copied!',
+        mcpCreatedAt: 'Created',
+        mcpLastUsed: 'Last used',
+        mcpNeverUsed: 'Never used',
+        mcpError: 'Error managing API keys'
     }
 };
 
@@ -496,6 +552,126 @@ const escapeHTML = (str) => {
 };
 
 const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
+
+function markdownToHtml(str) {
+    if (!str) return '';
+    let s = String(str);
+
+    // 1. Proteger bloques de código (``` ... ```) antes de cualquier escape
+    const codeBlocks = [];
+    s = s.replace(/```(\w*)\r?\n?([\s\S]*?)```/g, (_, _lang, code) => {
+        const safe = code.replace(/\r?\n$/, '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        codeBlocks.push(safe);
+        return `\x01CB${codeBlocks.length - 1}\x01`;
+    });
+
+    // 2. Proteger código inline (`...`)
+    const inlineCodes = [];
+    s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+        const safe = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        inlineCodes.push(safe);
+        return `\x01IC${inlineCodes.length - 1}\x01`;
+    });
+
+    // 3. Escapar HTML en el texto restante
+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // 4. Negrita+cursiva, negrita, cursiva
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^\s*][^*\n]*?[^\s*])\*/g, '<em>$1</em>');
+    s = s.replace(/\*([^\s*\n])\*/g, '<em>$1</em>');
+
+    // 5. Links [texto](url)
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+        '<a href="$2" target="_blank" style="color:inherit;text-decoration:underline;opacity:0.85;">$1</a>');
+
+    // 6. Restaurar código inline
+    s = s.replace(/\x01IC(\d+)\x01/g, (_, i) =>
+        `<code style="font-family:ui-monospace,SFMono-Regular,monospace;background:rgba(128,128,128,0.15);padding:0.1em 0.4em;border-radius:3px;font-size:0.875em;word-break:break-word;">${inlineCodes[+i]}</code>`);
+
+    // 7. Procesar línea a línea para estructura de bloque
+    const lines = s.split('\n');
+    const out = [];
+    let inUl = false, inOl = false;
+    let tableBuf = [];
+
+    const closeUl = () => { if (inUl) { out.push('</ul>'); inUl = false; } };
+    const closeOl = () => { if (inOl) { out.push('</ol>'); inOl = false; } };
+    const closeAll = () => { closeUl(); closeOl(); };
+
+    const flushTable = () => {
+        if (!tableBuf.length) return;
+        const rows = tableBuf;
+        tableBuf = [];
+        // Necesita al menos cabecera + separador + 1 fila de datos, y separador válido
+        if (rows.length >= 2 && /^\|[\s|:=-]+\|$/.test(rows[1].trim())) {
+            const parseRow = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+            const tdS = 'border:1px solid rgba(128,128,128,0.3);padding:0.38em 0.7em;text-align:left;vertical-align:top;line-height:1.5;';
+            const thS = tdS + 'font-weight:700;background:rgba(128,128,128,0.1);';
+            const head = `<thead><tr>${parseRow(rows[0]).map(c => `<th style="${thS}">${c}</th>`).join('')}</tr></thead>`;
+            const body = rows.slice(2).map(r => `<tr>${parseRow(r).map(c => `<td style="${tdS}">${c}</td>`).join('')}</tr>`).join('');
+            out.push(`<table style="border-collapse:collapse;width:100%;margin:0.5em 0;font-size:0.88em;">${head}${body ? `<tbody>${body}</tbody>` : ''}</table>`);
+        } else {
+            rows.forEach(r => { closeAll(); out.push(r + '<br>'); });
+        }
+    };
+
+    for (const line of lines) {
+        // Acumular líneas de tabla (empiezan con |)
+        if (/^\s*\|/.test(line)) {
+            tableBuf.push(line);
+            continue;
+        }
+        flushTable();
+
+        // Bloque de código
+        const cbm = line.match(/^\x01CB(\d+)\x01$/);
+        if (cbm) {
+            closeAll();
+            out.push(`<pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(128,128,128,0.12);border-radius:6px;padding:0.7em 1em;font-size:0.82em;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin:0.35em 0;line-height:1.55;"><code>${codeBlocks[+cbm[1]]}</code></pre>`);
+            continue;
+        }
+        // Encabezados # ## ### ####
+        const hm = line.match(/^(#{1,4}) (.+)$/);
+        if (hm) {
+            closeAll();
+            const sizes = ['1.1em','1.0em','0.93em','0.88em'];
+            out.push(`<div style="font-size:${sizes[hm[1].length-1]||'0.88em'};font-weight:${hm[1].length<=2?'800':'700'};margin:0.55em 0 0.15em;line-height:1.3;">${hm[2]}</div>`);
+            continue;
+        }
+        // Lista no ordenada  -  *  +
+        const ulm = line.match(/^[ \t]*[-*+] (.+)$/);
+        if (ulm) {
+            if (inOl) closeOl();
+            if (!inUl) { out.push('<ul style="margin:0.15em 0;padding-left:1.4em;list-style:disc;">'); inUl = true; }
+            out.push(`<li style="margin:0.1em 0;">${ulm[1]}</li>`);
+            continue;
+        }
+        // Lista ordenada  1.  2)
+        const olm = line.match(/^[ \t]*\d+[.)]\s+(.+)$/);
+        if (olm) {
+            if (inUl) closeUl();
+            if (!inOl) { out.push('<ol style="margin:0.15em 0;padding-left:1.4em;">'); inOl = true; }
+            out.push(`<li style="margin:0.1em 0;">${olm[1]}</li>`);
+            continue;
+        }
+        // Línea vacía → separador
+        if (line.trim() === '') {
+            closeAll();
+            out.push('<br>');
+            continue;
+        }
+        // Texto normal
+        closeAll();
+        out.push(line + '<br>');
+    }
+    flushTable();
+    closeAll();
+
+    return out.join('').replace(/(<br>\s*)+$/, '');
+}
 
 const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
 
@@ -609,6 +785,16 @@ const API = {
         list: () => API.request('GET', '/api/users'),
         create: (data) => API.request('POST', '/api/users', data),
         delete: (id) => API.request('DELETE', `/api/users/${id}`)
+    },
+
+    apiKeys: {
+        list: () => API.request('GET', '/api/api-keys'),
+        create: (data) => API.request('POST', '/api/api-keys', data),
+        delete: (id) => API.request('DELETE', `/api/api-keys/${id}`)
+    },
+
+    mcpConfig: {
+        get: () => API.request('GET', '/api/mcp-config')
     },
 
     reports: {
@@ -1147,37 +1333,85 @@ function toggleMethodologyStandard(key) {
     renderApp();
 }
 
+function getScopeFieldVis(key) {
+    const vis = state.auditData.scopeFieldsVisibility || {};
+    return vis[key] !== false;
+}
+
+function _scopeFieldToggle(key, isEs) {
+    const on = getScopeFieldVis(key);
+    return `<span onclick="toggleScopeField('${key}')" title="${isEs ? 'Incluir en informe' : 'Include in report'}"
+        style="display:inline-flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.75rem;font-weight:500;color:${on ? '#2563eb' : '#9ca3af'};user-select:none;flex-shrink:0;">
+        <span style="position:relative;display:inline-block;width:28px;height:16px;">
+            <span style="display:block;width:28px;height:16px;border-radius:999px;background:${on ? '#2563eb' : '#d1d5db'};transition:background 0.15s;"></span>
+            <span style="position:absolute;top:2px;left:${on ? '14px' : '2px'};width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.2);transition:left 0.15s;"></span>
+        </span>
+        ${isEs ? 'en informe' : 'in report'}
+    </span>`;
+}
+
+function toggleScopeField(key) {
+    const vis = Object.assign({}, state.auditData.scopeFieldsVisibility || {});
+    vis[key] = !getScopeFieldVis(key);
+    state.auditData.scopeFieldsVisibility = vis;
+    state.isDirty = true;
+    renderApp();
+}
+
 function renderScopeMethodologySection() {
     const isEs = state.lang === 'es';
     const d = state.auditData;
     const selected = d.methodologyStandards || [];
     return `
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
-        <h3 style="margin: 0 0 1rem;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h3>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+            <h3 style="margin:0;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h3>
+            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500; font-size:0.82rem; color:${d.showScopeSection !== false ? '#2563eb' : '#9ca3af'}; user-select:none;">
+                <div style="position:relative; width:36px; height:20px; flex-shrink:0;" onclick="updateAuditData('showScopeSection', ${d.showScopeSection !== false ? 'false' : 'true'}); renderApp();" title="${isEs ? 'Incluir esta sección en el informe' : 'Include this section in the report'}">
+                    <div style="width:36px; height:20px; border-radius:999px; background:${d.showScopeSection !== false ? '#2563eb' : '#d1d5db'}; transition:background 0.2s;"></div>
+                    <div style="position:absolute; top:2px; left:${d.showScopeSection !== false ? '18px' : '2px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:left 0.2s;"></div>
+                </div>
+                ${isEs ? 'Incluir en informe' : 'Include in report'}
+            </label>
+        </div>
 
         <div class="form-row">
-            <div class="form-group">
-                <label>${isEs ? 'Inicio del engagement' : 'Engagement start'}</label>
-                <input type="date" value="${escapeHTML(d.engagementStart || '')}" onchange="updateAuditData('engagementStart', this.value)">
+            <div class="form-group" style="position:relative;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                    <label style="margin:0;">${isEs ? 'Inicio del engagement' : 'Engagement start'}</label>
+                    ${_scopeFieldToggle('engagementWindow', isEs)}
+                </div>
+                <input type="date" value="${escapeHTML(d.engagementStart || '')}" onchange="updateAuditData('engagementStart', this.value)" style="${!getScopeFieldVis('engagementWindow') ? 'opacity:0.4;' : ''}">
             </div>
             <div class="form-group">
-                <label>${isEs ? 'Fin del engagement' : 'Engagement end'}</label>
-                <input type="date" value="${escapeHTML(d.engagementEnd || '')}" onchange="updateAuditData('engagementEnd', this.value)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                    <label style="margin:0;">${isEs ? 'Fin del engagement' : 'Engagement end'}</label>
+                </div>
+                <input type="date" value="${escapeHTML(d.engagementEnd || '')}" onchange="updateAuditData('engagementEnd', this.value)" style="${!getScopeFieldVis('engagementWindow') ? 'opacity:0.4;' : ''}">
             </div>
         </div>
 
         <div class="form-group">
-            <label>${isEs ? 'Dentro del alcance (in-scope)' : 'In-scope assets'}</label>
-            <textarea rows="2" placeholder="${isEs ? 'IPs, dominios, URLs incluidos...' : 'Included IPs, domains, URLs...'}" oninput="updateAuditData('scopeIn', this.value)">${escapeHTML(d.scopeIn || '')}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <label style="margin:0;">${isEs ? 'Dentro del alcance (in-scope)' : 'In-scope assets'}</label>
+                ${_scopeFieldToggle('scopeIn', isEs)}
+            </div>
+            <textarea rows="2" placeholder="${isEs ? 'IPs, dominios, URLs incluidos...' : 'Included IPs, domains, URLs...'}" oninput="updateAuditData('scopeIn', this.value)" style="${!getScopeFieldVis('scopeIn') ? 'opacity:0.4;' : ''}">${escapeHTML(d.scopeIn || '')}</textarea>
         </div>
         <div class="form-group">
-            <label>${isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions'}</label>
-            <textarea rows="2" placeholder="${isEs ? 'Sistemas excluidos, rangos no probados...' : 'Excluded systems, untested ranges...'}" oninput="updateAuditData('scopeOut', this.value)">${escapeHTML(d.scopeOut || '')}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <label style="margin:0;">${isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions'}</label>
+                ${_scopeFieldToggle('scopeOut', isEs)}
+            </div>
+            <textarea rows="2" placeholder="${isEs ? 'Sistemas excluidos, rangos no probados...' : 'Excluded systems, untested ranges...'}" oninput="updateAuditData('scopeOut', this.value)" style="${!getScopeFieldVis('scopeOut') ? 'opacity:0.4;' : ''}">${escapeHTML(d.scopeOut || '')}</textarea>
         </div>
 
         <div class="form-group">
-            <label>${isEs ? 'Metodologías / estándares aplicados' : 'Methodologies / standards applied'}</label>
-            <div class="pro-tags" style="margin-top:0.25rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <label style="margin:0;">${isEs ? 'Metodologías / estándares aplicados' : 'Methodologies / standards applied'}</label>
+                ${_scopeFieldToggle('standards', isEs)}
+            </div>
+            <div class="pro-tags" style="margin-top:0.25rem;${!getScopeFieldVis('standards') ? 'opacity:0.4;' : ''}">
                 ${METHODOLOGY_STANDARDS.map(s => `
                     <label style="display:inline-flex;align-items:center;gap:0.35rem;font-weight:500;text-transform:none;letter-spacing:normal;cursor:pointer;padding:0.2rem 0.55rem;border:1px solid ${selected.includes(s.key) ? '#3b82f6' : '#e2e8f0'};border-radius:999px;font-size:0.78rem;${selected.includes(s.key) ? 'background:rgba(59,130,246,0.1);color:#2563eb;' : ''}">
                         <input type="checkbox" ${selected.includes(s.key) ? 'checked' : ''} onchange="toggleMethodologyStandard('${s.key}')" style="width:auto;margin:0;padding:0;">
@@ -1188,12 +1422,18 @@ function renderScopeMethodologySection() {
         </div>
 
         <div class="form-group">
-            <label>${isEs ? 'Notas de metodología (opcional)' : 'Methodology notes (optional)'}</label>
-            <textarea rows="2" placeholder="${isEs ? 'Tipo de caja, reglas de enfrentamiento...' : 'Box type, rules of engagement...'}" oninput="updateAuditData('methodologyNotes', this.value)">${escapeHTML(d.methodologyNotes || '')}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <label style="margin:0;">${isEs ? 'Notas de metodología (opcional)' : 'Methodology notes (optional)'}</label>
+                ${_scopeFieldToggle('methodologyNotes', isEs)}
+            </div>
+            <textarea rows="2" placeholder="${isEs ? 'Tipo de caja, reglas de enfrentamiento...' : 'Box type, rules of engagement...'}" oninput="updateAuditData('methodologyNotes', this.value)" style="${!getScopeFieldVis('methodologyNotes') ? 'opacity:0.4;' : ''}">${escapeHTML(d.methodologyNotes || '')}</textarea>
         </div>
         <div class="form-group">
-            <label>${isEs ? 'Herramientas utilizadas' : 'Tools used'}</label>
-            <textarea rows="2" placeholder="Burp Suite, nmap, sqlmap, ffuf..." oninput="updateAuditData('toolsUsed', this.value)">${escapeHTML(d.toolsUsed || '')}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <label style="margin:0;">${isEs ? 'Herramientas utilizadas' : 'Tools used'}</label>
+                ${_scopeFieldToggle('toolsUsed', isEs)}
+            </div>
+            <textarea rows="4" placeholder="Burp Suite, nmap, sqlmap, ffuf..." oninput="updateAuditData('toolsUsed', this.value)" style="${!getScopeFieldVis('toolsUsed') ? 'opacity:0.4;' : ''}">${escapeHTML(d.toolsUsed || '')}</textarea>
         </div>
     `;
 }
@@ -2302,7 +2542,7 @@ function renderFindingProMeta(f, c, t) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
                     ${isEs ? 'Notas de re-test' : 'Re-test notes'}
                 </h4>
-                <p style="color:${c.textFaint};line-height:1.6;margin:0;white-space:pre-wrap;">${formatMultiline(retest)}</p>
+                <div style="color:${c.textFaint};line-height:1.65;margin:0;">${markdownToHtml(retest)}</div>
             </div>`;
     }
     return html;
@@ -2314,16 +2554,28 @@ function renderScopeMethodologyPreview(c, t) {
     const d = state.auditData;
     const std = d.methodologyStandards || [];
     const stdLabels = METHODOLOGY_STANDARDS.filter(s => std.includes(s.key)).map(s => s.label);
-    const hasContent = d.scopeIn || d.scopeOut || d.methodologyNotes || d.toolsUsed || stdLabels.length || d.engagementStart || d.engagementEnd;
+    if (d.showScopeSection === false) return '';
+
+    const fv = d.scopeFieldsVisibility || {};
+    const fvis = (key) => fv[key] !== false;
+
+    const showDates   = fvis('engagementWindow') && (d.engagementStart || d.engagementEnd);
+    const showScopeIn  = fvis('scopeIn') && d.scopeIn;
+    const showScopeOut = fvis('scopeOut') && d.scopeOut;
+    const showStd      = fvis('standards') && stdLabels.length;
+    const showNotes    = fvis('methodologyNotes') && d.methodologyNotes;
+    const showTools    = fvis('toolsUsed') && d.toolsUsed;
+
+    const hasContent = showDates || showScopeIn || showScopeOut || showStd || showNotes || showTools;
     if (!hasContent) return '';
 
     const block = (title, body, mono) => body ? `
         <div style="margin-bottom:1.5rem;">
             <h3 style="font-size:1.15rem;color:${c.textBody};margin:0 0 0.6rem;font-weight:700;">${title}</h3>
-            <div style="background:${c.cardBgAlt};border:1px solid ${c.borderMeta};border-radius:10px;padding:1.1rem 1.4rem;color:${c.textMuted};line-height:1.7;${mono ? 'font-family:ui-monospace,monospace;font-size:0.85rem;' : ''}"><span style="white-space:pre-wrap;">${formatMultiline(body)}</span></div>
+            <div style="background:${c.cardBgAlt};border:1px solid ${c.borderMeta};border-radius:10px;padding:1.1rem 1.4rem;color:${c.textMuted};line-height:1.7;${mono ? 'font-family:ui-monospace,monospace;font-size:0.85rem;' : ''}">${mono ? `<span style="white-space:pre-wrap;">${formatMultiline(body)}</span>` : markdownToHtml(body)}</div>
         </div>` : '';
 
-    const dates = (d.engagementStart || d.engagementEnd)
+    const dates = showDates
         ? `${escapeHTML(d.engagementStart || '—')} → ${escapeHTML(d.engagementEnd || '—')}`
         : '';
 
@@ -2334,15 +2586,15 @@ function renderScopeMethodologyPreview(c, t) {
                 ${renderTlpPageBadge(d)}
             </div>
             ${dates ? block(isEs ? 'Ventana del engagement' : 'Engagement window', dates, true) : ''}
-            ${block(isEs ? 'Dentro del alcance' : 'In-scope', d.scopeIn, true)}
-            ${block(isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions', d.scopeOut, true)}
-            ${stdLabels.length ? `
+            ${showScopeIn ? block(isEs ? 'Dentro del alcance' : 'In-scope', d.scopeIn, true) : ''}
+            ${showScopeOut ? block(isEs ? 'Fuera del alcance / exclusiones' : 'Out-of-scope / exclusions', d.scopeOut, true) : ''}
+            ${showStd ? `
                 <div style="margin-bottom:1.5rem;">
                     <h3 style="font-size:1.15rem;color:${c.textBody};margin:0 0 0.6rem;font-weight:700;">${isEs ? 'Metodologías y estándares' : 'Methodologies & standards'}</h3>
                     <div class="pro-tags">${stdLabels.map(l => `<span class="pro-tag" style="background:rgba(37,99,235,0.12);color:${c.textHeading};font-size:0.8rem;">${escapeHTML(l)}</span>`).join('')}</div>
                 </div>` : ''}
-            ${block(isEs ? 'Notas de metodología' : 'Methodology notes', d.methodologyNotes, false)}
-            ${block(isEs ? 'Herramientas utilizadas' : 'Tools used', d.toolsUsed, true)}
+            ${showNotes ? block(isEs ? 'Notas de metodología' : 'Methodology notes', d.methodologyNotes, false) : ''}
+            ${showTools ? block(isEs ? 'Herramientas utilizadas' : 'Tools used', d.toolsUsed, true) : ''}
         </div>`;
 }
 
@@ -2627,7 +2879,7 @@ function renderPreview() {
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             ${t.incidentsRecorded}
                         </p>
-                        <p style="color:${c.textOrangeDark}; line-height:1.7; white-space:pre-wrap; text-align: justify;">${formatMultiline(d.incidentsText || '')}</p>
+                        <div style="color:${c.textOrangeDark}; line-height:1.7; text-align: justify;">${markdownToHtml(d.incidentsText || '')}</div>
                     </div>
                 ` : `
                     <div style="background:${c.greenBg}; border:1px solid ${c.borderGreen}; border-left:6px solid #22c55e; border-radius:10px; padding:1.5rem 2rem; display:flex; align-items:center; gap:1rem;">
@@ -2681,7 +2933,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                                     ${t.description}
                                 </h4>
-                                <p style="color: ${c.textFaint}; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.description)}</span></p>
+                                <div style="color: ${c.textFaint}; line-height: 1.65; word-wrap: break-word; text-align: justify;">${markdownToHtml(f.description)}</div>
                             </div>
                         ` : ''}
 
@@ -2691,7 +2943,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c.pocHeading}" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                                     ${t.pocSteps}
                                 </h4>
-                                <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.7; font-size: 0.82rem; color: ${c.pocText}; margin: 0; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%;">${formatMultiline(f.poc)}</pre>
+                                <div style="font-size: 0.88rem; line-height: 1.7; color: ${c.pocText}; text-align: left; word-break: break-word; max-width: 100%;">${markdownToHtml(f.poc)}</div>
                             </div>
                         ` : ''}
 
@@ -2732,7 +2984,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                                     ${t.businessImpact}
                                 </h4>
-                                <p style="color: ${c.textFaint}; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.impact)}</span></p>
+                                <div style="color: ${c.textFaint}; line-height: 1.65; word-wrap: break-word; text-align: justify;">${markdownToHtml(f.impact)}</div>
                             </div>
                         ` : ''}
 
@@ -2742,7 +2994,7 @@ function renderPreview() {
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                                     ${t.solutionRemediation}
                                 </h4>
-                                <p style="color: ${c.textGreenDark}; line-height: 1.6; word-wrap: break-word; text-align: justify;"><span style="white-space: pre-wrap;">${formatMultiline(f.remediation)}</span></p>
+                                <div style="color: ${c.textGreenDark}; line-height: 1.65; word-wrap: break-word; text-align: justify;">${markdownToHtml(f.remediation)}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -2764,7 +3016,7 @@ function renderPreview() {
                         ${t.auditSummary}
                     </h3>
                     <div style="background: ${c.cardBgAlt}; border: 1px solid ${c.borderMeta}; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: ${c.textMuted}; text-align: justify;">
-                        <span style="white-space: pre-wrap;">${formatMultiline(d.auditSummary)}</span>
+                        ${markdownToHtml(d.auditSummary)}
                     </div>
                 </div>
                 ` : ''}
@@ -2776,7 +3028,7 @@ function renderPreview() {
                         ${t.testsPerformed}
                     </h3>
                     <div style="background: ${c.greenBg}; border: 1px solid ${c.borderGreen}; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: ${c.textMuted}; text-align: justify;">
-                        <span style="white-space: pre-wrap;">${formatMultiline(d.testsPerformed)}</span>
+                        ${markdownToHtml(d.testsPerformed)}
                     </div>
                 </div>
                 ` : ''}
@@ -2788,7 +3040,7 @@ function renderPreview() {
                         ${t.recommendedSolutions}
                     </h3>
                     <div style="background: ${c.purpleBg}; border: 1px solid ${c.borderPurple}; border-radius: 10px; padding: 1.5rem; line-height: 1.8; color: ${c.textMuted}; text-align: justify;">
-                        <span style="white-space: pre-wrap;">${formatMultiline(d.recommendedSolutions)}</span>
+                        ${markdownToHtml(d.recommendedSolutions)}
                     </div>
                 </div>
                 ` : ''}
@@ -3423,6 +3675,9 @@ function renderAccountPage() {
                         </form>
                     </div>
                 </div>
+
+                ${renderMcpSection()}
+
             </div>
         </div>
     `;
@@ -3654,6 +3909,217 @@ async function deleteUser(userId) {
             : (state.lang === 'es' ? 'No se pudo eliminar el usuario' : 'Could not delete user');
     }
     renderApp();
+}
+
+// --------------------------------------------------------------------------- //
+// MCP / Agentes IA — gestión de API keys
+// --------------------------------------------------------------------------- //
+async function loadApiKeys() {
+    try {
+        state.apiKeys = await API.apiKeys.list();
+    } catch (e) {
+        state.apiKeys = [];
+    }
+}
+
+async function loadMcpServerInfo() {
+    try {
+        const info = await API.mcpConfig.get();
+        state.mcpServerPath = info.mcp_server_path || '';
+        state.mcpPythonExec = info.python_executable || 'python3';
+        state.mcpAvailable = info.mcp_available !== false;
+        state.mcpInstallHint = info.install_hint || null;
+    } catch (e) {
+        state.mcpServerPath = '';
+        state.mcpPythonExec = 'python3';
+        state.mcpAvailable = null;
+        state.mcpInstallHint = null;
+    }
+}
+
+async function createApiKey(event) {
+    if (event) event.preventDefault();
+    const isEs = state.lang === 'es';
+    const label = (state.mcpKeyLabel || '').trim() || (isEs ? 'Agent Key' : 'Agent Key');
+
+    state.mcpError = '';
+    const btn = document.getElementById('mcp-generate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = UI[state.lang].mcpGenerating; }
+
+    try {
+        const result = await API.apiKeys.create({ label });
+        state.mcpNewKey = result;
+        state.mcpKeyLabel = '';
+        await loadApiKeys();
+    } catch (err) {
+        state.mcpError = (err.message && !err.message.startsWith('HTTP '))
+            ? err.message
+            : (isEs ? 'Error al generar la API key' : 'Error generating API key');
+    }
+    renderApp();
+}
+
+async function revokeApiKey(keyId) {
+    const t = UI[state.lang];
+    if (!confirm(t.mcpRevokeConfirm)) return;
+    state.mcpError = '';
+    try {
+        await API.apiKeys.delete(keyId);
+        if (state.mcpNewKey && state.mcpNewKey.id === keyId) state.mcpNewKey = null;
+        await loadApiKeys();
+    } catch (err) {
+        state.mcpError = (err.message && !err.message.startsWith('HTTP '))
+            ? err.message
+            : t.mcpError;
+    }
+    renderApp();
+}
+
+async function copyText(elementId, btn) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const text = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' ? el.value : el.textContent;
+    try {
+        await navigator.clipboard.writeText(text || '');
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = UI[state.lang].mcpCopied || '✓';
+            setTimeout(() => { if (btn) btn.textContent = orig; }, 2000);
+        }
+    } catch (e) {
+        alert((state.lang === 'es' ? 'No se pudo copiar: ' : 'Could not copy: ') + e.message);
+    }
+}
+
+function renderMcpSection() {
+    const t = UI[state.lang];
+    const isEs = state.lang === 'es';
+
+    // Lista de claves existentes
+    const keyRows = state.apiKeys.length
+        ? state.apiKeys.map(k => {
+            const created = new Date(k.created_at).toLocaleDateString();
+            const lastUsed = k.last_used_at
+                ? new Date(k.last_used_at).toLocaleDateString()
+                : t.mcpNeverUsed;
+            return `
+                <div class="account-user-row">
+                    <div class="account-user-info" style="flex:1;flex-direction:column;align-items:flex-start;gap:0.2rem;">
+                        <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                            <code style="font-size:0.78rem;background:var(--input-bg,#f8fafc);padding:0.15rem 0.45rem;border-radius:4px;border:1px solid var(--border,#e2e8f0);letter-spacing:0.02em;">${escapeHTML(k.prefix)}…</code>
+                            <span style="font-weight:600;font-size:0.875rem;">${escapeHTML(k.label)}</span>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--text-muted,#64748b);">
+                            ${t.mcpCreatedAt}: ${created} &nbsp;·&nbsp; ${t.mcpLastUsed}: ${lastUsed}
+                        </div>
+                    </div>
+                    <button class="account-user-delete" onclick="revokeApiKey(${k.id})" title="${t.mcpRevoke}">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>`;
+        }).join('')
+        : `<p class="account-empty">${t.mcpNoKeys}</p>`;
+
+    // Bloque con la nueva clave (solo visible justo después de generarla)
+    const newKeyBlock = state.mcpNewKey ? `
+        <div style="margin-top:0.75rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:0.875rem 1rem;">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;color:#f59e0b;font-size:0.8rem;font-weight:600;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                ${t.mcpNewKeyWarning}
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+                <code id="mcp-new-key-value" style="flex:1;font-size:0.75rem;word-break:break-all;background:var(--input-bg,#f8fafc);padding:0.5rem 0.75rem;border-radius:6px;border:1px solid var(--border,#e2e8f0);display:block;">${escapeHTML(state.mcpNewKey.key)}</code>
+                <button class="btn-sm btn-primary" onclick="copyText('mcp-new-key-value', this)" style="flex-shrink:0;white-space:nowrap;">${t.mcpCopy}</button>
+            </div>
+        </div>` : '';
+
+    // Config JSON para Claude Desktop
+    let configBlock = '';
+    if (state.mcpServerPath) {
+        const keyForConfig = state.mcpNewKey
+            ? state.mcpNewKey.key
+            : (state.apiKeys.length ? state.apiKeys[0].prefix + '…REEMPLAZA_CON_TU_CLAVE' : 'ptf_TU_CLAVE_AQUI');
+
+        const configJson = JSON.stringify({
+            mcpServers: {
+                pentestify: {
+                    command: state.mcpPythonExec,
+                    args: [state.mcpServerPath],
+                    env: {
+                        PENTESTIFY_API_URL: window.location.origin,
+                        PENTESTIFY_API_KEY: keyForConfig
+                    }
+                }
+            }
+        }, null, 2);
+
+        const cliBlock =
+            `export PENTESTIFY_API_URL="${window.location.origin}"\n` +
+            `export PENTESTIFY_API_KEY="${keyForConfig}"\n` +
+            `${state.mcpPythonExec} "${state.mcpServerPath}"`;
+
+        const mcpNotInstalledBanner = state.mcpAvailable === false ? `
+            <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;gap:0.6rem;align-items:flex-start;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <div style="font-size:0.8rem;color:#f59e0b;line-height:1.5;">
+                    <strong>${isEs ? 'Paquete MCP no instalado' : 'MCP package not installed'}</strong> —
+                    ${isEs ? 'el servidor MCP requiere Python ≥ 3.10. Instálalo con:' : 'the MCP server requires Python ≥ 3.10. Install with:'}
+                    <code style="display:block;margin-top:0.3rem;background:rgba(0,0,0,0.15);padding:0.25rem 0.5rem;border-radius:4px;">${state.mcpInstallHint || "pip install 'mcp>=1.0'"}</code>
+                </div>
+            </div>` : '';
+
+        configBlock = `
+            <div class="account-divider"></div>
+            ${mcpNotInstalledBanner}
+            <h3 class="account-subsection-title" style="margin-bottom:0.4rem;">${t.mcpConfigTitle}</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-bottom:0.6rem;">${t.mcpConfigDesc}</p>
+            <div style="position:relative;">
+                <pre id="mcp-config-json" style="font-size:0.72rem;background:#0f172a;color:#e2e8f0;padding:1rem 1.1rem;border-radius:8px;overflow-x:auto;margin:0;line-height:1.6;tab-size:2;">${escapeHTML(configJson)}</pre>
+                <button class="btn-sm btn-secondary" style="position:absolute;top:0.5rem;right:0.5rem;" onclick="copyText('mcp-config-json', this)">${t.mcpCopy}</button>
+            </div>
+
+            <h3 class="account-subsection-title" style="margin:1.25rem 0 0.4rem;">${t.mcpCliTitle}</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-bottom:0.6rem;">${t.mcpCliDesc}</p>
+            <div style="position:relative;">
+                <pre id="mcp-cli-block" style="font-size:0.72rem;background:#0f172a;color:#e2e8f0;padding:1rem 1.1rem;border-radius:8px;overflow-x:auto;margin:0;line-height:1.6;">${escapeHTML(cliBlock)}</pre>
+                <button class="btn-sm btn-secondary" style="position:absolute;top:0.5rem;right:0.5rem;" onclick="copyText('mcp-cli-block', this)">${t.mcpCopy}</button>
+            </div>`;
+    }
+
+    return `
+        <div class="account-card" style="margin-top:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.3rem;">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent,#6366f1);flex-shrink:0;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <h2 class="account-section-title" style="margin:0;">${t.mcpTitle}</h2>
+            </div>
+            <p style="font-size:0.875rem;color:var(--text-muted,#64748b);margin-bottom:1.25rem;">${t.mcpSubtitle}</p>
+
+            <h3 class="account-subsection-title">${t.mcpApiKeysTitle}</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-bottom:0.75rem;">${t.mcpApiKeysDesc}</p>
+
+            <div class="account-user-list">${keyRows}</div>
+            ${newKeyBlock}
+
+            <div class="account-divider"></div>
+
+            <h3 class="account-subsection-title">${t.mcpGenerateKey}</h3>
+            <form onsubmit="createApiKey(event)" style="display:flex;gap:0.6rem;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:180px;">
+                    <label class="login-label">${t.mcpKeyLabelField}</label>
+                    <input type="text" id="mcp-key-label" class="login-input" placeholder="${t.mcpKeyLabelPlaceholder}"
+                        value="${escapeHTML(state.mcpKeyLabel || '')}"
+                        oninput="state.mcpKeyLabel=this.value"
+                        style="margin-bottom:0;">
+                </div>
+                <button type="submit" class="login-btn" id="mcp-generate-btn"
+                    style="flex-shrink:0;height:40px;margin-top:0;padding:0 1.25rem;">
+                    ${t.mcpGenerate}
+                </button>
+            </form>
+            ${state.mcpError ? `<div class="login-error" style="margin-top:0.5rem;">${escapeHTML(state.mcpError)}</div>` : ''}
+
+            ${configBlock}
+        </div>`;
 }
 
 async function doChangePassword(event) {
@@ -4270,7 +4736,9 @@ async function loadReport(id) {
             toolsUsed: report.tools_used || '',
             engagementStart: report.engagement_start || '',
             engagementEnd: report.engagement_end || '',
-            revisionHistory: Array.isArray(report.revision_history) ? report.revision_history : []
+            revisionHistory: Array.isArray(report.revision_history) ? report.revision_history : [],
+            showScopeSection: report.show_scope_section === 0 ? false : true,
+            scopeFieldsVisibility: (typeof report.scope_fields_visibility === 'object' && report.scope_fields_visibility) ? report.scope_fields_visibility : {}
         };
         state.lang = report.lang;
         // Aplica el tema guardado en el reporte.
@@ -4551,7 +5019,9 @@ async function saveCurrentReport(silent = false) {
             tools_used: state.auditData.toolsUsed || '',
             engagement_start: state.auditData.engagementStart || '',
             engagement_end: state.auditData.engagementEnd || '',
-            revision_history: state.auditData.revisionHistory || []
+            revision_history: state.auditData.revisionHistory || [],
+            show_scope_section: state.auditData.showScopeSection === false ? 0 : 1,
+            scope_fields_visibility: state.auditData.scopeFieldsVisibility || {}
         };
 
         if (!state.currentReportId) {
@@ -4711,9 +5181,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
             await loadSettings();
             applyThemeAttributes(state.reportTheme);
-            // En la página de cuenta cargamos la lista de usuarios.
+            // En la página de cuenta cargamos usuarios, API keys y la config MCP.
             if (state.isAccountView) {
-                await loadUsers();
+                await Promise.all([loadUsers(), loadApiKeys(), loadMcpServerInfo()]);
             }
         } catch (e) {
             state.isAuthenticated = false;

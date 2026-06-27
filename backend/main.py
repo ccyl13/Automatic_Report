@@ -4,7 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
+import hashlib
 import os
+import secrets
+import sys
 import tempfile
 import shutil
 from datetime import datetime
@@ -30,7 +33,7 @@ finally:
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="2.0.2"
+    version="2.1.0"
 )
 
 # Orígenes permitidos para CORS. Lista explícita (separada por comas en
@@ -70,7 +73,7 @@ app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "2.0.2"}
+    return {"message": "Pentestify API", "version": "2.1.0"}
 
 
 @app.get("/")
@@ -755,6 +758,120 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
             shutil.copy2(backup_path, db_path)
             os.remove(backup_path)
         raise HTTPException(status_code=500, detail=f"Error al importar la base de datos: {str(e)}")
+
+
+# --------------------------------------------------------------------------- #
+# API Keys (acceso programático para agentes IA / MCP)
+# --------------------------------------------------------------------------- #
+@app.get("/api/api-keys", response_model=List[schemas.ApiKeyInfo])
+def list_api_keys(
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.require_auth),
+):
+    return (
+        db.query(models.ApiKey)
+        .filter(models.ApiKey.user_id == user.id)
+        .order_by(models.ApiKey.created_at.desc())
+        .all()
+    )
+
+
+@app.post("/api/api-keys", response_model=schemas.ApiKeyCreated)
+def create_api_key(
+    payload: schemas.ApiKeyCreate,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.require_auth),
+):
+    label = (payload.label or "").strip() or "Agent Key"
+    # Generamos el secreto: "ptf_" + 43 chars base64url (32 bytes de entropía)
+    raw_key = f"{auth.API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    prefix = raw_key[:12]  # "ptf_XXXXXXXX"
+
+    api_key = models.ApiKey(
+        user_id=user.id,
+        label=label,
+        key_hash=key_hash,
+        prefix=prefix,
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+
+    return schemas.ApiKeyCreated(
+        id=api_key.id,
+        label=api_key.label,
+        prefix=api_key.prefix,
+        created_at=api_key.created_at,
+        last_used_at=api_key.last_used_at,
+        key=raw_key,
+    )
+
+
+@app.delete("/api/api-keys/{key_id}")
+def delete_api_key(
+    key_id: int,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(auth.require_auth),
+):
+    api_key = (
+        db.query(models.ApiKey)
+        .filter(models.ApiKey.id == key_id, models.ApiKey.user_id == user.id)
+        .first()
+    )
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key no encontrada")
+    db.delete(api_key)
+    db.commit()
+    return {"message": "API key revocada correctamente"}
+
+
+@app.get("/api/mcp-config")
+def get_mcp_config(_user: models.User = Depends(auth.require_auth)):
+    """Devuelve la ruta al mcp_server.py y el ejecutable de Python adecuado para el servidor MCP."""
+    mcp_server_path = os.path.join(BASE_DIR, "backend", "mcp_server.py")
+
+    # El paquete 'mcp' requiere Python ≥ 3.10. Buscamos el mejor ejecutable disponible.
+    # Primero probamos el Python del propio proceso; si tiene mcp, perfecto. Si no,
+    # buscamos alternativas comunes en el sistema (Homebrew, pyenv, venvs...).
+    def _has_mcp(python_bin: str) -> bool:
+        try:
+            import subprocess
+            r = subprocess.run(
+                [python_bin, "-c", "import mcp"],
+                capture_output=True, timeout=5
+            )
+            return r.returncode == 0
+        except Exception:
+            return False
+
+    candidates = [
+        sys.executable,
+        "/opt/homebrew/bin/python3.12",
+        "/opt/homebrew/bin/python3.13",
+        "/opt/homebrew/bin/python3.14",
+        "/opt/homebrew/bin/python3.10",
+        "/opt/homebrew/bin/python3.11",
+        "python3.12", "python3.11", "python3.10",
+        "python3", "python",
+    ]
+    python_executable = sys.executable  # fallback
+    mcp_available = False
+    for candidate in candidates:
+        if _has_mcp(candidate):
+            python_executable = candidate
+            mcp_available = True
+            break
+
+    return {
+        "mcp_server_path": mcp_server_path,
+        "python_executable": python_executable,
+        "mcp_available": mcp_available,
+        "install_hint": (
+            "pip install 'mcp>=1.0'  # requiere Python ≥ 3.10"
+            if not mcp_available else None
+        ),
+    }
 
 
 if __name__ == "__main__":

@@ -15,6 +15,8 @@ def run_migrations(engine):
     _migrate_add_pro_finding_fields(engine)
     _migrate_add_theme_custom_css(engine)
     _migrate_add_exploit_field(engine)
+    _migrate_add_show_scope_section(engine)
+    _migrate_create_api_keys(engine)
 
 
 def _add_columns(engine, table, columns):
@@ -100,6 +102,14 @@ def _migrate_add_exploit_field(engine):
         print(f"⚠️  Migración exploit (templates): {e}")
 
 
+def _migrate_add_show_scope_section(engine):
+    """Migration: campo show_scope_section + scope_fields_visibility para control granular de sección alcance."""
+    _add_columns(engine, "reports", [
+        ("show_scope_section", "INTEGER DEFAULT 1"),
+        ("scope_fields_visibility", "TEXT DEFAULT '{}'"),
+    ])
+
+
 def _migrate_add_auditor_contact_fields(engine):
     """Migration: Add auditor_phone and auditor_email columns to reports table."""
     try:
@@ -168,3 +178,23 @@ def _migrate_add_cwe_field(engine):
                 print("✅ Columna cwe agregada a findings")
     except Exception as e:
         print(f"⚠️  Migración de CWE: {e}")
+
+
+def _migrate_create_api_keys(engine):
+    """Migration: crea la tabla api_keys para acceso programático (agentes IA / MCP)."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    label       VARCHAR NOT NULL DEFAULT 'Agent Key',
+                    key_hash    VARCHAR NOT NULL UNIQUE,
+                    prefix      VARCHAR NOT NULL,
+                    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at DATETIME
+                )
+            """))
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️  Migración api_keys: {e}")

@@ -10,6 +10,7 @@ sqlalchemy>=2.0.36             # ORM
 pydantic>=2.10                 # validación de esquemas
 starlette>=0.40                # >=0.40 corrige CVE-2024-47874 (DoS multipart sin límite)
 python-multipart>=0.0.18       # subida de ficheros (FastAPI); >=0.0.18 corrige CVE-2024-53981
+mcp>=1.0                       # MCP server (requiere Python ≥ 3.10 — solo para mcp_server.py, no para el API server)
 
 # ---------------------------------------------------------------------------
 # Solo para la suite de tests (backend/tests/): no se necesita en producción

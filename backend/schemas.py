@@ -172,6 +172,8 @@ class ReportBase(BaseModel):
     engagement_start: str = ""
     engagement_end: str = ""
     revision_history: List[RevisionEntry] = []
+    show_scope_section: int = 1  # 1=incluir, 0=ocultar
+    scope_fields_visibility: dict = {}
 
     @field_validator('client_logo')
     @classmethod
@@ -386,3 +388,26 @@ class AppSettingsUpdate(AppSettingsBase):
 class AppSettingsResponse(AppSettingsBase):
     class Config:
         from_attributes = True
+
+
+# --------------------------------------------------------------------------- #
+# API Keys (acceso programático para agentes IA / MCP)
+# --------------------------------------------------------------------------- #
+class ApiKeyCreate(BaseModel):
+    label: str = "Agent Key"
+
+
+class ApiKeyInfo(BaseModel):
+    id: int
+    label: str
+    prefix: str
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ApiKeyCreated(ApiKeyInfo):
+    """Igual que ApiKeyInfo pero incluye el secreto completo (solo al crear)."""
+    key: str

@@ -23,10 +23,10 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db, data_dir
 
-# Credenciales por defecto que se siembran en el primer arranque.
-DEFAULT_USERNAME = "admin"
-DEFAULT_PASSWORD = "admin"
-
+# No se siembra ningún usuario por defecto: en el primer arranque la base de
+# datos no tiene usuarios y la app muestra una pantalla de configuración inicial
+# (POST /api/auth/setup) para crear la primera cuenta. Esto evita credenciales
+# por defecto conocidas (admin/admin) en producción.
 COOKIE_NAME = "pentestify_session"
 TOKEN_TTL = 7 * 24 * 3600  # 7 días
 PBKDF2_ITERATIONS = 200_000
@@ -71,6 +71,27 @@ def hash_password(password: str, salt: Optional[str] = None) -> str:
         salt = secrets.token_hex(16)
     dk = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), PBKDF2_ITERATIONS)
     return f"pbkdf2_sha256${PBKDF2_ITERATIONS}${salt}${dk.hex()}"
+
+
+def is_valid_password_hash(stored: Optional[str]) -> bool:
+    """True si `stored` tiene el formato PBKDF2 que produce hash_password().
+
+    Se usa al importar una BD para descartar usuarios con hashes manipulados.
+    """
+    if not isinstance(stored, str):
+        return False
+    parts = stored.split("$")
+    if len(parts) != 4:
+        return False
+    algo, iterations, salt, hexhash = parts
+    if algo != "pbkdf2_sha256" or not iterations.isdigit():
+        return False
+    try:
+        bytes.fromhex(salt)
+        bytes.fromhex(hexhash)
+    except ValueError:
+        return False
+    return bool(salt) and bool(hexhash)
 
 
 def verify_password(password: str, stored: str) -> bool:
@@ -125,19 +146,11 @@ def verify_token(token: str, db: Session) -> Optional["models.User"]:
 
 
 # --------------------------------------------------------------------------- #
-# Usuario por defecto
+# Estado de usuarios
 # --------------------------------------------------------------------------- #
-def get_or_create_default_user(db: Session) -> "models.User":
-    user = db.query(models.User).first()
-    if user is None:
-        user = models.User(
-            username=DEFAULT_USERNAME,
-            password_hash=hash_password(DEFAULT_PASSWORD),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
+def users_exist(db: Session) -> bool:
+    """True si ya hay al menos un usuario registrado."""
+    return db.query(models.User.id).first() is not None
 
 
 # --------------------------------------------------------------------------- #

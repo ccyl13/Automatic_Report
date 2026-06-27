@@ -8,6 +8,12 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Desactivamos el transporte MCP-HTTP en los tests: la suite crea un TestClient
+# por test, reentrando el lifespan, y el StreamableHTTPSessionManager solo puede
+# arrancarse una vez por instancia. En producción el lifespan se entra una sola
+# vez. El transporte MCP se valida aparte con un test end-to-end dedicado.
+os.environ["PENTESTIFY_MCP_HTTP"] = "0"
+
 from database import Base, get_db
 from main import app
 import auth

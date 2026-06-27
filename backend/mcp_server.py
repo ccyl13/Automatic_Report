@@ -6,14 +6,30 @@ Expone Pentestify como un servidor MCP (Model Context Protocol) para que
 Claude Desktop, Claude Code y cualquier agente compatible puedan crear y
 gestionar reportes de pentesting de forma nativa.
 
-Configuración:
-  1. En Pentestify → Cuenta → MCP / Agentes IA: genera una API key.
-  2. Añade el bloque JSON que aparece a tu claude_desktop_config.json.
-  3. Reinicia Claude Desktop.
+Este servidor soporta dos modos de transporte:
 
-Variables de entorno requeridas:
-  PENTESTIFY_API_URL   URL base del servidor Pentestify (por defecto: http://localhost:8000)
-  PENTESTIFY_API_KEY   Clave de API generada en Pentestify (empieza por ptf_)
+  1) stdio (por defecto) — Claude Desktop / Claude Code lo lanzan como
+     subproceso EN LOCAL. La API key se lee de la variable de entorno
+     PENTESTIFY_API_KEY. Configuración:
+       a. En Pentestify → Cuenta → MCP / Agentes IA: genera una API key.
+       b. Añade el bloque JSON que aparece a tu claude_desktop_config.json
+          (o usa `claude mcp add` en Claude Code).
+       c. Reinicia el cliente.
+
+  2) streamable-http — el servidor MCP corre EN EL VPS (mismo puerto que el
+     API si se monta en main.py, o como proceso aparte con `--http`). En este
+     modo la API key NO se lee del entorno: cada cliente envía su propia clave
+     en la cabecera `Authorization: Bearer ptf_...` de cada petición. Conecta
+     desde Claude Code con:
+       claude mcp add --transport http pentestify https://tu-vps/mcp \
+         --header "Authorization: Bearer ptf_TU_CLAVE"
+
+Variables de entorno:
+  PENTESTIFY_API_URL   URL base del API de Pentestify (por defecto: http://localhost:8000)
+  PENTESTIFY_API_KEY   Clave de API (solo en modo stdio; empieza por ptf_)
+
+Ejecución del modo HTTP como proceso independiente:
+  python mcp_server.py --http --host 127.0.0.1 --port 8001
 """
 
 import json
@@ -44,21 +60,19 @@ from pydantic import BaseModel, Field
 # Configuración
 # --------------------------------------------------------------------------- #
 PENTESTIFY_URL = os.environ.get("PENTESTIFY_API_URL", "http://localhost:8000").rstrip("/")
+# Solo se usa en modo stdio. En modo HTTP la clave llega por petición en la
+# cabecera Authorization (ver _resolve_key). NO abortamos aquí si falta, porque
+# este módulo se importa desde main.py para montar el transporte HTTP.
 PENTESTIFY_KEY = os.environ.get("PENTESTIFY_API_KEY", "")
-
-if not PENTESTIFY_KEY:
-    print(
-        "ERROR: La variable de entorno PENTESTIFY_API_KEY es obligatoria.\n"
-        "Genera una API key en Pentestify → Cuenta → MCP / Agentes IA.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
 
 # --------------------------------------------------------------------------- #
 # Servidor MCP
 # --------------------------------------------------------------------------- #
+# stateless_http=True: cada petición HTTP es independiente (no requiere afinidad
+# de sesión), lo que simplifica el despliegue detrás de un reverse proxy.
 mcp = FastMCP(
     "Pentestify",
+    stateless_http=True,
     instructions="""
 Estás conectado a Pentestify, un generador profesional de reportes de pentesting.
 
@@ -100,9 +114,31 @@ Para añadir hallazgos más tarde, usa add_finding() o add_findings_bulk().
 _client = httpx.Client(timeout=30.0)
 
 
+def _resolve_key() -> str:
+    """Devuelve la API key a usar para llamar al API de Pentestify.
+
+    En modo HTTP, cada cliente envía su propia clave en la cabecera
+    `Authorization: Bearer ptf_...`; la leemos del contexto de la petición en
+    curso. En modo stdio no hay petición HTTP, así que usamos PENTESTIFY_KEY.
+    """
+    try:
+        ctx = mcp.get_context()
+        request = getattr(ctx.request_context, "request", None)
+        if request is not None:
+            header = request.headers.get("authorization", "")
+            if header.lower().startswith("bearer "):
+                token = header[7:].strip()
+                if token:
+                    return token
+    except Exception:
+        # Sin contexto de petición (modo stdio) o contexto no disponible.
+        pass
+    return PENTESTIFY_KEY
+
+
 def _headers() -> dict:
     return {
-        "Authorization": f"Bearer {PENTESTIFY_KEY}",
+        "Authorization": f"Bearer {_resolve_key()}",
         "Content-Type": "application/json",
     }
 
@@ -536,5 +572,52 @@ def get_report_summary(report_id: int) -> str:
 # --------------------------------------------------------------------------- #
 # Punto de entrada
 # --------------------------------------------------------------------------- #
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Servidor MCP de Pentestify (stdio por defecto, o HTTP con --http)."
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Servir por HTTP (streamable-http) en lugar de stdio.",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("PENTESTIFY_MCP_HOST", "127.0.0.1"),
+        help="Host de escucha en modo HTTP (por defecto: 127.0.0.1).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("PENTESTIFY_MCP_PORT", "8001")),
+        help="Puerto de escucha en modo HTTP (por defecto: 8001).",
+    )
+    args = parser.parse_args()
+
+    if args.http:
+        # En modo HTTP la clave llega por petición; no exigimos PENTESTIFY_KEY.
+        mcp.settings.host = args.host
+        mcp.settings.port = args.port
+        print(
+            f"Pentestify MCP (HTTP) escuchando en http://{args.host}:{args.port}"
+            f"{mcp.settings.streamable_http_path}",
+            file=sys.stderr,
+        )
+        mcp.run(transport="streamable-http")
+    else:
+        # Modo stdio: la clave es obligatoria porque no hay cabecera por petición.
+        if not PENTESTIFY_KEY:
+            print(
+                "ERROR: La variable de entorno PENTESTIFY_API_KEY es obligatoria "
+                "en modo stdio.\n"
+                "Genera una API key en Pentestify → Cuenta → MCP / Agentes IA.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        mcp.run()
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

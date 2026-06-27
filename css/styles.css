@@ -4578,6 +4578,98 @@ button {
 [data-theme="htb"] ::-webkit-scrollbar-thumb { background: #2d3f55 !important; }
 [data-theme="htb"] ::-webkit-scrollbar-thumb:hover { background: #3d5570 !important; }
 
+/* ==================== RESPONSIVE — MÓVIL Y TABLET ====================
+   Reglas acotadas a `screen` para NO afectar la exportación PDF (que usa
+   @media print y renderiza el informe a tamaño A4 completo). Refuerzan el
+   layout en pantallas pequeñas: navbar, paddings, vista previa del informe,
+   tablas y bloques de código. */
+
+/* Salvaguarda global anti-desbordamiento horizontal en pantalla. */
+@media screen and (max-width: 1024px) {
+    html, body { max-width: 100%; overflow-x: hidden; }
+    img, svg, video { max-width: 100%; height: auto; }
+}
+
+/* ---- Tablet y phablet ---- */
+@media screen and (max-width: 768px) {
+    .navbar {
+        padding: 0.6rem 0.9rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .navbar-brand { font-size: 1.05rem; gap: 0.5rem; }
+    .navbar-brand svg { width: 26px; height: 26px; }
+    /* Las pestañas/acciones pueden desbordar: las hacemos deslizables en horizontal. */
+    .navbar-actions {
+        gap: 0.4rem;
+        flex: 1 1 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+    .navbar-actions::-webkit-scrollbar { display: none; }
+    .navbar-actions button {
+        padding: 0.45rem 0.7rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .main-content { padding: 1rem; min-height: calc(100vh - 56px); }
+
+    /* La vista previa es un documento A4: en móvil reducimos el padding y
+       permitimos desplazamiento horizontal en vez de romper el layout. */
+    .main-content { overflow-x: auto; }
+    .preview-container {
+        padding: 1.5rem;
+        max-width: 100%;
+        border-radius: 0.6rem;
+    }
+    .report-header h1 { font-size: 1.3rem; }
+
+    /* Tablas del informe / contenido: scroll horizontal propio. */
+    .preview-container table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Bloques de código (PoC, exploit, config MCP) no deben desbordar. */
+    pre, code, .code-input, .preview-container pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    .preview-container pre { overflow-x: auto; }
+
+    /* Modales a casi pantalla completa con scroll interno. */
+    .modal-content, .modal-card {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* Cabecera de la página de cuenta: acciones bajo el título. */
+    .account-header { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+    .account-header-actions { width: 100%; }
+}
+
+/* ---- Teléfonos pequeños ---- */
+@media screen and (max-width: 480px) {
+    .navbar-brand span, .navbar-brand .dirty-indicator { font-size: 0.95rem; }
+    .main-content { padding: 0.75rem; }
+    .preview-container { padding: 1rem; }
+    .card { padding: 1.1rem; }
+    /* Filas de dos columnas → una sola columna en móviles pequeños. */
+    .form-row, .findings-grid, .account-grid { grid-template-columns: 1fr !important; }
+    /* Botones de acción a ancho completo para mejor toque. */
+    .login-btn, .modal-actions button { width: 100%; }
+    .report-card-actions { flex-wrap: wrap; }
+}
+
 /* ==================== FINDING CARDS — COMPREHENSIVE PRINT BACKGROUNDS ==================== */
 /* Must be LAST in the file so these @media print rules win the cascade over the gradient
    screen rules above (same specificity + !important → later declaration order wins). */
@@ -4740,35 +4832,6 @@ button {
     border-radius: 0.5rem;
     font-size: 0.82rem;
     font-weight: 500;
-}
-
-.login-default-creds {
-    margin-top: 1.4rem;
-    padding-top: 1.1rem;
-    border-top: 1px dashed var(--gray-200);
-    text-align: center;
-    font-size: 0.82rem;
-    color: var(--gray-500);
-}
-
-.login-default-creds__label {
-    display: block;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--gray-400);
-    margin-bottom: 0.4rem;
-    font-weight: 700;
-}
-
-.login-default-creds code {
-    background: var(--gray-100);
-    border: 1px solid var(--gray-200);
-    padding: 0.15rem 0.45rem;
-    border-radius: 0.35rem;
-    font-weight: 700;
-    color: var(--gray-700);
-    font-family: 'SF Mono', 'Menlo', monospace;
 }
 
 /* Perfil (dentro del modal de ajustes) */
@@ -4934,6 +4997,18 @@ button {
     font-weight: 700;
 }
 
+.account-shared-note {
+    margin: -0.4rem 0 1.1rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--gray-600);
+    background: var(--gray-50, #f8fafc);
+    border: 1px solid var(--gray-200, #e2e8f0);
+    border-left: 3px solid var(--primary, #6366f1);
+    border-radius: 8px;
+}
+
 .account-divider {
     height: 1px;
     background: var(--gray-200);
@@ -5054,6 +5129,79 @@ button {
     text-align: center;
     padding: 1rem 0;
     margin: 0;
+}
+
+/* ============================================================= */
+/* Página de cuenta en temas oscuros / HTB                       */
+/* ------------------------------------------------------------- */
+/* La página de cuenta usaba colores claros fijos y no reaccionaba */
+/* al tema activo (data-theme lo fija applyThemeAttributes según   */
+/* el tema global de la BD). Estos overrides hacen que la cuenta   */
+/* respete el tema en vigor (oscuro/red team via "dark", y HTB).   */
+[data-theme="dark"] .account-page,
+[data-theme="htb"] .account-page {
+    background:
+        radial-gradient(1000px 500px at 50% -15%, rgba(59,130,246,0.10), transparent 70%),
+        #0b0f19;
+}
+[data-theme="htb"] .account-page {
+    background:
+        radial-gradient(1000px 500px at 50% -15%, rgba(159,239,0,0.08), transparent 70%),
+        #111927;
+}
+
+[data-theme="dark"] .account-card,
+[data-theme="htb"] .account-card {
+    background: #111827;
+    border-color: #1f2a3c;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+}
+[data-theme="htb"] .account-card {
+    background: #1a2332;
+    border-color: #2a3a52;
+}
+
+[data-theme="dark"] .account-section-title,
+[data-theme="htb"] .account-section-title,
+[data-theme="dark"] .account-signed-in strong,
+[data-theme="htb"] .account-signed-in strong,
+[data-theme="dark"] .account-user-name,
+[data-theme="htb"] .account-user-name { color: #e2e8f0; }
+
+[data-theme="dark"] .account-subsection-title,
+[data-theme="htb"] .account-subsection-title,
+[data-theme="dark"] .account-signed-in-label,
+[data-theme="htb"] .account-signed-in-label,
+[data-theme="dark"] .account-empty,
+[data-theme="htb"] .account-empty { color: #94a3b8; }
+
+[data-theme="dark"] .account-divider,
+[data-theme="htb"] .account-divider { background: #1f2a3c; }
+
+[data-theme="dark"] .account-user-row,
+[data-theme="htb"] .account-user-row {
+    background: #0f172a;
+    border-color: #1f2a3c;
+}
+[data-theme="dark"] .account-user-row:hover,
+[data-theme="htb"] .account-user-row:hover {
+    background: #16213a;
+    border-color: #2d4a6e;
+}
+
+[data-theme="dark"] .account-page .login-label,
+[data-theme="htb"] .account-page .login-label { color: #cbd5e1; }
+
+[data-theme="dark"] .account-page .login-input,
+[data-theme="htb"] .account-page .login-input {
+    background: #0f172a;
+    border-color: #2d3b52;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .account-page .login-input:focus,
+[data-theme="htb"] .account-page .login-input:focus {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
 }
 
 /* ============================================================= */

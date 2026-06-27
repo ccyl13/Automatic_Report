@@ -30,7 +30,6 @@ const state = {
         auditSummary: '',
         testsPerformed: '',
         recommendedSolutions: '',
-        reportTheme: 'light',
         // Alcance y metodología (informe profesional)
         scopeIn: '',
         scopeOut: '',
@@ -101,6 +100,12 @@ const state = {
     loginPassword: '',
     loginError: '',
     loginLoading: false,
+    // Configuración inicial (primer arranque, sin usuarios registrados)
+    needsSetup: false,
+    setupUsername: '',
+    setupPassword: '',
+    setupError: '',
+    setupLoading: false,
     showProfile: false,
     profileError: '',
     profileSuccess: '',
@@ -272,7 +277,12 @@ const UI = {
         loginPass: 'Contraseña',
         loginBtn: 'Entrar',
         loginLoading: 'Entrando...',
-        defaultCredentials: 'Credenciales por defecto',
+        setupTitle: 'Configuración inicial',
+        setupSubtitle: 'Crea la primera cuenta de administrador para empezar',
+        setupBtn: 'Crear cuenta',
+        setupLoading: 'Creando...',
+        setupError: 'No se pudo crear la cuenta',
+        sharedDataNote: 'Todos los usuarios comparten los mismos reportes, hallazgos y ajustes.',
         profile: 'Perfil',
         logout: 'Cerrar sesión',
         changePassword: 'Cambiar contraseña',
@@ -311,8 +321,10 @@ const UI = {
         mcpNewKeyWarning: 'Copia esta clave ahora. No se volverá a mostrar.',
         mcpConfigTitle: 'Configuración para Claude Desktop',
         mcpConfigDesc: 'Pega este bloque en tu archivo claude_desktop_config.json (en la sección "mcpServers"):',
-        mcpCliTitle: 'Claude Code CLI / Variables de entorno',
-        mcpCliDesc: 'Para usar con Claude Code CLI, establece estas variables antes de lanzar el servidor:',
+        mcpCliTitle: 'Claude Code CLI (local / stdio)',
+        mcpCliDesc: 'Para usar con Claude Code CLI en local, establece estas variables antes de lanzar el servidor:',
+        mcpRemoteTitle: 'Conexión remota por HTTP (servidor en un VPS)',
+        mcpRemoteDesc: 'Si Pentestify corre en un servidor remoto, conéctate desde Claude Code sin ejecutar nada en local (la API key viaja en la cabecera de cada petición):',
         mcpCopy: 'Copiar',
         mcpCopied: '¡Copiado!',
         mcpCreatedAt: 'Creada',
@@ -472,7 +484,12 @@ const UI = {
         loginPass: 'Password',
         loginBtn: 'Sign in',
         loginLoading: 'Signing in...',
-        defaultCredentials: 'Default credentials',
+        setupTitle: 'Initial setup',
+        setupSubtitle: 'Create the first administrator account to get started',
+        setupBtn: 'Create account',
+        setupLoading: 'Creating...',
+        setupError: 'Could not create the account',
+        sharedDataNote: 'All users share the same reports, findings and settings.',
         profile: 'Profile',
         logout: 'Log out',
         changePassword: 'Change password',
@@ -511,8 +528,10 @@ const UI = {
         mcpNewKeyWarning: 'Copy this key now. It will not be shown again.',
         mcpConfigTitle: 'Claude Desktop Configuration',
         mcpConfigDesc: 'Paste this block into your claude_desktop_config.json (under "mcpServers"):',
-        mcpCliTitle: 'Claude Code CLI / Environment Variables',
-        mcpCliDesc: 'To use with Claude Code CLI, set these environment variables before launching the server:',
+        mcpCliTitle: 'Claude Code CLI (local / stdio)',
+        mcpCliDesc: 'To use with Claude Code CLI locally, set these environment variables before launching the server:',
+        mcpRemoteTitle: 'Remote HTTP connection (server on a VPS)',
+        mcpRemoteDesc: 'If Pentestify runs on a remote server, connect from Claude Code without running anything locally (the API key travels in each request header):',
         mcpCopy: 'Copy',
         mcpCopied: 'Copied!',
         mcpCreatedAt: 'Created',
@@ -778,7 +797,9 @@ const API = {
         login: (data) => API.request('POST', '/api/auth/login', data),
         logout: () => API.request('POST', '/api/auth/logout'),
         me: () => API.request('GET', '/api/auth/me'),
-        changePassword: (data) => API.request('POST', '/api/auth/change-password', data)
+        changePassword: (data) => API.request('POST', '/api/auth/change-password', data),
+        needsSetup: () => API.request('GET', '/api/auth/needs-setup'),
+        setup: (data) => API.request('POST', '/api/auth/setup', data)
     },
 
     users: {
@@ -3133,7 +3154,7 @@ function renderReportsPage() {
                 <span>${state.lang === 'es' ? 'por' : 'by'}</span>
                 <a href="https://www.linkedin.com/in/maalfer1/" target="_blank" rel="noopener noreferrer">Mario Álvarez</a>
                 <span>${state.lang === 'es' ? 'y' : 'and'}</span>
-                <a href="https://es.linkedin.com/in/thomasoneil%C3%A1lvarez" target="_blank" rel="noopener noreferrer">Thomas O'Neill</a>
+                <a href="https://es.linkedin.com/in/thomasoneil%C3%A1lvarez" target="_blank" rel="noopener noreferrer">Thomas O'Neil</a>
             </footer>
         </div>
     `;
@@ -3559,10 +3580,40 @@ function renderLogin() {
                     </button>
                 </form>
 
-                <div class="login-default-creds">
-                    <span class="login-default-creds__label">${t.defaultCredentials}</span>
-                    <code>admin</code> / <code>admin</code>
+                <div class="login-version">v${APP_VERSION}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderSetup() {
+    const t = UI[state.lang];
+    return `
+        <div class="login-screen">
+            <div class="login-card">
+                <div class="login-brand">
+                    <img src="/assets/logo-transparent.png" alt="Pentestify">
+                    <div>
+                        <h1>${t.setupTitle}</h1>
+                        <p>${t.setupSubtitle}</p>
+                    </div>
                 </div>
+
+                <form onsubmit="doSetup(event)" autocomplete="off">
+                    <label class="login-label">${t.loginUser}</label>
+                    <input type="text" id="setupUsername" class="login-input" autocomplete="username"
+                           value="${escapeHTML(state.setupUsername)}" oninput="state.setupUsername = this.value" autofocus>
+
+                    <label class="login-label">${t.loginPass}</label>
+                    <input type="password" id="setupPassword" class="login-input" autocomplete="new-password"
+                           value="${escapeHTML(state.setupPassword)}" oninput="state.setupPassword = this.value">
+
+                    ${state.setupError ? `<div class="login-error">${escapeHTML(state.setupError)}</div>` : ''}
+
+                    <button type="submit" class="login-btn" ${state.setupLoading ? 'disabled' : ''}>
+                        ${state.setupLoading ? t.setupLoading : t.setupBtn}
+                    </button>
+                </form>
 
                 <div class="login-version">v${APP_VERSION}</div>
             </div>
@@ -3573,6 +3624,9 @@ function renderLogin() {
 function renderAccountPage() {
     const t = UI[state.lang];
 
+    // Cualquier usuario —incluido el propio— se puede eliminar mientras quede al
+    // menos otro registrado. Si sólo hay uno, no se muestra el botón de borrar.
+    const canDelete = state.users.length > 1;
     const userRows = state.users.length
         ? state.users.map(u => {
             const isSelf = u.username === state.authUsername;
@@ -3585,11 +3639,11 @@ function renderAccountPage() {
                         <span class="account-user-name">${escapeHTML(u.username)}</span>
                         ${isSelf ? `<span class="account-user-badge">${t.youLabel}</span>` : ''}
                     </div>
-                    ${isSelf
-                        ? ''
-                        : `<button class="account-user-delete" onclick="deleteUser(${u.id})" title="${t.deleteLabel}">
+                    ${canDelete
+                        ? `<button class="account-user-delete" onclick="deleteUser(${u.id})" title="${t.deleteLabel}">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                            </button>`
+                        : ''
                     }
                 </div>`;
         }).join('')
@@ -3652,6 +3706,8 @@ function renderAccountPage() {
 
                     <div class="account-card">
                         <h2 class="account-section-title">${t.manageUsers}</h2>
+
+                        <p class="account-shared-note">${t.sharedDataNote}</p>
 
                         <p class="account-subsection-title">${t.existingUsers}${state.users.length ? `<span class="account-user-count">${state.users.length}</span>` : ''}</p>
                         <div class="account-user-list">
@@ -3763,9 +3819,10 @@ function renderApp() {
         return;
     }
 
-    // Puerta de autenticación: sin sesión válida sólo se muestra el login.
+    // Puerta de autenticación: sin sesión válida sólo se muestra el login,
+    // salvo en el primer arranque (sin usuarios), donde se pide crear la cuenta.
     if (!state.isAuthenticated) {
-        app.innerHTML = renderLogin();
+        app.innerHTML = state.needsSetup ? renderSetup() : renderLogin();
         return;
     }
 
@@ -3840,6 +3897,44 @@ async function doLogin(event) {
     }
 }
 
+async function doSetup(event) {
+    if (event) event.preventDefault();
+    if (state.setupLoading) return;
+
+    state.setupError = '';
+    state.setupLoading = true;
+    renderApp();
+
+    try {
+        const result = await API.auth.setup({
+            username: (state.setupUsername || '').trim(),
+            password: state.setupPassword || ''
+        });
+        // Cuenta creada: la respuesta deja la sesión iniciada (cookie). Entramos.
+        state.needsSetup = false;
+        state.isAuthenticated = true;
+        state.authUsername = result.username;
+        state.setupPassword = '';
+        state.setupUsername = '';
+        state.setupError = '';
+        await loadCustomThemes();
+        const savedTheme = localStorage.getItem('pentestify_theme');
+        state.reportTheme = (savedTheme && listAllThemes().some(t => t.slug === savedTheme)) ? savedTheme : 'light';
+        await loadSettings();
+        applyThemeAttributes(state.reportTheme);
+        if (state.isAccountView) {
+            await loadUsers();
+        }
+    } catch (err) {
+        state.setupError = err.message && !err.message.startsWith('HTTP ')
+            ? err.message
+            : UI[state.lang].setupError;
+    } finally {
+        state.setupLoading = false;
+        renderApp();
+    }
+}
+
 async function doLogout() {
     try {
         await API.auth.logout();
@@ -3900,7 +3995,16 @@ async function deleteUser(userId) {
     state.userMgmtSuccess = '';
 
     try {
-        await API.users.delete(userId);
+        const result = await API.users.delete(userId);
+        // Si se eliminó la propia cuenta, la sesión deja de ser válida: cerramos
+        // sesión en el cliente y volvemos al login.
+        if (result && result.deleted_self) {
+            state.isAuthenticated = false;
+            state.authUsername = '';
+            state.users = [];
+            renderApp();
+            return;
+        }
         state.userMgmtSuccess = t.userDeleted;
         await loadUsers();
     } catch (err) {
@@ -4058,6 +4162,12 @@ function renderMcpSection() {
             `export PENTESTIFY_API_KEY="${keyForConfig}"\n` +
             `${state.mcpPythonExec} "${state.mcpServerPath}"`;
 
+        // Conexión remota: el servidor MCP corre en el propio Pentestify (mismo
+        // host/puerto, ruta /mcp). No se ejecuta nada en local.
+        const remoteCmd =
+            `claude mcp add --transport http pentestify ${window.location.origin}/mcp \\\n` +
+            `  --header "Authorization: Bearer ${keyForConfig}"`;
+
         const mcpNotInstalledBanner = state.mcpAvailable === false ? `
             <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;gap:0.6rem;align-items:flex-start;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -4083,6 +4193,13 @@ function renderMcpSection() {
             <div style="position:relative;">
                 <pre id="mcp-cli-block" style="font-size:0.72rem;background:#0f172a;color:#e2e8f0;padding:1rem 1.1rem;border-radius:8px;overflow-x:auto;margin:0;line-height:1.6;">${escapeHTML(cliBlock)}</pre>
                 <button class="btn-sm btn-secondary" style="position:absolute;top:0.5rem;right:0.5rem;" onclick="copyText('mcp-cli-block', this)">${t.mcpCopy}</button>
+            </div>
+
+            <h3 class="account-subsection-title" style="margin:1.25rem 0 0.4rem;">${t.mcpRemoteTitle}</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted,#64748b);margin-bottom:0.6rem;">${t.mcpRemoteDesc}</p>
+            <div style="position:relative;">
+                <pre id="mcp-remote-block" style="font-size:0.72rem;background:#0f172a;color:#e2e8f0;padding:1rem 1.1rem;border-radius:8px;overflow-x:auto;margin:0;line-height:1.6;">${escapeHTML(remoteCmd)}</pre>
+                <button class="btn-sm btn-secondary" style="position:absolute;top:0.5rem;right:0.5rem;" onclick="copyText('mcp-remote-block', this)">${t.mcpCopy}</button>
             </div>`;
     }
 
@@ -4226,7 +4343,6 @@ function setReportTheme(theme) {
     const exists = listAllThemes().some(t => t.slug === theme);
     if (!exists) theme = 'light';
     state.reportTheme = theme;
-    state.auditData.reportTheme = theme;
     state.isDirty = true;
     applyThemeAttributes(theme);
     localStorage.setItem('pentestify_theme', theme); // cache local rápida (no afecta a la exportación)
@@ -4728,7 +4844,6 @@ async function loadReport(id) {
             auditSummary: report.audit_summary || '',
             testsPerformed: report.tests_performed || '',
             recommendedSolutions: report.recommended_solutions || '',
-            reportTheme: report.report_theme || 'light',
             scopeIn: report.scope_in || '',
             scopeOut: report.scope_out || '',
             methodologyNotes: report.methodology_notes || '',
@@ -4741,12 +4856,10 @@ async function loadReport(id) {
             scopeFieldsVisibility: (typeof report.scope_fields_visibility === 'object' && report.scope_fields_visibility) ? report.scope_fields_visibility : {}
         };
         state.lang = report.lang;
-        // Aplica el tema guardado en el reporte.
-        if (report.report_theme && listAllThemes().some(t => t.slug === report.report_theme)) {
-            state.reportTheme = report.report_theme;
-            applyThemeAttributes(state.reportTheme);
-            localStorage.setItem('pentestify_theme', state.reportTheme);
-        }
+        // No tocamos el tema al abrir un reporte: se conserva el tema global de la
+        // BD (cargado en el arranque desde ajustes) para garantizar uniformidad.
+        // Reafirmamos el atributo por si el DOM se hubiera reseteado.
+        applyThemeAttributes(state.reportTheme);
         state.findings = sortFindingsBySeverity(normalizeFindings(report.findings || []));
 
         const draft = localStorage.getItem('report_' + report.id + '_draft');
@@ -5011,7 +5124,6 @@ async function saveCurrentReport(silent = false) {
             tests_performed: state.auditData.testsPerformed || '',
             recommended_solutions: state.auditData.recommendedSolutions || '',
             audit_type: state.auditData.auditType || 'pentesting_web',
-            report_theme: state.reportTheme || state.auditData.reportTheme || 'light',
             scope_in: state.auditData.scopeIn || '',
             scope_out: state.auditData.scopeOut || '',
             methodology_notes: state.auditData.methodologyNotes || '',
@@ -5187,6 +5299,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             state.isAuthenticated = false;
+            // Sin sesión válida: ¿la app está sin configurar (primer arranque,
+            // ningún usuario)? Si es así mostramos la configuración inicial.
+            try {
+                const setup = await API.auth.needsSetup();
+                state.needsSetup = !!(setup && setup.needs_setup);
+            } catch (_e) {
+                state.needsSetup = false;
+            }
         }
         state.authChecked = true;
         renderApp();

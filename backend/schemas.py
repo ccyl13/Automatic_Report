@@ -156,7 +156,6 @@ class ReportBase(BaseModel):
     date: str = ""
     lang: str = "es"
     theme: str = "corporate"  # corporate, ctf, certification (legacy)
-    report_theme: str = "light"
     client_logo: List[str] = []
     has_incidents: bool = False
     incidents_text: str = ""

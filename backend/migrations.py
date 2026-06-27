@@ -37,9 +37,12 @@ def _add_columns(engine, table, columns):
 
 
 def _migrate_add_pro_report_fields(engine):
-    """Migration: campos de informe profesional (alcance, metodología, tema, historial)."""
+    """Migration: campos de informe profesional (alcance, metodología, historial).
+
+    Nota: el tema del informe es un ajuste GLOBAL (tabla settings.report_theme),
+    no por reporte. La antigua columna reports.report_theme quedó obsoleta; las
+    BD existentes pueden conservarla sin efecto (el modelo ya no la declara)."""
     _add_columns(engine, "reports", [
-        ("report_theme", "VARCHAR DEFAULT 'light'"),
         ("audit_type", "VARCHAR DEFAULT 'pentesting_web'"),
         ("scope_in", "TEXT DEFAULT ''"),
         ("scope_out", "TEXT DEFAULT ''"),

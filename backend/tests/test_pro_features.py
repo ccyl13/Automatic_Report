@@ -100,7 +100,6 @@ class TestExtendedFields:
     def _make_report(self, client):
         return client.post("/api/reports", json={
             "document_title": "T",
-            "report_theme": "htb",
             "audit_type": "caja_negra",
             "scope_in": "https://app.example.com",
             "scope_out": "10.0.0.0/8",
@@ -116,7 +115,6 @@ class TestExtendedFields:
     def test_report_pro_fields_persist(self, client):
         rid = self._make_report(client)["id"]
         got = client.get(f"/api/reports/{rid}").json()
-        assert got["report_theme"] == "htb"
         assert got["audit_type"] == "caja_negra"
         assert got["scope_in"] == "https://app.example.com"
         assert got["methodology_standards"] == ["owasp_wstg", "ptes"]

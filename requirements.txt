@@ -1,20 +1,19 @@
 # ---------------------------------------------------------------------------
 # Dependencias de ejecución (runtime)
 # ---------------------------------------------------------------------------
-# Pines en >= a versiones verificadas que instalan en Python 3.12 - 3.14.
-# (Las versiones exactas antiguas no compilaban en Python 3.14: pydantic-core
-#  fallaba al construirse desde fuente.)
-fastapi>=0.118                 # framework de la API
-uvicorn[standard]>=0.34        # servidor ASGI
-sqlalchemy>=2.0.36             # ORM
-pydantic>=2.10                 # validación de esquemas
-starlette>=0.40                # >=0.40 corrige CVE-2024-47874 (DoS multipart sin límite)
-python-multipart>=0.0.18       # subida de ficheros (FastAPI); >=0.0.18 corrige CVE-2024-53981
-mcp>=1.0                       # MCP server (requiere Python ≥ 3.10 — solo para mcp_server.py, no para el API server)
+# Sin pines de versión: pip instalará siempre la última versión disponible
+# compatible con tu Python.
+fastapi                  # framework de la API
+uvicorn[standard]        # servidor ASGI
+sqlalchemy               # ORM
+pydantic                 # validación de esquemas
+starlette                # capa ASGI bajo FastAPI
+python-multipart         # subida de ficheros (FastAPI)
+mcp                      # MCP server (requiere Python ≥ 3.10)
 
 # ---------------------------------------------------------------------------
 # Solo para la suite de tests (backend/tests/): no se necesita en producción
 # ---------------------------------------------------------------------------
-pytest>=8.0
-pytest-asyncio>=0.23
-httpx>=0.27                     # cliente usado por el TestClient de FastAPI/Starlette
+pytest
+pytest-asyncio
+httpx                    # cliente usado por el TestClient de FastAPI/Starlette

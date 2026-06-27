@@ -32,7 +32,6 @@ class Report(Base):
     date = Column(String, default=lambda: datetime.now().strftime("%Y-%m-%d"))
     lang = Column(String, default="es")
     theme = Column(String, default="corporate")  # corporate, ctf, certification (legacy)
-    report_theme = Column(String, default="light")  # slug del tema de estilos del informe (light/dark/htb/custom-*)
     client_logo = Column(JSON, default=list)
     has_incidents = Column(Integer, default=0)  # 0 = false, 1 = true
     incidents_text = Column(Text, default="")

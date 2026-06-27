@@ -23,17 +23,59 @@ models.Base.metadata.create_all(bind=engine)
 from migrations import run_migrations
 run_migrations(engine)
 
-# Sembrar el usuario administrador por defecto (admin/admin) en el primer arranque.
-_seed_db = SessionLocal()
-try:
-    auth.get_or_create_default_user(_seed_db)
-finally:
-    _seed_db.close()
+# No se siembra ningún usuario por defecto. En el primer arranque la BD está
+# vacía de usuarios y el frontend muestra la configuración inicial para crear la
+# primera cuenta (ver /api/auth/needs-setup y /api/auth/setup).
+
+# --------------------------------------------------------------------------- #
+# MCP sobre HTTP (streamable-http) montado en el MISMO proceso y puerto.
+# Permite conectar agentes remotos (Claude Code / Desktop) a https://host/mcp
+# sin ejecutar nada en local: cada cliente envía su API key en la cabecera
+# `Authorization: Bearer ptf_...`. Se activa salvo que PENTESTIFY_MCP_HTTP=0.
+# Requiere el paquete 'mcp' (Python >= 3.10); si no está disponible (p. ej. en
+# un Python 3.9 de desarrollo), se omite silenciosamente y el API arranca igual.
+# --------------------------------------------------------------------------- #
+_mcp_enabled = False
+_mcp_lifespan = None
+if os.environ.get("PENTESTIFY_MCP_HTTP", "1") != "0":
+    try:
+        from contextlib import asynccontextmanager
+        import mcp_server
+
+        # El sub-app sirve el endpoint en su raíz para que, montado en "/mcp",
+        # la ruta externa sea exactamente "/mcp".
+        mcp_server.mcp.settings.streamable_http_path = "/"
+
+        @asynccontextmanager
+        async def _mcp_lifespan(_app):
+            # El session manager del transporte streamable-http debe arrancarse
+            # en el lifespan del proceso anfitrión (los sub-apps montados no
+            # reciben los eventos de lifespan por sí solos).
+            async with mcp_server.mcp.session_manager.run():
+                yield
+
+        _mcp_enabled = True
+    except (Exception, SystemExit) as _mcp_err:  # pragma: no cover
+        # SystemExit incluido a propósito: mcp_server.py hace sys.exit(1) cuando
+        # falta el paquete 'mcp' (Python < 3.10), y al ser BaseException escaparía
+        # de "except Exception" y tumbaría toda la app. MCP es opcional, así que
+        # aquí degradamos con elegancia y dejamos el API funcionando igualmente.
+        print(f"[Pentestify] MCP HTTP deshabilitado: {_mcp_err}", file=sys.stderr)
+        _mcp_lifespan = None
+
+# Documentación interactiva (Swagger/ReDoc/OpenAPI) DESACTIVADA por defecto:
+# expone públicamente todo el mapa de la API a un atacante anónimo. Se puede
+# reactivar en entornos de desarrollo con ENABLE_DOCS=1.
+_enable_docs = os.environ.get("ENABLE_DOCS", "0") == "1"
 
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="2.1.0"
+    version="2.1.0",
+    lifespan=_mcp_lifespan,
+    docs_url="/docs" if _enable_docs else None,
+    redoc_url="/redoc" if _enable_docs else None,
+    openapi_url="/openapi.json" if _enable_docs else None,
 )
 
 # Orígenes permitidos para CORS. Lista explícita (separada por comas en
@@ -70,6 +112,54 @@ app.mount("/css", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "css")), n
 app.mount("/js", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "js")), name="js")
 app.mount("/assets", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "assets")), name="assets")
 
+class MCPAuthGate:
+    """Verja ASGI delante del endpoint MCP montado.
+
+    Exige una API key `ptf_...` válida en CADA petición — incluido el handshake
+    (initialize / tools/list) — antes de pasar al sub-app del MCP. Sin esto, un
+    cliente anónimo podía conectar y enumerar las herramientas e instrucciones
+    del servidor (fuga de superficie). El acceso a los datos ya requería la key
+    al reenviarse al API REST; ahora la propia conexión MCP también la exige.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers") or [])
+        auth_header = headers.get(b"authorization", b"").decode("latin-1")
+        token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+
+        authorized = False
+        if token.startswith(auth.API_KEY_PREFIX):
+            _db = SessionLocal()
+            try:
+                authorized = auth.verify_api_key(token, _db) is not None
+            finally:
+                _db.close()
+
+        if not authorized:
+            response = JSONResponse(
+                {"detail": "API key requerida o inválida"},
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            await response(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
+
+
+# Endpoint MCP (streamable-http) en /mcp — ver bloque de configuración arriba.
+# Se monta detrás de MCPAuthGate para que ninguna petición anónima alcance el
+# transporte MCP.
+if _mcp_enabled:
+    app.mount("/mcp", MCPAuthGate(mcp_server.mcp.streamable_http_app()))
+
 
 @app.get("/api")
 def api_info():
@@ -98,6 +188,40 @@ def _auth_response(user: models.User, message: str = None) -> JSONResponse:
         max_age=auth.TOKEN_TTL,
     )
     return response
+
+
+@app.get("/api/auth/needs-setup")
+def needs_setup(db: Session = Depends(get_db)):
+    """Indica si la app está sin configurar (no hay ningún usuario todavía).
+
+    El frontend lo usa para mostrar la pantalla de configuración inicial en lugar
+    del login. Sólo revela un booleano, sin datos sensibles.
+    """
+    return {"needs_setup": not auth.users_exist(db)}
+
+
+@app.post("/api/auth/setup")
+def setup_first_user(payload: schemas.CreateUserRequest, db: Session = Depends(get_db)):
+    """Crea la PRIMERA cuenta de la aplicación.
+
+    Sólo funciona cuando la base de datos no tiene ningún usuario; una vez creada
+    la primera cuenta, este endpoint queda bloqueado (409) y la gestión de
+    usuarios pasa a requerir autenticación (/api/users).
+    """
+    if auth.users_exist(db):
+        raise HTTPException(status_code=409, detail="La aplicación ya está configurada")
+
+    username = (payload.username or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="El nombre de usuario no puede estar vacío")
+    if len(payload.password) < 4:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+
+    user = models.User(username=username, password_hash=auth.hash_password(payload.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _auth_response(user, message="Cuenta creada correctamente")
 
 
 @app.post("/api/auth/login")
@@ -178,14 +302,16 @@ def delete_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    if user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="No puedes eliminar tu propio usuario mientras estás conectado")
+    # Se permite eliminar cualquier usuario —incluido el propio con el que se está
+    # conectado— siempre que quede al menos otro usuario registrado. Si se elimina
+    # la cuenta propia, su sesión deja de ser válida y el frontend redirige al login.
     if db.query(models.User).count() <= 1:
-        raise HTTPException(status_code=400, detail="Debe existir al menos un usuario")
+        raise HTTPException(status_code=400, detail="Debe existir al menos un usuario registrado")
 
+    deleted_self = user.id == current_user.id
     db.delete(user)
     db.commit()
-    return {"message": "Usuario eliminado correctamente"}
+    return {"message": "Usuario eliminado correctamente", "deleted_self": deleted_self}
 
 
 @app.get("/api/reports", response_model=List[schemas.ReportList])
@@ -659,7 +785,10 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
         shutil.copy2(db_path, backup_path)
     
     try:
-        temp_path = tempfile.mktemp(suffix=".db")
+        # mkstemp crea el fichero de forma atómica con permisos 0600 y nombre no
+        # predecible (mktemp estaba deprecado por race condition / nombre adivinable).
+        _tmp_fd, temp_path = tempfile.mkstemp(suffix=".db")
+        os.close(_tmp_fd)
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
@@ -717,10 +846,22 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
                         cursor.execute("UPDATE themes SET custom_css = ? WHERE id = ?",
                                        (schemas.sanitize_css_source(row[2] or ""), row_id))
 
+            # Normalizamos la tabla 'users' importada: descartamos cuentas cuyo
+            # hash de contraseña no tenga el formato PBKDF2 esperado. Un .db
+            # manipulado podría traer credenciales con hashes arbitrarios; así
+            # sólo sobreviven cuentas verificables por el flujo normal de login.
+            if "users" in tables:
+                user_cols = [r[1] for r in cursor.execute("PRAGMA table_info(users)").fetchall()]
+                if "password_hash" in user_cols:
+                    for uid, phash in cursor.execute("SELECT id, password_hash FROM users").fetchall():
+                        if not auth.is_valid_password_hash(phash):
+                            cursor.execute("DELETE FROM users WHERE id = ?", (uid,))
+
             conn.commit()
             conn.close()
         except sqlite3.Error as e:
-            raise HTTPException(status_code=400, detail=f"Archivo no es una base de datos SQLite válida: {str(e)}")
+            print(f"[Pentestify] Import: archivo SQLite inválido: {e}", file=sys.stderr)
+            raise HTTPException(status_code=400, detail="El archivo no es una base de datos SQLite válida")
         
         db.close()
 
@@ -757,7 +898,9 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
         if backup_path and os.path.exists(backup_path):
             shutil.copy2(backup_path, db_path)
             os.remove(backup_path)
-        raise HTTPException(status_code=500, detail=f"Error al importar la base de datos: {str(e)}")
+        # El detalle (ruta, error SQL...) sólo va al log; al cliente, mensaje genérico.
+        print(f"[Pentestify] Error al importar la base de datos: {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="No se pudo importar la base de datos")
 
 
 # --------------------------------------------------------------------------- #

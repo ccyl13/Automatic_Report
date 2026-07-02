@@ -174,9 +174,23 @@ def root():
 # --------------------------------------------------------------------------- #
 # Autenticación
 # --------------------------------------------------------------------------- #
+def _using_default_password(user: models.User) -> bool:
+    """True si la cuenta 'admin' conserva la contraseña por defecto 'admin'.
+
+    Se usa para (a) mostrar la pista de credenciales en el login y (b) avisar al
+    usuario nada más entrar de que debería cambiarla. En cuanto la contraseña se
+    cambia, ambos avisos desaparecen automáticamente.
+    """
+    return user.username == "admin" and auth.verify_password("admin", user.password_hash)
+
+
 def _auth_response(user: models.User, message: str = None) -> JSONResponse:
     token = auth.create_token(user)
-    content = {"token": token, "username": user.username}
+    content = {
+        "token": token,
+        "username": user.username,
+        "using_default_password": _using_default_password(user),
+    }
     if message:
         content["message"] = message
     response = JSONResponse(content=content)
@@ -198,6 +212,20 @@ def needs_setup(db: Session = Depends(get_db)):
     del login. Sólo revela un booleano, sin datos sensibles.
     """
     return {"needs_setup": not auth.users_exist(db)}
+
+
+@app.get("/api/auth/default-credentials")
+def default_credentials(db: Session = Depends(get_db)):
+    """Indica si la cuenta 'admin' sigue usando la contraseña por defecto 'admin'.
+
+    El login lo consulta (sin autenticar) para mostrar la pista de credenciales
+    por defecto sólo mientras siga siendo válida. Si el admin cambia su
+    contraseña, deja de responder True y la pista desaparece. No revela ningún
+    dato sensible: sólo un booleano.
+    """
+    user = db.query(models.User).filter(models.User.username == "admin").first()
+    active = bool(user and auth.verify_password("admin", user.password_hash))
+    return {"default_admin": active}
 
 
 @app.post("/api/auth/setup")
@@ -241,7 +269,7 @@ def logout():
 
 @app.get("/api/auth/me")
 def get_me(user: models.User = Depends(auth.require_auth)):
-    return {"username": user.username}
+    return {"username": user.username, "using_default_password": _using_default_password(user)}
 
 
 @app.post("/api/auth/change-password")

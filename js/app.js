@@ -109,6 +109,10 @@ const state = {
     showProfile: false,
     profileError: '',
     profileSuccess: '',
+    // Credenciales por defecto (admin/admin): pista en el login y aviso al entrar
+    showDefaultCredsHint: false,   // true mientras admin conserve la contraseña 'admin'
+    usingDefaultPassword: false,   // true si el usuario logueado usa la pass por defecto
+    passwordWarningDismissed: false, // el usuario cerró el modal de aviso en esta sesión
     // Página de cuenta / gestión de usuarios
     isAccountView: false,
     users: [],
@@ -292,6 +296,13 @@ const UI = {
         savePassword: 'Guardar contraseña',
         passwordMismatch: 'Las contraseñas no coinciden',
         passwordChanged: 'Contraseña actualizada correctamente',
+        defaultCredsHint: 'Acceso por defecto:',
+        defaultCredsUserLabel: 'usuario',
+        defaultCredsPassLabel: 'contraseña',
+        pwWarnTitle: 'Cambia tu contraseña',
+        pwWarnBody: 'Estás usando las credenciales por defecto (admin / admin). Por seguridad, te recomendamos cambiar la contraseña ahora mismo.',
+        pwWarnCta: 'Cambiar contraseña',
+        pwWarnDismiss: 'Ahora no',
         accountTitle: 'Cuenta y usuarios',
         accountSubtitle: 'Gestiona tu cuenta y los usuarios del sistema',
         backToApp: 'Volver a la aplicación',
@@ -499,6 +510,13 @@ const UI = {
         savePassword: 'Save password',
         passwordMismatch: 'Passwords do not match',
         passwordChanged: 'Password updated successfully',
+        defaultCredsHint: 'Default access:',
+        defaultCredsUserLabel: 'username',
+        defaultCredsPassLabel: 'password',
+        pwWarnTitle: 'Change your password',
+        pwWarnBody: 'You are using the default credentials (admin / admin). For your security, we recommend changing the password right now.',
+        pwWarnCta: 'Change password',
+        pwWarnDismiss: 'Not now',
         accountTitle: 'Account & users',
         accountSubtitle: 'Manage your account and system users',
         backToApp: 'Back to the app',
@@ -799,7 +817,8 @@ const API = {
         me: () => API.request('GET', '/api/auth/me'),
         changePassword: (data) => API.request('POST', '/api/auth/change-password', data),
         needsSetup: () => API.request('GET', '/api/auth/needs-setup'),
-        setup: (data) => API.request('POST', '/api/auth/setup', data)
+        setup: (data) => API.request('POST', '/api/auth/setup', data),
+        defaultCredentials: () => API.request('GET', '/api/auth/default-credentials')
     },
 
     users: {
@@ -3580,6 +3599,15 @@ function renderLogin() {
                     </button>
                 </form>
 
+                ${state.showDefaultCredsHint ? `
+                <div class="login-default-creds">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>${t.defaultCredsHint}
+                        <code>${t.defaultCredsUserLabel}: admin</code>
+                        <code>${t.defaultCredsPassLabel}: admin</code>
+                    </span>
+                </div>` : ''}
+
                 <div class="login-version">v${APP_VERSION}</div>
             </div>
         </div>
@@ -3852,7 +3880,51 @@ function renderApp() {
         ${renderPdfModal()}
         ${renderDbPasswordModal()}
         ${renderRevisionModal()}
+        ${renderPasswordWarningModal()}
     `;
+}
+
+// Aviso al entrar con las credenciales por defecto (admin/admin). El usuario
+// puede ir directo a cambiar la contraseña o cerrarlo si no le interesa.
+function renderPasswordWarningModal() {
+    if (!state.usingDefaultPassword || state.passwordWarningDismissed) return '';
+    const t = UI[state.lang];
+    return `
+        <div class="settings-overlay pw-warn-overlay" style="align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)dismissPasswordWarning()">
+            <div class="settings-modal pw-warn-modal" style="width:100%;max-width:440px;" role="alertdialog" aria-modal="true" onclick="event.stopPropagation()">
+                <div class="settings-modal-header">
+                    <span style="display:inline-flex;align-items:center;gap:0.5rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                        ${t.pwWarnTitle}
+                    </span>
+                    <button class="settings-close-btn" onclick="dismissPasswordWarning()" aria-label="${t.pwWarnDismiss}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="settings-section">
+                    <p style="font-size:0.88rem;color:var(--gray-500,#6b7280);line-height:1.6;margin:0 0 1.1rem;">
+                        ${t.pwWarnBody}
+                    </p>
+                    <div style="display:flex;gap:0.6rem;">
+                        <button type="button" class="btn-secondary" style="flex:1;" onclick="dismissPasswordWarning()">${t.pwWarnDismiss}</button>
+                        <button type="button" class="login-btn" style="flex:1;margin:0;" onclick="goToChangePassword()">${t.pwWarnCta}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function dismissPasswordWarning() {
+    state.passwordWarningDismissed = true;
+    renderApp();
+}
+
+// Lleva al usuario a la página de cuenta, donde está el formulario de cambio de
+// contraseña. Cerramos antes el modal para no arrastrarlo a la nueva vista.
+function goToChangePassword() {
+    state.passwordWarningDismissed = true;
+    window.location.href = '/?account=1';
 }
 
 // --------------------------------------------------------------------------- //
@@ -3876,6 +3948,9 @@ async function doLogin(event) {
         state.authUsername = result.username;
         state.loginPassword = '';
         state.loginError = '';
+        // Si se entra con la contraseña por defecto, mostramos el aviso al entrar.
+        state.usingDefaultPassword = !!result.using_default_password;
+        state.passwordWarningDismissed = false;
         // Tras iniciar sesión cargamos los temas personalizados y aplicamos el
         // tema guardado (la cookie no existía durante el arranque inicial).
         await loadCustomThemes();
@@ -3944,7 +4019,22 @@ async function doLogout() {
     state.authUsername = '';
     state.loginUsername = '';
     state.loginPassword = '';
+    state.usingDefaultPassword = false;
+    state.passwordWarningDismissed = false;
+    // Refrescamos la pista de credenciales por si cambió desde el último login.
+    await refreshDefaultCredsHint();
     renderApp();
+}
+
+// Consulta al backend si el admin sigue con la contraseña por defecto para
+// decidir si mostrar la pista bajo el formulario de login.
+async function refreshDefaultCredsHint() {
+    try {
+        const res = await API.auth.defaultCredentials();
+        state.showDefaultCredsHint = !!(res && res.default_admin);
+    } catch (e) {
+        state.showDefaultCredsHint = false;
+    }
 }
 
 // El perfil ahora vive en una página propia que se abre en una pestaña nueva.
@@ -4262,6 +4352,9 @@ async function doChangePassword(event) {
         });
         state.profileSuccess = t.passwordChanged;
         state.authUsername = result.username;
+        // Ya no usa la contraseña por defecto: el aviso y la pista dejan de salir.
+        state.usingDefaultPassword = !!result.using_default_password;
+        state.showDefaultCredsHint = false;
         // Limpiamos los campos del formulario tras el éxito.
         ['#currentPassword', '#newPassword', '#confirmPassword'].forEach(id => {
             const el = $(id);
@@ -5285,6 +5378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const me = await API.auth.me();
             state.isAuthenticated = true;
             state.authUsername = me.username;
+            state.usingDefaultPassword = !!me.using_default_password;
             // Cargamos los temas personalizados y las preferencias guardadas en la
             // BD (idioma, tema activo, opciones de PDF). La BD es la fuente de verdad
             // para que la exportación capture el 100% del estado.
@@ -5307,6 +5401,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (_e) {
                 state.needsSetup = false;
             }
+            // Pista de credenciales por defecto bajo el formulario de login: sólo
+            // se muestra mientras el admin conserve la contraseña 'admin'.
+            await refreshDefaultCredsHint();
         }
         state.authChecked = true;
         renderApp();

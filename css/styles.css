@@ -5291,6 +5291,37 @@ button {
     letter-spacing: 0.05em;
 }
 
+/* Pista de credenciales por defecto bajo el formulario de login.
+   Sólo se renderiza mientras el admin conserve la contraseña 'admin'. */
+.login-default-creds {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 1.1rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.22);
+    color: var(--gray-500, #64748b);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.login-default-creds svg {
+    flex-shrink: 0;
+    color: #3b82f6;
+}
+.login-default-creds code {
+    display: inline-block;
+    margin-left: 0.35rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 5px;
+    background: rgba(59, 130, 246, 0.14);
+    color: #2563eb;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
 /* ============================================================ */
 /* v1.2.0 — Gestor de temas, calculadora CVSS y campos pro      */
 /* ============================================================ */

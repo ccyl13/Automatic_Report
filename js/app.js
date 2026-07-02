@@ -739,13 +739,15 @@ function normalizeFinding(f) {
         affected_assets: 'affectedAssets',
         impact_rating: 'impactRating',
         retest_notes: 'retestNotes',
-        template_key: 'templateKey'
+        template_key: 'templateKey',
+        fields_visibility: 'fieldsVisibility'
     };
     Object.entries(map).forEach(([snake, camel]) => {
         if (f[camel] === undefined && f[snake] !== undefined) f[camel] = f[snake];
     });
     if (!Array.isArray(f.references)) f.references = f.references ? [].concat(f.references) : [];
     if (!Array.isArray(f.compliance)) f.compliance = f.compliance ? [].concat(f.compliance) : [];
+    if (typeof f.fieldsVisibility !== 'object' || !f.fieldsVisibility) f.fieldsVisibility = {};
     if (!f.status) f.status = 'open';
     return f;
 }
@@ -1139,22 +1141,28 @@ function renderEditor() {
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>${state.lang === 'es' ? 'Categoría OWASP Top 10' : 'OWASP Top 10 category'}</label>
-                                <input type="text" id="findingOwasp" placeholder="A01:2021" value="${escapeHTML(state.currentFinding.owasp || '')}" oninput="updateCurrentFinding('owasp', this.value)">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
+                                    <label style="margin:0;">${state.lang === 'es' ? 'Categoría OWASP Top 10' : 'OWASP Top 10 category'}</label>
+                                    ${_findingFieldToggle('owasp', state.lang === 'es')}
+                                </div>
+                                <input type="text" id="findingOwasp" placeholder="A01:2021" value="${escapeHTML(state.currentFinding.owasp || '')}" oninput="updateCurrentFinding('owasp', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'owasp') ? 'opacity:0.45;' : ''}">
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>${state.lang === 'es' ? 'Probabilidad' : 'Likelihood'}</label>
-                                <select id="findingLikelihood" onchange="updateCurrentFinding('likelihood', this.value)">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
+                                    <label style="margin:0;">${state.lang === 'es' ? 'Probabilidad' : 'Likelihood'}</label>
+                                    ${_findingFieldToggle('risk', state.lang === 'es')}
+                                </div>
+                                <select id="findingLikelihood" onchange="updateCurrentFinding('likelihood', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'risk') ? 'opacity:0.45;' : ''}">
                                     ${Object.entries(t.riskLevels).map(([k, label]) =>
         `<option value="${k}" ${(state.currentFinding.likelihood || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>${state.lang === 'es' ? 'Impacto (riesgo)' : 'Impact (risk)'}</label>
-                                <select id="findingImpactRating" onchange="updateCurrentFinding('impactRating', this.value)">
+                                <select id="findingImpactRating" onchange="updateCurrentFinding('impactRating', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'risk') ? 'opacity:0.45;' : ''}">
                                     ${Object.entries(t.riskLevels).map(([k, label]) =>
         `<option value="${k}" ${(state.currentFinding.impactRating || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
                                 </select>
@@ -1167,13 +1175,19 @@ function renderEditor() {
                         </div>
 
                         <div class="form-group">
-                            <label>${state.lang === 'es' ? 'Cumplimiento / mapeo (separado por comas)' : 'Compliance / mapping (comma separated)'}</label>
-                            <input type="text" id="findingCompliance" placeholder="PCI-DSS 6.5.1, ISO 27001 A.14, MITRE T1190" value="${escapeHTML((state.currentFinding.compliance || []).join(', '))}" oninput="updateCurrentFindingCsv('compliance', this.value)">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
+                                <label style="margin:0;">${state.lang === 'es' ? 'Cumplimiento / mapeo (separado por comas)' : 'Compliance / mapping (comma separated)'}</label>
+                                ${_findingFieldToggle('compliance', state.lang === 'es')}
+                            </div>
+                            <input type="text" id="findingCompliance" placeholder="PCI-DSS 6.5.1, ISO 27001 A.14, MITRE T1190" value="${escapeHTML((state.currentFinding.compliance || []).join(', '))}" oninput="updateCurrentFindingCsv('compliance', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'compliance') ? 'opacity:0.45;' : ''}">
                         </div>
 
                         <div class="form-group">
-                            <label>${state.lang === 'es' ? 'Notas de re-test (opcional)' : 'Re-test notes (optional)'}</label>
-                            <textarea id="findingRetest" rows="2" placeholder="${state.lang === 'es' ? 'Estado tras la re-verificación...' : 'Status after re-verification...'}" oninput="updateCurrentFinding('retestNotes', this.value)">${escapeHTML(state.currentFinding.retestNotes || '')}</textarea>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
+                                <label style="margin:0;">${state.lang === 'es' ? 'Notas de re-test (opcional)' : 'Re-test notes (optional)'}</label>
+                                ${_findingFieldToggle('retest', state.lang === 'es')}
+                            </div>
+                            <textarea id="findingRetest" rows="2" placeholder="${state.lang === 'es' ? 'Estado tras la re-verificación...' : 'Status after re-verification...'}" oninput="updateCurrentFinding('retestNotes', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'retest') ? 'opacity:0.45;' : ''}">${escapeHTML(state.currentFinding.retestNotes || '')}</textarea>
                         </div>
 
                         <div class="form-actions">
@@ -1396,6 +1410,34 @@ function toggleScopeField(key) {
     state.auditData.scopeFieldsVisibility = vis;
     state.isDirty = true;
     renderApp();
+}
+
+// --- Visibilidad opt-in de campos OPCIONALES del hallazgo (por defecto ocultos) ---
+// A diferencia del alcance (que por defecto se muestra), estos metadatos accesorios
+// SOLO aparecen en el informe si su toggle está activado explícitamente.
+function getFindingFieldVis(f, key) {
+    return !!(f && f.fieldsVisibility && f.fieldsVisibility[key]);
+}
+
+function toggleCurrentFindingField(key) {
+    const f = state.currentFinding;
+    const vis = Object.assign({}, f.fieldsVisibility || {});
+    vis[key] = !vis[key];
+    f.fieldsVisibility = vis;
+    state.isDirty = true;
+    renderApp();
+}
+
+function _findingFieldToggle(key, isEs) {
+    const on = getFindingFieldVis(state.currentFinding, key);
+    return `<span onclick="toggleCurrentFindingField('${key}')" title="${isEs ? 'Incluir este campo en el informe' : 'Include this field in the report'}"
+        style="display:inline-flex;align-items:center;gap:0.3rem;cursor:pointer;font-size:0.72rem;font-weight:500;color:${on ? '#2563eb' : '#9ca3af'};user-select:none;flex-shrink:0;">
+        <span style="position:relative;display:inline-block;width:28px;height:16px;">
+            <span style="display:block;width:28px;height:16px;border-radius:999px;background:${on ? '#2563eb' : '#d1d5db'};transition:background 0.15s;"></span>
+            <span style="position:absolute;top:2px;left:${on ? '14px' : '2px'};width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.2);transition:left 0.15s;"></span>
+        </span>
+        ${isEs ? 'en informe' : 'in report'}
+    </span>`;
 }
 
 function renderScopeMethodologySection() {
@@ -2559,14 +2601,17 @@ function renderFindingProMeta(f, c, t) {
             <div style="font-size:0.9rem;color:${c.textBody};margin-top:0.15rem;">${value}</div>
         </div>`;
 
-    if (owasp) rows.push(item(isEs ? 'OWASP Top 10' : 'OWASP Top 10', escapeHTML(owasp)));
-    if (likelihood || impactRating) {
+    // Estos 4 metadatos son OPT-IN: solo se incluyen si su toggle está activado.
+    const vis = (key) => getFindingFieldVis(f, key);
+
+    if (owasp && vis('owasp')) rows.push(item(isEs ? 'OWASP Top 10' : 'OWASP Top 10', escapeHTML(owasp)));
+    if ((likelihood || impactRating) && vis('risk')) {
         rows.push(item(isEs ? 'Probabilidad × Impacto' : 'Likelihood × Impact',
             `${escapeHTML(riskLbl(likelihood) || '—')} × ${escapeHTML(riskLbl(impactRating) || '—')}`));
     }
     if (vec) rows.push(item(isEs ? 'Vector CVSS' : 'CVSS Vector', `<span style="font-family:ui-monospace,monospace;font-size:0.8rem;word-break:break-all;">${escapeHTML(vec)}</span>`));
     if (assets) rows.push(item(isEs ? 'Activos afectados' : 'Affected assets', `<span style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:0.82rem;">${formatMultiline(assets)}</span>`));
-    if (comp.length) rows.push(item(isEs ? 'Cumplimiento / mapeo' : 'Compliance / mapping',
+    if (comp.length && vis('compliance')) rows.push(item(isEs ? 'Cumplimiento / mapeo' : 'Compliance / mapping',
         comp.map(x => `<span class="pro-tag" style="background:rgba(99,102,241,0.12);color:${c.textHeading};">${escapeHTML(x)}</span>`).join(' ')));
     if (refs.length) rows.push(item(isEs ? 'Referencias adicionales' : 'Additional references',
         refs.map(r => `<a href="${escapeHTML(r)}" target="_blank" style="color:#3b82f6;text-decoration:none;word-break:break-all;display:block;">${escapeHTML(r)}</a>`).join('')));
@@ -2575,7 +2620,7 @@ function renderFindingProMeta(f, c, t) {
     if (rows.length) {
         html += `<div style="background:${c.cardBg};border:1px solid ${c.border};border-radius:8px;padding:0.5rem 1.25rem;margin-bottom:1.5rem;">${rows.join('')}</div>`;
     }
-    if (retest) {
+    if (retest && vis('retest')) {
         html += `
             <div style="margin-bottom:1.5rem;background:${c.cardBgAlt};border:1px dashed ${c.borderMetaSub};border-radius:8px;padding:1rem 1.25rem;">
                 <h4 style="font-size:0.95rem;font-weight:700;color:${c.textMuted};margin:0 0 0.4rem;display:flex;align-items:center;gap:0.4rem;">
@@ -2646,10 +2691,13 @@ function renderRiskMatrix(c, t) {
     const cells = { high: { high: 0, med: 0, low: 0 }, med: { high: 0, med: 0, low: 0 }, low: { high: 0, med: 0, low: 0 } };
     let any = false;
     state.findings.forEach(f => {
+        // Opt-in: solo entran en la matriz los hallazgos con el toggle "riesgo" activado.
+        if (!getFindingFieldVis(f, 'risk')) return;
         let lk = f.likelihood, im = f.impactRating || f.impact_rating;
         if (!lk || !im) { const d = sevToRisk[f.severity] || ['med', 'med']; lk = lk || d[0]; im = im || d[1]; }
         if (cells[lk] && cells[lk][im] !== undefined) { cells[lk][im]++; any = true; }
     });
+    // Si ningún hallazgo tiene el riesgo activado, la sección entera se omite.
     if (!any) return '';
 
     const order = ['high', 'med', 'low'];
@@ -4703,6 +4751,50 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// Aviso no bloqueante (toast). Evita usar alert() en cada auto-guardado.
+function showToast(message, type = 'success') {
+    let host = document.getElementById('ptf-toast-host');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'ptf-toast-host';
+        host.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;';
+        document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    const bg = type === 'error' ? '#dc2626' : (type === 'info' ? '#2563eb' : '#16a34a');
+    el.style.cssText = `background:${bg};color:#fff;font-size:0.85rem;font-weight:600;padding:0.6rem 1rem;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.25);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;max-width:340px;`;
+    el.textContent = message;
+    host.appendChild(el);
+    requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+    const ttl = type === 'error' ? 5000 : 1800;
+    setTimeout(() => {
+        el.style.opacity = '0'; el.style.transform = 'translateY(8px)';
+        setTimeout(() => el.remove(), 250);
+    }, ttl);
+}
+
+// Auto-guardado serializado: encadena las llamadas para que nunca se solapen dos
+// guardados (p. ej. al registrar/eliminar hallazgos en ráfaga), lo que podría
+// provocar carreras en la sincronización de hallazgos. Silencioso salvo error.
+let _autoSaveChain = Promise.resolve();
+function autoSaveReport(successMsg) {
+    _autoSaveChain = _autoSaveChain.then(async () => {
+        try {
+            await saveCurrentReport(true);
+            if (successMsg !== null) {
+                showToast(successMsg || (state.lang === 'es' ? 'Guardado automáticamente ✓' : 'Auto-saved ✓'));
+            }
+        } catch (err) {
+            console.error(err);
+            state.isDirty = true;
+            showToast((state.lang === 'es'
+                ? 'No se pudo guardar automáticamente: '
+                : 'Auto-save failed: ') + (err && err.message ? err.message : err), 'error');
+        }
+    });
+    return _autoSaveChain;
+}
+
 function handleFindingSubmit(e) {
     e.preventDefault();
 
@@ -4730,10 +4822,12 @@ function handleFindingSubmit(e) {
         owasp: cf.owasp || '',
         compliance: cf.compliance || [],
         retestNotes: cf.retestNotes || '',
+        fieldsVisibility: Object.assign({}, cf.fieldsVisibility || {}),
         images: cf.images
     };
 
-    if (state.editingFindingIndex !== null) {
+    const wasEditing = state.editingFindingIndex !== null;
+    if (wasEditing) {
         state.findings[state.editingFindingIndex] = finding;
         state.editingFindingIndex = null;
     } else {
@@ -4750,6 +4844,12 @@ function handleFindingSubmit(e) {
 
     resetFindingForm();
     renderApp();
+
+    // Auto-guardado: al registrar/actualizar un hallazgo se persiste sin tener que
+    // pulsar "Guardar", evitando perder cambios por olvido.
+    autoSaveReport(wasEditing
+        ? (state.lang === 'es' ? 'Hallazgo actualizado y guardado ✓' : 'Finding updated & saved ✓')
+        : (state.lang === 'es' ? 'Hallazgo guardado ✓' : 'Finding saved ✓'));
 }
 
 function resetFindingForm() {
@@ -4776,6 +4876,7 @@ function resetFindingForm() {
         owasp: '',
         compliance: [],
         retestNotes: '',
+        fieldsVisibility: {},
         images: []
     };
 }
@@ -4784,6 +4885,8 @@ function deleteFinding(index) {
     state.findings.splice(index, 1);
     state.isDirty = true;
     renderApp();
+    // Auto-guardado: el borrado se persiste de inmediato (coherente con el alta).
+    autoSaveReport(state.lang === 'es' ? 'Hallazgo eliminado y guardado ✓' : 'Finding deleted & saved ✓');
 }
 
 function editFinding(index) {
@@ -4813,6 +4916,7 @@ function editFinding(index) {
         owasp: finding.owasp || '',
         compliance: Array.isArray(finding.compliance) ? [...finding.compliance] : [],
         retestNotes: finding.retestNotes || '',
+        fieldsVisibility: Object.assign({}, finding.fieldsVisibility || {}),
         images: finding.images ? [...finding.images] : []
     };
 
@@ -5270,6 +5374,7 @@ async function saveCurrentReport(silent = false) {
                 owasp: finding.owasp || '',
                 compliance: finding.compliance || [],
                 retest_notes: finding.retestNotes || finding.retest_notes || '',
+                fields_visibility: finding.fieldsVisibility || finding.fields_visibility || {},
                 images: finding.images || [],
                 order_index: i
             };

@@ -17,6 +17,7 @@ def run_migrations(engine):
     _migrate_add_exploit_field(engine)
     _migrate_add_show_scope_section(engine)
     _migrate_create_api_keys(engine)
+    _migrate_add_indexes(engine)
 
 
 def _add_columns(engine, table, columns):
@@ -83,6 +84,7 @@ def _migrate_add_pro_finding_fields(engine):
         ("owasp", "VARCHAR DEFAULT ''"),
         ("compliance", "TEXT DEFAULT '[]'"),
         ("retest_notes", "TEXT DEFAULT ''"),
+        ("fields_visibility", "TEXT DEFAULT '{}'"),
     ])
 
 
@@ -181,6 +183,25 @@ def _migrate_add_cwe_field(engine):
                 print("✅ Columna cwe agregada a findings")
     except Exception as e:
         print(f"⚠️  Migración de CWE: {e}")
+
+
+def _migrate_add_indexes(engine):
+    """Migration: índices para acelerar las consultas frecuentes.
+
+    - findings.report_id: se filtra en CADA listado/creación/borrado de hallazgos
+      y en el conteo por reporte. Sin índice, SQLite hace full scan de la tabla.
+    En bases nuevas el índice ya lo crea create_all (index=True en el modelo);
+    aquí cubrimos las bases existentes. CREATE INDEX IF NOT EXISTS es idempotente.
+    """
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_findings_report_id "
+                "ON findings (report_id)"
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"⚠️  Migración índices: {e}")
 
 
 def _migrate_create_api_keys(engine):

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List
 import hashlib
@@ -97,6 +98,31 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type"],
 )
+
+# Compresión GZip: el frontend son ficheros grandes (js/app.js ~290 KB,
+# css/styles.css ~130 KB, js/plantillas.json ~60 KB) y las respuestas JSON del
+# API pueden ser voluminosas (un informe con muchos hallazgos e imágenes). Con
+# gzip esos payloads bajan ~70-80 %, acelerando notablemente la carga. Se aplica
+# a TODO salvo al transporte MCP (/mcp), cuyas respuestas SSE se emiten en
+# streaming y no deben bufferizarse/recomprimirse.
+from starlette.middleware.gzip import GZipMiddleware
+
+
+class SmartGZipMiddleware:
+    """GZip para todo el tráfico HTTP excepto el endpoint MCP (streaming SSE)."""
+
+    def __init__(self, app, minimum_size: int = 500):
+        self.app = app
+        self._gzip = GZipMiddleware(app, minimum_size=minimum_size)
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and not scope.get("path", "").startswith("/mcp"):
+            await self._gzip(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(SmartGZipMiddleware, minimum_size=500)
 
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
@@ -344,12 +370,18 @@ def delete_user(
 
 @app.get("/api/reports", response_model=List[schemas.ReportList])
 def get_reports(db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
+    # Conteo de hallazgos por reporte en UNA sola consulta agrupada, en vez de un
+    # COUNT por reporte (N+1). Con muchos reportes esto pasa de N+1 consultas a 2.
+    counts = dict(
+        db.query(models.Finding.report_id, func.count(models.Finding.id))
+        .group_by(models.Finding.report_id)
+        .all()
+    )
     reports = db.query(models.Report).all()
     result = []
     for report in reports:
-        findings_count = db.query(models.Finding).filter(models.Finding.report_id == report.id).count()
-        report_data = schemas.ReportList.from_orm(report)
-        report_data.findings_count = findings_count
+        report_data = schemas.ReportList.model_validate(report)
+        report_data.findings_count = counts.get(report.id, 0)
         result.append(report_data)
     return result
 
@@ -458,11 +490,16 @@ def delete_finding(finding_id: int, db: Session = Depends(get_db), _user: models
 
 @app.post("/api/reports/{report_id}/findings/reorder")
 def reorder_findings(report_id: int, finding_ids: List[int], db: Session = Depends(get_db), _user: models.User = Depends(auth.require_auth)):
-    for idx, finding_id in enumerate(finding_ids):
-        finding = db.query(models.Finding).filter(
-            models.Finding.id == finding_id,
+    # Cargamos de una vez todos los hallazgos del reporte (una consulta en lugar
+    # de una por id) y aplicamos el nuevo orden desde un mapa en memoria.
+    findings_by_id = {
+        f.id: f
+        for f in db.query(models.Finding).filter(
             models.Finding.report_id == report_id
-        ).first()
+        ).all()
+    }
+    for idx, finding_id in enumerate(finding_ids):
+        finding = findings_by_id.get(finding_id)
         if finding:
             finding.order_index = idx
     db.commit()

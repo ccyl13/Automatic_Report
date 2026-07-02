@@ -62,7 +62,7 @@ class Finding(Base):
     __tablename__ = "findings"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, ForeignKey("reports.id"))
+    report_id = Column(Integer, ForeignKey("reports.id"), index=True)
     
     # Datos del hallazgo
     template_key = Column(String, default="custom")
@@ -88,6 +88,11 @@ class Finding(Base):
     owasp = Column(String, default="")             # categoría OWASP Top 10
     compliance = Column(JSON, default=list)        # ["PCI 6.5.1", "ISO A.14", ...]
     retest_notes = Column(Text, default="")        # notas de re-test
+
+    # Visibilidad por-campo de metadatos OPCIONALES en el informe (opt-in): las
+    # claves presentes con valor true se incluyen; ausencia/False = no se muestra.
+    # Claves: owasp, risk, compliance, retest. Por defecto {} => todos ocultos.
+    fields_visibility = Column(JSON, default=dict)
 
     # Imágenes se guardan como JSON array de URLs/data URLs
     images = Column(JSON, default=list)

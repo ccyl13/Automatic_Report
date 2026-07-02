@@ -102,6 +102,7 @@ class FindingBase(BaseModel):
     owasp: str = ""
     compliance: List[str] = []
     retest_notes: str = ""
+    fields_visibility: dict = {}
     images: List[str] = []
     order_index: int = 0
 

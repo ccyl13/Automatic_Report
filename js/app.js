@@ -217,21 +217,6 @@ const UI = {
             '3': 'Confidencial',
             '4': 'Restringido'
         },
-        classificationMode: 'Modo de Clasificación',
-        classificationModes: {
-            'internal': 'Solo Clasificación Interna',
-            'tlp': 'Solo TLP 2.0 (CISA/FIRST)',
-            'both': 'Ambos (Clasificación + TLP)'
-        },
-        tlp: 'Nivel TLP',
-        tlpLevels: {
-            'clear':        'TLP:CLEAR — Sin restricción',
-            'green':        'TLP:GREEN — Comunidad de seguridad',
-            'amber':        'TLP:AMBER — Organización y clientes',
-            'amber+strict': 'TLP:AMBER+STRICT — Solo organización',
-            'red':          'TLP:RED — Solo destinatarios explícitos'
-        },
-        tlpSource: 'Fuente: CISA / FIRST TLP v2.0',
         auditType: 'Tipo de Auditoría',
         auditTypes: {
             'pentesting_web': 'Pentesting Web',
@@ -431,21 +416,6 @@ const UI = {
             '3': 'Confidential',
             '4': 'Restricted'
         },
-        classificationMode: 'Classification Mode',
-        classificationModes: {
-            'internal': 'Internal Classification Only',
-            'tlp': 'TLP 2.0 Only (CISA/FIRST)',
-            'both': 'Both (Classification + TLP)'
-        },
-        tlp: 'TLP Level',
-        tlpLevels: {
-            'clear':        'TLP:CLEAR — Unrestricted',
-            'green':        'TLP:GREEN — Security community',
-            'amber':        'TLP:AMBER — Organization and clients',
-            'amber+strict': 'TLP:AMBER+STRICT — Organization only',
-            'red':          'TLP:RED — Named recipients only'
-        },
-        tlpSource: 'Source: CISA / FIRST TLP v2.0',
         auditType: 'Audit Type',
         auditTypes: {
             'pentesting_web': 'Web Pentesting',
@@ -712,22 +682,11 @@ function markdownToHtml(str) {
 
 const severityWeights = { crit: 5, high: 4, med: 3, low: 2, info: 1 };
 
-function getTlpStyle(level) {
-    const map = {
-        'clear':        { bg: '#e5e7eb', text: '#374151', label: 'TLP:CLEAR' },
-        'green':        { bg: '#33FF00', text: '#000000', label: 'TLP:GREEN' },
-        'amber':        { bg: '#FFC000', text: '#000000', label: 'TLP:AMBER' },
-        'amber+strict': { bg: '#FF8C00', text: '#000000', label: 'TLP:AMBER+STRICT' },
-        'red':          { bg: '#FF2B2B', text: '#ffffff', label: 'TLP:RED' },
-    };
-    return map[level] || map['amber'];
-}
-
-function renderTlpPageBadge(auditData) {
-    const mode = auditData.classificationMode || 'internal';
-    if (mode === 'internal') return '';
-    const tlp = getTlpStyle(auditData.tlpLevel || 'amber');
-    return `<span style="display:inline-block; background:${tlp.bg}; color:${tlp.text}; font-size:0.65rem; font-weight:900; padding:0.2rem 0.6rem; border-radius:4px; letter-spacing:0.06em; vertical-align:middle;">${escapeHTML(tlp.label)}</span>`;
+// TLP eliminado por completo del informe: el badge de nivel TLP ya no se
+// renderiza en ninguna cabecera de sección ni en la portada. Se conserva la
+// función (devolviendo cadena vacía) para no tener que tocar cada llamador.
+function renderTlpPageBadge() {
+    return '';
 }
 
 // Normaliza un hallazgo recibido de la API (snake_case) a las claves camelCase
@@ -1276,30 +1235,10 @@ function renderAuditData() {
                     <input type="text" value="${escapeHTML(d.auditorName)}" onchange="updateAuditData('auditorName', this.value)">
                 </div>
                 <div class="form-group">
-                    <label>${t.classificationMode}</label>
-                    <select onchange="updateAuditData('classificationMode', this.value); renderApp();">
-                        ${Object.entries(t.classificationModes).map(([key, label]) =>
-        `<option value="${key}" ${d.classificationMode === key ? 'selected' : ''}>${label}</option>`
-    ).join('')}
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="${d.classificationMode === 'tlp' ? 'display:none;' : ''}">
-                <div class="form-group">
                     <label>${t.classification}</label>
                     <select onchange="updateAuditData('classification', this.value)">
                         ${Object.entries(t.classifications).map(([key, label]) =>
         `<option value="${key}" ${d.classification === key ? 'selected' : ''}>${label}</option>`
-    ).join('')}
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="${d.classificationMode === 'internal' ? 'display:none;' : ''}">
-                <div class="form-group">
-                    <label>${t.tlp}</label>
-                    <select onchange="updateAuditData('tlpLevel', this.value)">
-                        ${Object.entries(t.tlpLevels).map(([key, label]) =>
-        `<option value="${key}" ${d.tlpLevel === key ? 'selected' : ''}>${label}</option>`
     ).join('')}
                     </select>
                 </div>
@@ -2783,7 +2722,8 @@ function renderPreview() {
             <div class="cover-page" style="
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
+                justify-content: center;
+                gap: 2rem;
                 min-height: 100vh;
                 page-break-after: always;
                 page-break-inside: avoid;
@@ -2793,7 +2733,7 @@ function renderPreview() {
             ">
 
                 <!-- PARTE SUPERIOR Y MEDIA CENTRALIZADA -->
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex: 1;">
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
 
                     <div style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                         ${d.clientLogo[0] || d.clientLogo[1] ? `
@@ -2843,33 +2783,25 @@ function renderPreview() {
                         <p style="font-size: 1.35rem; color: ${c.coverAccent}; font-weight: 600; margin:0; letter-spacing: -0.01em;">
                             ${escapeHTML(d.targetAsset)}
                         </p>
-                    </div>
-                </div>
 
-                ${(() => {
-                    const mode = d.classificationMode || 'internal';
-                    const tlp = getTlpStyle(d.tlpLevel || 'amber');
+                        ${(() => {
+                    // TLP eliminado: la portada solo muestra la etiqueta de Clasificación.
+                    // Se coloca justo bajo el título/target para que no quede un gran
+                    // hueco vertical entre ambos (el bloque superior lleva flex:1).
                     const classLabels = { '1': 'Público', '2': 'Interno', '3': 'Confidencial', '4': 'Restringido' };
                     const classLabel = classLabels[d.classification] || 'Interno';
-                    const showInternal = mode === 'internal' || mode === 'both';
-                    const showTlp = mode === 'tlp' || mode === 'both';
                     return `
-                    <div style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        ${showInternal ? `
+                        <div style="margin-top: 1.25rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;">
                             <span style="display:inline-flex; align-items:center; gap:0.4rem; background:${c.classifBg}; border:1px solid ${c.classifBorder}; border-radius:6px; padding:0.4rem 1rem; font-size:0.75rem; font-weight:700; color:${c.classifText}; text-transform:uppercase; letter-spacing:0.08em;">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                 ${escapeHTML(classLabel)}
                             </span>
-                        ` : ''}
-                        ${showTlp ? `
-                            <div style="display:inline-flex; align-items:center; background:${tlp.bg}; border-radius:6px; padding:0.4rem 1rem;">
-                                <span style="font-size:0.8rem; font-weight:900; color:${tlp.text}; letter-spacing:0.04em;">${escapeHTML(tlp.label)}</span>
-                            </div>
-                        ` : ''}
-                    </div>`;
+                        </div>`;
                 })()}
+                    </div>
+                </div>
 
-                <div style="margin-top: 1.5rem; background: ${c.metaBg}; border: 1px solid ${c.borderMeta}; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="margin-top: 0; background: ${c.metaBg}; border: 1px solid ${c.borderMeta}; border-radius: 12px; padding: 1.5rem 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; gap: 0;">
                         <div style="flex: 1; padding: 0 1rem; border-right: 1px solid ${c.borderMetaSub};">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -2945,8 +2877,13 @@ function renderPreview() {
             <!-- ALCANCE Y METODOLOGÍA -->
             ${renderScopeMethodologyPreview(c, t)}
 
-            <!-- RESUMEN EJECUTIVO + INCIDENCIAS (misma página) -->
-            <div style="padding: 2rem 0; page-break-inside: avoid; background: ${c.pageBg};">
+            <!-- RESUMEN EJECUTIVO + INCIDENCIAS -->
+            <!-- Sin page-break-inside: avoid en el contenedor: es demasiado alto
+                 (resumen CVSS + matriz de riesgo + incidencias) y, si no cabe en
+                 el hueco restante, saltaba entero dejando media página en blanco.
+                 Cada sub-bloque (resumen CVSS, matriz) ya evita partirse por su
+                 cuenta, así que el conjunto puede fluir y llenar la página. -->
+            <div style="padding: 2rem 0; background: ${c.pageBg};">
                 <div id="summary" style="margin-bottom: 3rem;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom: 2px solid ${c.border}; padding-bottom: 0.75rem; margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.75rem; color: ${c.textHeading}; margin: 0; font-weight: 800;">${t.executiveSummary}</h2>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -11,6 +11,8 @@ import secrets
 import sys
 import tempfile
 import shutil
+import threading
+import time as _time
 from datetime import datetime
 import models, schemas, database, auth
 from database import engine, get_db, db_path, SessionLocal
@@ -124,6 +126,41 @@ class SmartGZipMiddleware:
 
 app.add_middleware(SmartGZipMiddleware, minimum_size=500)
 
+
+# --------------------------------------------------------------------------- #
+# Cabeceras de seguridad HTTP
+# --------------------------------------------------------------------------- #
+# Se aplican a TODAS las respuestas. Puntos clave para una app de informes de
+# pentesting confidenciales:
+#   - X-Robots-Tag noindex: impide que buscadores indexen la app / los informes
+#     (un informe no debe aparecer nunca en resultados de Google).
+#   - X-Frame-Options SAMEORIGIN: evita clickjacking embebiendo la web en un
+#     iframe de terceros (SAMEORIGIN, no DENY, porque la exportación a HTML usa
+#     un iframe del propio origen para renderizar el informe).
+#   - HSTS: sólo si la petición llegó por HTTPS, para no romper el acceso local
+#     por HTTP durante el desarrollo.
+_SECURITY_HEADERS = {
+    "X-Frame-Options": "SAMEORIGIN",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+}
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for k, v in _SECURITY_HEADERS.items():
+        response.headers.setdefault(k, v)
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    if proto == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
+
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
 class NoCacheStaticFiles(StarletteStaticFiles):
@@ -200,6 +237,64 @@ def root():
 # --------------------------------------------------------------------------- #
 # Autenticación
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Anti fuerza bruta en el login (limitación de intentos en memoria)
+# --------------------------------------------------------------------------- #
+# Sin esto, un tercero puede probar contraseñas ilimitadamente contra /login
+# hasta dar con una débil y ver TODOS los informes. Se bloquea por IP tras varios
+# fallos dentro de una ventana. Estado en memoria (suficiente para el despliegue
+# monoproceso habitual); para varios workers, usar un backend compartido (Redis).
+_LOGIN_MAX_FAILS = int(os.environ.get("LOGIN_MAX_FAILS", "5"))
+_LOGIN_WINDOW = int(os.environ.get("LOGIN_WINDOW_SECONDS", "900"))  # 15 min
+_login_fails: dict = {}
+_login_lock = threading.Lock()
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _login_retry_after(ip: str) -> int:
+    """Segundos que quedan de bloqueo para esta IP, o 0 si puede intentar."""
+    now = _time.time()
+    with _login_lock:
+        fails = [t for t in _login_fails.get(ip, []) if now - t < _LOGIN_WINDOW]
+        _login_fails[ip] = fails
+        if len(fails) >= _LOGIN_MAX_FAILS:
+            return max(1, int(_LOGIN_WINDOW - (now - fails[0])))
+    return 0
+
+
+def _login_record_fail(ip: str) -> None:
+    with _login_lock:
+        _login_fails.setdefault(ip, []).append(_time.time())
+
+
+def _login_reset(ip: str) -> None:
+    with _login_lock:
+        _login_fails.pop(ip, None)
+
+
+# --------------------------------------------------------------------------- #
+# Política de contraseñas
+# --------------------------------------------------------------------------- #
+_WEAK_PASSWORDS = {"admin", "administrator", "password", "contraseña", "123456",
+                   "12345678", "qwerty", "pentestify", "changeme", "root"}
+
+
+def _validate_password_strength(password: str, username: str = "") -> None:
+    """Rechaza contraseñas triviales. Lanza HTTP 400 si no cumple."""
+    if len(password or "") < 8:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
+    if password.lower() in _WEAK_PASSWORDS:
+        raise HTTPException(status_code=400, detail="Esa contraseña es demasiado común; elige otra")
+    if username and password.lower() == username.lower():
+        raise HTTPException(status_code=400, detail="La contraseña no puede ser igual al nombre de usuario")
+
+
 def _using_default_password(user: models.User) -> bool:
     """True si la cuenta 'admin' conserva la contraseña por defecto 'admin'.
 
@@ -210,7 +305,21 @@ def _using_default_password(user: models.User) -> bool:
     return user.username == "admin" and auth.verify_password("admin", user.password_hash)
 
 
-def _auth_response(user: models.User, message: str = None) -> JSONResponse:
+def _cookie_is_secure(request: Request) -> bool:
+    """La cookie de sesión debe marcarse Secure cuando se sirve por HTTPS, para
+    que el navegador nunca la envíe por HTTP en claro. Se detecta el esquema real
+    (incluso detrás de un proxy inverso, vía X-Forwarded-Proto). Override manual
+    con COOKIE_SECURE=1/0."""
+    override = os.environ.get("COOKIE_SECURE")
+    if override in ("1", "true", "True"):
+        return True
+    if override in ("0", "false", "False"):
+        return False
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    return proto == "https"
+
+
+def _auth_response(user: models.User, request: Request, message: str = None) -> JSONResponse:
     token = auth.create_token(user)
     content = {
         "token": token,
@@ -225,6 +334,7 @@ def _auth_response(user: models.User, message: str = None) -> JSONResponse:
         value=token,
         httponly=True,
         samesite="lax",
+        secure=_cookie_is_secure(request),
         max_age=auth.TOKEN_TTL,
     )
     return response
@@ -255,7 +365,7 @@ def default_credentials(db: Session = Depends(get_db)):
 
 
 @app.post("/api/auth/setup")
-def setup_first_user(payload: schemas.CreateUserRequest, db: Session = Depends(get_db)):
+def setup_first_user(payload: schemas.CreateUserRequest, request: Request, db: Session = Depends(get_db)):
     """Crea la PRIMERA cuenta de la aplicación.
 
     Sólo funciona cuando la base de datos no tiene ningún usuario; una vez creada
@@ -268,22 +378,35 @@ def setup_first_user(payload: schemas.CreateUserRequest, db: Session = Depends(g
     username = (payload.username or "").strip()
     if not username:
         raise HTTPException(status_code=400, detail="El nombre de usuario no puede estar vacío")
-    if len(payload.password) < 4:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+    _validate_password_strength(payload.password, username)
 
     user = models.User(username=username, password_hash=auth.hash_password(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _auth_response(user, message="Cuenta creada correctamente")
+    return _auth_response(user, request, message="Cuenta creada correctamente")
 
 
 @app.post("/api/auth/login")
-def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
+def login(credentials: schemas.LoginRequest, request: Request, db: Session = Depends(get_db)):
+    # Anti fuerza bruta: si esta IP ha superado el límite de fallos, se rechaza
+    # sin ni siquiera comprobar la contraseña.
+    ip = _client_ip(request)
+    retry = _login_retry_after(ip)
+    if retry:
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados intentos fallidos. Inténtalo de nuevo más tarde.",
+            headers={"Retry-After": str(retry)},
+        )
+
     user = db.query(models.User).filter(models.User.username == credentials.username).first()
     if not user or not auth.verify_password(credentials.password, user.password_hash):
+        _login_record_fail(ip)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
-    return _auth_response(user)
+
+    _login_reset(ip)
+    return _auth_response(user, request)
 
 
 @app.post("/api/auth/logout")
@@ -301,21 +424,21 @@ def get_me(user: models.User = Depends(auth.require_auth)):
 @app.post("/api/auth/change-password")
 def change_password(
     payload: schemas.ChangePasswordRequest,
+    request: Request,
     user: models.User = Depends(auth.require_auth),
     db: Session = Depends(get_db),
 ):
     if not auth.verify_password(payload.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
-    if len(payload.new_password) < 4:
-        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 4 caracteres")
     if payload.new_password == payload.current_password:
         raise HTTPException(status_code=400, detail="La nueva contraseña debe ser distinta de la actual")
+    _validate_password_strength(payload.new_password, user.username)
 
     user.password_hash = auth.hash_password(payload.new_password)
     db.commit()
     db.refresh(user)
     # Al cambiar la contraseña se invalidan los tokens previos; emitimos uno nuevo.
-    return _auth_response(user, message="Contraseña actualizada correctamente")
+    return _auth_response(user, request, message="Contraseña actualizada correctamente")
 
 
 # --------------------------------------------------------------------------- #
@@ -335,8 +458,7 @@ def create_user(
     username = payload.username.strip()
     if not username:
         raise HTTPException(status_code=400, detail="El nombre de usuario no puede estar vacío")
-    if len(payload.password) < 4:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+    _validate_password_strength(payload.password, username)
     if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese nombre")
 

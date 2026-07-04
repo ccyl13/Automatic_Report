@@ -1903,8 +1903,12 @@ button:disabled,
         break-inside: avoid;
     }
 
-    /* Evitar que elementos importantes se corten por la mitad */
-    img, svg, table, pre, blockquote, .card, .finding-block {
+    /* Evitar que elementos pequeños y atómicos se corten por la mitad.
+       Se excluyen `table` y `pre` a propósito: pueden ser muy largos (tablas de
+       control de versiones, bloques de código/exploit) y, si se les prohíbe
+       partir, el navegador los empuja a la página siguiente dejando medio folio
+       en blanco. Se dejan fluir para que llenen la página. */
+    img, svg, blockquote, .card {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
@@ -1992,6 +1996,26 @@ button:disabled,
     #incidents {
         background: white !important;
         padding: 0 !important; /* Margins are now handled globally by @page */
+    }
+
+    /* El índice usa min-height:100vh para verse como una página en pantalla,
+       pero en impresión eso reserva casi un folio entero en blanco (el índice
+       suele ser corto). Se colapsa a la altura de su contenido; el salto de
+       página posterior ya lo aísla del resto. */
+    .index-page {
+        min-height: auto !important;
+    }
+
+    /* CLAVE contra los huecos entre hallazgos: por defecto cada tarjeta de
+       hallazgo lleva page-break-inside: avoid, de modo que un hallazgo que no
+       cabía en el espacio restante saltaba ENTERO a la página siguiente y
+       dejaba medio folio (o más) en blanco entre hallazgo y hallazgo. Se les
+       deja fluir para que empiecen a rellenar la página anterior; los bloques
+       internos que sí deben permanecer juntos (código/exploit, imágenes) ya
+       evitan partirse por su cuenta. */
+    .finding-preview {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
     }
 }
 
@@ -3146,29 +3170,32 @@ button {
     transform: translateY(-2px);
 }
 
+/* Relleno sólido y uniforme por severidad (sin degradado): cada tarjeta de
+   hallazgo muestra un tinte plano de su color, más el borde izquierdo del color
+   pleno de la severidad. */
 .finding-item.severity-crit {
     border-left-color: var(--severity-crit);
-    background: linear-gradient(135deg, #fff5f5 0%, white 60%);
+    background: #fef2f2;
 }
 
 .finding-item.severity-high {
     border-left-color: var(--severity-high);
-    background: linear-gradient(135deg, #fff7ed 0%, white 60%);
+    background: #fff7ed;
 }
 
 .finding-item.severity-med {
     border-left-color: var(--severity-med);
-    background: linear-gradient(135deg, #fefce8 0%, white 60%);
+    background: #fefce8;
 }
 
 .finding-item.severity-low {
     border-left-color: var(--severity-low);
-    background: linear-gradient(135deg, #f0fdf4 0%, white 60%);
+    background: #f0fdf4;
 }
 
 .finding-item.severity-info {
     border-left-color: var(--severity-info);
-    background: linear-gradient(135deg, #f8fafc 0%, white 60%);
+    background: #f8fafc;
 }
 
 .finding-header {
@@ -4097,11 +4124,11 @@ button {
     background: #1e293b !important;
     border-color: #334155 !important;
 }
-[data-theme="dark"] .finding-item.severity-crit { background: linear-gradient(135deg,#2d1515 0%,#1e293b 60%) !important; }
-[data-theme="dark"] .finding-item.severity-high { background: linear-gradient(135deg,#2d1e0f 0%,#1e293b 60%) !important; }
-[data-theme="dark"] .finding-item.severity-med  { background: linear-gradient(135deg,#2b2610 0%,#1e293b 60%) !important; }
-[data-theme="dark"] .finding-item.severity-low  { background: linear-gradient(135deg,#0d2318 0%,#1e293b 60%) !important; }
-[data-theme="dark"] .finding-item.severity-info { background: linear-gradient(135deg,#18202e 0%,#1e293b 60%) !important; }
+[data-theme="dark"] .finding-item.severity-crit { background: #2d1515 !important; }
+[data-theme="dark"] .finding-item.severity-high { background: #2d1e0f !important; }
+[data-theme="dark"] .finding-item.severity-med  { background: #2b2610 !important; }
+[data-theme="dark"] .finding-item.severity-low  { background: #0d2318 !important; }
+[data-theme="dark"] .finding-item.severity-info { background: #18202e !important; }
 [data-theme="dark"] .finding-title { color: #e2e8f0 !important; }
 [data-theme="dark"] .finding-number { color: #64748b !important; }
 [data-theme="dark"] .findings-section-title { color: #e2e8f0 !important; }
@@ -4226,11 +4253,11 @@ button {
     background: #0d1117 !important;
     border-color: #2d3f55 !important;
 }
-[data-theme="htb"] .finding-item.severity-crit { background: linear-gradient(135deg,#1a0d0d 0%,#0d1117 60%) !important; }
-[data-theme="htb"] .finding-item.severity-high { background: linear-gradient(135deg,#1a110d 0%,#0d1117 60%) !important; }
-[data-theme="htb"] .finding-item.severity-med  { background: linear-gradient(135deg,#191600 0%,#0d1117 60%) !important; }
-[data-theme="htb"] .finding-item.severity-low  { background: linear-gradient(135deg,#071a0e 0%,#0d1117 60%) !important; }
-[data-theme="htb"] .finding-item.severity-info { background: linear-gradient(135deg,#0d1117 0%,#111922 60%) !important; }
+[data-theme="htb"] .finding-item.severity-crit { background: #1f0e0e !important; }
+[data-theme="htb"] .finding-item.severity-high { background: #1f140d !important; }
+[data-theme="htb"] .finding-item.severity-med  { background: #1d1900 !important; }
+[data-theme="htb"] .finding-item.severity-low  { background: #08200f !important; }
+[data-theme="htb"] .finding-item.severity-info { background: #131b25 !important; }
 [data-theme="htb"] .finding-title { color: #e2e8f0 !important; }
 [data-theme="htb"] .finding-number { color: #3d5570 !important; }
 [data-theme="htb"] .findings-section-title { color: #e2e8f0 !important; }

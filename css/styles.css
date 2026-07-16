@@ -3645,6 +3645,48 @@ button {
     transform: scale(1.1);
 }
 
+/* ---- Reordenar evidencias por arrastre ---- */
+.image-preview-item {
+    cursor: grab;
+}
+.image-preview-item:active {
+    cursor: grabbing;
+}
+.image-preview-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.96);
+    cursor: grabbing;
+}
+.image-preview-item.drag-over {
+    outline: 2px dashed #3b82f6;
+    outline-offset: 2px;
+    transform: scale(1.04);
+}
+.image-order-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.92);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.image-reorder-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+}
+
 /* ---- Finding Evidence in Preview ---- */
 .finding-images {
     margin-top: 1rem;

@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.3.0';
 
 const state = {
     lang: 'es',
@@ -39,7 +39,6 @@ const state = {
         engagementStart: '',
         engagementEnd: '',
         revisionHistory: [],
-        showScopeSection: false,
         scopeFieldsVisibility: {}
     },
     findings: [],
@@ -1062,10 +1061,18 @@ function renderEditor() {
                         </div>
 
                         ${state.currentFinding.images.length > 0 ? `
+                        ${state.currentFinding.images.length > 1 ? `<small class="text-muted image-reorder-hint">${state.lang === 'es' ? 'Arrastra las imágenes para cambiar su orden en el informe' : 'Drag the images to change their order in the report'}</small>` : ''}
                         <div class="image-preview-container">
                             ${state.currentFinding.images.map((img, idx) => `
-                                <div class="image-preview-item">
-                                    <img src="${escapeHTML(img)}" alt="Evidencia ${idx + 1}">
+                                <div class="image-preview-item" draggable="true" data-img-idx="${idx}"
+                                    ondragstart="imageDragStart(event, ${idx})"
+                                    ondragover="imageDragOver(event, ${idx})"
+                                    ondragleave="imageDragLeave(event)"
+                                    ondrop="imageDrop(event, ${idx})"
+                                    ondragend="imageDragEnd(event)"
+                                    title="${state.lang === 'es' ? 'Arrastra para reordenar' : 'Drag to reorder'}">
+                                    <span class="image-order-badge">${idx + 1}</span>
+                                    <img src="${escapeHTML(img)}" alt="Evidencia ${idx + 1}" draggable="false">
                                     <button type="button" class="image-remove-btn" onclick="removeImage(${idx})">×</button>
                                 </div>
                             `).join('')}
@@ -1336,13 +1343,6 @@ function renderScopeMethodologySection() {
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
             <h3 style="margin:0;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h3>
-            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500; font-size:0.82rem; color:${d.showScopeSection === true ? '#2563eb' : '#9ca3af'}; user-select:none;">
-                <div style="position:relative; width:36px; height:20px; flex-shrink:0;" onclick="updateAuditData('showScopeSection', ${d.showScopeSection === true ? 'false' : 'true'}); renderApp();" title="${isEs ? 'Incluir esta sección en el informe' : 'Include this section in the report'}">
-                    <div style="width:36px; height:20px; border-radius:999px; background:${d.showScopeSection === true ? '#2563eb' : '#d1d5db'}; transition:background 0.2s;"></div>
-                    <div style="position:absolute; top:2px; left:${d.showScopeSection === true ? '18px' : '2px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:left 0.2s;"></div>
-                </div>
-                ${isEs ? 'Incluir en informe' : 'Include in report'}
-            </label>
         </div>
 
         <div class="form-row">
@@ -2517,25 +2517,37 @@ function renderFindingProMeta(f, c, t) {
 }
 
 // Página de Alcance y Metodología para el informe.
+// Campos del alcance que se imprimen en el informe. El engagement no tiene
+// interruptor (siempre se muestra si hay fechas); el resto son opt-in por campo.
+// Ya no existe un interruptor de sección: la página aparece si hay algún campo
+// visible con contenido. Usado tanto por el informe como por su índice (TOC).
+function scopeSectionVisibleFields(d) {
+    const std = d.methodologyStandards || [];
+    const stdLabels = METHODOLOGY_STANDARDS.filter(s => std.includes(s.key)).map(s => s.label);
+    const fv = d.scopeFieldsVisibility || {};
+    const fvis = (key) => !!fv[key];
+    return {
+        stdLabels,
+        showDates:    !!(d.engagementStart || d.engagementEnd),
+        showScopeIn:  fvis('scopeIn') && !!d.scopeIn,
+        showScopeOut: fvis('scopeOut') && !!d.scopeOut,
+        showStd:      fvis('standards') && stdLabels.length > 0,
+        showNotes:    fvis('methodologyNotes') && !!d.methodologyNotes,
+        showTools:    fvis('toolsUsed') && !!d.toolsUsed,
+    };
+}
+
+function scopeSectionHasContent(d) {
+    const s = scopeSectionVisibleFields(d);
+    return !!(s.showDates || s.showScopeIn || s.showScopeOut || s.showStd || s.showNotes || s.showTools);
+}
+
 function renderScopeMethodologyPreview(c, t) {
     const isEs = state.lang === 'es';
     const d = state.auditData;
-    const std = d.methodologyStandards || [];
-    const stdLabels = METHODOLOGY_STANDARDS.filter(s => std.includes(s.key)).map(s => s.label);
-    if (d.showScopeSection !== true) return '';
+    const { stdLabels, showDates, showScopeIn, showScopeOut, showStd, showNotes, showTools } = scopeSectionVisibleFields(d);
 
-    const fv = d.scopeFieldsVisibility || {};
-    const fvis = (key) => !!fv[key];
-
-    const showDates   = (d.engagementStart || d.engagementEnd);
-    const showScopeIn  = fvis('scopeIn') && d.scopeIn;
-    const showScopeOut = fvis('scopeOut') && d.scopeOut;
-    const showStd      = fvis('standards') && stdLabels.length;
-    const showNotes    = fvis('methodologyNotes') && d.methodologyNotes;
-    const showTools    = fvis('toolsUsed') && d.toolsUsed;
-
-    const hasContent = showDates || showScopeIn || showScopeOut || showStd || showNotes || showTools;
-    if (!hasContent) return '';
+    if (!(showDates || showScopeIn || showScopeOut || showStd || showNotes || showTools)) return '';
 
     const block = (title, body, mono) => body ? `
         <div style="margin-bottom:1.5rem;">
@@ -2791,7 +2803,7 @@ function renderPreview() {
                     <a href="#summary" style="display: flex; justify-content: space-between; text-decoration: none; color: ${c.textMuted}; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted ${c.borderLight}; font-size: 1.125rem; transition: color 0.2s;">
                         <span>${t.executiveSummaryWithCVSS}</span>
                     </a>
-                    ${(d.scopeIn || d.scopeOut || (d.methodologyStandards || []).length || d.toolsUsed || d.engagementStart) ? `
+                    ${scopeSectionHasContent(d) ? `
                     <a href="#scope" style="display: flex; justify-content: space-between; text-decoration: none; color: ${c.textMuted}; font-weight: 700; padding: 0.75rem 0; border-bottom: 1px dotted ${c.borderLight}; font-size: 1.125rem; transition: color 0.2s;">
                         <span>${state.lang === 'es' ? 'Alcance y Metodología' : 'Scope & Methodology'}</span>
                     </a>` : ''}
@@ -4830,6 +4842,52 @@ function removeImage(index) {
     renderApp();
 }
 
+// --- Reordenar evidencias por arrastre (drag & drop) ---
+// El orden del array state.currentFinding.images es el que se imprime en el
+// informe, así que reordenarlo aquí basta para que el cambio se refleje.
+let _draggedImageIdx = null;
+
+function imageDragStart(event, idx) {
+    _draggedImageIdx = idx;
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        try { event.dataTransfer.setData('text/plain', String(idx)); } catch (_e) {}
+    }
+    const item = event.currentTarget;
+    if (item) setTimeout(() => item.classList.add('dragging'), 0);
+}
+
+function imageDragOver(event, idx) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const item = event.currentTarget;
+    if (item && _draggedImageIdx !== null && idx !== _draggedImageIdx) item.classList.add('drag-over');
+}
+
+function imageDragLeave(event) {
+    const item = event.currentTarget;
+    if (item) item.classList.remove('drag-over');
+}
+
+function imageDrop(event, targetIdx) {
+    event.preventDefault();
+    event.stopPropagation();
+    const from = _draggedImageIdx;
+    _draggedImageIdx = null;
+    const imgs = state.currentFinding.images;
+    if (from === null || from === targetIdx || from < 0 || from >= imgs.length) { renderApp(); return; }
+    const [moved] = imgs.splice(from, 1);
+    imgs.splice(targetIdx, 0, moved);
+    state.isDirty = true;
+    renderApp();
+}
+
+function imageDragEnd() {
+    _draggedImageIdx = null;
+    document.querySelectorAll('.image-preview-item.dragging, .image-preview-item.drag-over')
+        .forEach(el => el.classList.remove('dragging', 'drag-over'));
+}
+
 async function handleImagePaste(event) {
     event.preventDefault();
     const items = event.clipboardData?.items;
@@ -4929,7 +4987,6 @@ async function loadReport(id) {
             engagementStart: report.engagement_start || '',
             engagementEnd: report.engagement_end || '',
             revisionHistory: Array.isArray(report.revision_history) ? report.revision_history : [],
-            showScopeSection: report.show_scope_section === 1,
             scopeFieldsVisibility: (typeof report.scope_fields_visibility === 'object' && report.scope_fields_visibility) ? report.scope_fields_visibility : {}
         };
         state.lang = report.lang;
@@ -5209,7 +5266,6 @@ async function saveCurrentReport(silent = false) {
             engagement_start: state.auditData.engagementStart || '',
             engagement_end: state.auditData.engagementEnd || '',
             revision_history: state.auditData.revisionHistory || [],
-            show_scope_section: state.auditData.showScopeSection === true ? 1 : 0,
             scope_fields_visibility: state.auditData.scopeFieldsVisibility || {}
         };
 

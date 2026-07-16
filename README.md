@@ -14,15 +14,20 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.2.0-blue.svg" alt="Version 2.2.0">
+  <img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version 2.3.0">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.2.0</strong>
+  <strong>Versión actual: 2.3.0</strong>
 </p>
+
+## 🚀 Novedades de la 2.3.0
+
+- **Reordenar evidencias arrastrando**: en el editor de hallazgos ya puedes **arrastrar las imágenes** para cambiar su orden, con un número de posición visible en cada miniatura. El nuevo orden se refleja tal cual en el informe (vista previa y PDF).
+- **Alcance y Metodología sin interruptor de sección**: se retira el interruptor *"Incluir en informe"* de la cabecera de la sección — no tenía sentido junto a los interruptores por-campo. La sección aparece automáticamente en el informe cuando algún campo opt-in tiene contenido (o hay fechas de engagement).
 
 ## 🚀 Novedades de la 2.2.0
 

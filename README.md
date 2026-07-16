@@ -14,15 +14,23 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.2-blue.svg" alt="Version 2.0.2">
+  <img src="https://img.shields.io/badge/version-2.1.0-blue.svg" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.0.2</strong>
+  <strong>Versión actual: 2.1.0</strong>
 </p>
+
+## 🚀 Novedades de la 2.1.0
+
+- **Integración MCP para agentes IA**: servidor MCP nativo (`backend/mcp_server.py`) con 10 herramientas para que Claude Desktop, Claude Code y otros agentes compatibles creen y gestionen reportes sin pasar por la interfaz web. Incluye API keys (`ptf_*`) gestionables desde la página de Cuenta, con config JSON lista para `claude_desktop_config.json`.
+- **Autenticación más robusta**: rate-limiting anti fuerza bruta en el login (429 tras 5 fallos por IP), cabeceras de seguridad en todas las respuestas, cookies de sesión con `Secure`/HSTS automáticos y política de contraseñas mínima.
+- **Editor de hallazgos**: auto-guardado, campos opcionales opt-in y aviso para cambiar las credenciales por defecto.
+- **Informe / PDF**: los hallazgos fluyen entre páginas sin huecos en blanco, las tablas largas ya no saltan enteras de página, y el índice deja de reservar espacio de sobra en impresión.
+- **Retirada del TLP**: eliminado del editor y del informe (se mantiene la Clasificación); portada y editor rediseñados con mejor agrupación visual.
 
 ## 🚀 Novedades de la 2.0.2
 

@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.0-blue.svg" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/version-2.2.0-blue.svg" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
@@ -24,6 +24,13 @@
   <strong>Versión actual: 2.1.0</strong>
 </p>
 
+## 🚀 Novedades de la 2.2.0
+
+- **Acceso rápido a "Mis Reportes"**: al hacer clic en el logo/nombre **Pentestify** de la cabecera se abre directamente la página de *Mis Reportes*.
+- **Editor de hallazgos más limpio**: se han retirado los campos accesorios (Estado, Categoría OWASP Top 10, Probabilidad, Impacto (riesgo), Activos afectados, Cumplimiento/mapeo y Notas de re-test) para centrar el formulario en lo esencial.
+- **Alcance y Metodología opt-in**: los interruptores *"en informe"* ahora están **desmarcados por defecto** — el usuario decide qué secciones incluir. El inicio/fin del engagement dejan de ser opcionales (sin interruptor propio) y los interruptores comienzan en *"Dentro del alcance"*.
+- **PoC con código perfecto**: el código pegado en *Pasos para Reproducir (PoC)* conserva su indentación en el informe (vista previa y PDF), sin descuadres, tanto con bloques ``` como con código sin vallas.
+
 ## 🚀 Novedades de la 2.1.0
 
 - **Integración MCP para agentes IA**: servidor MCP nativo (`backend/mcp_server.py`) con 10 herramientas para que Claude Desktop, Claude Code y otros agentes compatibles creen y gestionen reportes sin pasar por la interfaz web. Incluye API keys (`ptf_*`) gestionables desde la página de Cuenta, con config JSON lista para `claude_desktop_config.json`.
@@ -31,50 +38,6 @@
 - **Editor de hallazgos**: auto-guardado, campos opcionales opt-in y aviso para cambiar las credenciales por defecto.
 - **Informe / PDF**: los hallazgos fluyen entre páginas sin huecos en blanco, las tablas largas ya no saltan enteras de página, y el índice deja de reservar espacio de sobra en impresión.
 - **Retirada del TLP**: eliminado del editor y del informe (se mantiene la Clasificación); portada y editor rediseñados con mejor agrupación visual.
-
-## 🚀 Novedades de la 2.0.2
-
-- **Nuevo tema "Red Team"**: cuarto tema de informe, oscuro con acento carmesí, look profesional y minimalista (portada con diana de línea y resplandor rojo). Se aplica tanto al informe (vista previa / PDF) como a **toda la interfaz** de la aplicación.
-
-## 🚀 Novedades de la 2.0.1
-
-- **Campo "Exploit" por hallazgo**: pega un fragmento de código y se imprime en el informe (vista previa y PDF) como un bloque de código con estilo de terminal, respetando indentación y saltos de línea. Campo opcional.
-- **Cambio de idioma en el informe exportado**: corregido un bug por el que el PDF/HTML exportado salía siempre en español; ahora respeta el idioma elegido.
-- **Editor más claro**: la sección **Findings / Vulnerabilidades** ahora ocupa todo el ancho, con título centrado y los hallazgos en dos columnas; el **historial de revisiones** se gestiona desde un modal.
-- **Contraseña al exportar la BD**: la protección con contraseña se establece al pulsar *Exportar BD* (cifrado opcional AES-256), ya que la base de datos contiene todo (reportes, ajustes, temas y usuarios).
-- **Detalles de marca**: nombre **Pentestify** en la cabecera y footer de autoría en *Mis Reportes*.
-- **Dependencias más ligeras**: eliminados paquetes obsoletos del entorno (Playwright, pypdf, cryptography y transitivos).
-
-## 🚀 Novedades de la 2.0.0
-
-- **Sin Playwright/Chromium**: el informe se renderiza y exporta 100% en el navegador. Despliegue mucho más ligero (sin descargar navegadores).
-  - **Exportar HTML**: documento HTML autocontenido (CSS incrustado e imágenes embebidas), se ve perfecto y se abre en cualquier navegador (estilo SysReptor).
-  - **Generar PDF**: impresión nativa del navegador (Guardar como PDF) sobre la vista de impresión.
-- **Estudio de temas a página completa**: personaliza *todas* las variables de estilo del informe con vista previa en vivo, y **guárdalo como un tema nuevo** en la app o **expórtalo** (JSON o plantilla HTML).
-- **Vista previa con conmutador Renderizado / Código fuente** del informe.
-- **Botón único “Exportar”** con menú (PDF / HTML).
-- **Base de datos protegida con contraseña**: exportación cifrada (AES-256-GCM, cliente) desde *Mis Reportes*.
-- **Todo se guarda en SQLite** (reportes, hallazgos, usuarios, temas, plantillas y *preferencias*: idioma, tema activo y opciones de PDF). Exportar la BD captura el 100% del estado.
-- Arregla el desbordamiento del recuadro de PoC y el icono de eliminar usuario.
-
-## ✨ Novedades de la 1.2.0
-
-Esta versión convierte Pentestify en un generador de **informes de pentesting profesionales**:
-
-### 🎨 Temas del informe basados en CSS (personalizables)
-- Los estilos del informe ahora se controlan con **variables CSS** (`--rt-*`), no con colores incrustados en el código.
-- Se mantienen los **3 temas de fábrica** (Claro, Oscuro, HTB).
-- Los usuarios pueden **crear sus propios temas** con un editor visual (colores + vista previa en vivo), **aplicarlos**, **exportarlos** e **importarlos** como JSON, y eliminarlos. Gestor disponible en *Ajustes → Tema del informe*.
-
-### 🛡️ Funcionalidades de informe profesional
-- **Calculadora CVSS 3.1** interactiva: genera el vector, calcula el *base score* y deriva la severidad automáticamente.
-- **Alcance y Metodología**: in-scope / out-of-scope, ventana del engagement, estándares aplicados (OWASP WSTG/Top 10, PTES, NIST 800-115, OSSTMM, MITRE ATT&CK…) y herramientas utilizadas.
-- **Activos afectados** por hallazgo (host/URL/parámetro).
-- **Estado del hallazgo** (abierto / remediado / riesgo aceptado / falso positivo) y **notas de re-test**.
-- **Matriz de riesgo** Probabilidad × Impacto en el resumen ejecutivo.
-- **IDs de hallazgo** (F-01, F-02…), **vector CVSS**, **categoría OWASP Top 10**, **referencias múltiples** y **mapeo de cumplimiento** (PCI-DSS, ISO 27001, MITRE…).
-- **Historial de revisiones / control de versiones** del documento.
-- Los nuevos campos se reflejan en la **vista previa** y en el **PDF** (incluidos los temas personalizados).
 
 ## 👥 Autores
 

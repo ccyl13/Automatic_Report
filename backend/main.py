@@ -799,6 +799,11 @@ def create_demo_report(db: Session = Depends(get_db), _user: models.User = Depen
         tools_used="Burp Suite Pro, sqlmap, ffuf, gobuster, nmap, nuclei, subfinder, GTFOBins",
         engagement_start=datetime.today().strftime("%Y-%m-%d"),
         engagement_end=datetime.today().strftime("%Y-%m-%d"),
+        show_scope_section=1,
+        scope_fields_visibility={
+            "scopeIn": True, "scopeOut": True, "standards": True,
+            "methodologyNotes": True, "toolsUsed": True,
+        },
         revision_history=[
             {"version": "0.1", "date": datetime.today().strftime("%Y-%m-%d"), "author": "Security Research Team", "changes": "Borrador inicial de hallazgos"},
             {"version": "1.0", "date": datetime.today().strftime("%Y-%m-%d"), "author": "Security Research Team", "changes": "Versión final entregada al cliente"},

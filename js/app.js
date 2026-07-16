@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 
 const state = {
     lang: 'es',
@@ -39,7 +39,7 @@ const state = {
         engagementStart: '',
         engagementEnd: '',
         revisionHistory: [],
-        showScopeSection: true,
+        showScopeSection: false,
         scopeFieldsVisibility: {}
     },
     findings: [],
@@ -604,6 +604,11 @@ function markdownToHtml(str) {
     let inUl = false, inOl = false;
     let tableBuf = [];
 
+    // Conserva la sangría inicial (espacios/tabs) convirtiéndola en espacios
+    // duros, para que el código pegado en el PoC no se descuadre en el informe.
+    const preserveIndent = (ln) => ln.replace(/^[ \t]+/, m =>
+        m.replace(/\t/g, '\u00a0\u00a0\u00a0\u00a0').replace(/ /g, '\u00a0'));
+
     const closeUl = () => { if (inUl) { out.push('</ul>'); inUl = false; } };
     const closeOl = () => { if (inOl) { out.push('</ol>'); inOl = false; } };
     const closeAll = () => { closeUl(); closeOl(); };
@@ -672,7 +677,7 @@ function markdownToHtml(str) {
         }
         // Texto normal
         closeAll();
-        out.push(line + '<br>');
+        out.push(preserveIndent(line) + '<br>');
     }
     flushTable();
     closeAll();
@@ -899,8 +904,10 @@ function renderNavbar() {
     return `
         <header class="navbar">
             <div class="navbar-brand">
-                <img src="/assets/logo-transparent.png" alt="Pentestify" style="height: 38px; width: 38px; object-fit: contain; flex-shrink: 0;">
-                <span class="app-name">Pentestify</span>
+                <span onclick="showReports()" title="${t.myReports}" style="display:inline-flex;align-items:center;gap:0.65rem;cursor:pointer;">
+                    <img src="/assets/logo-transparent.png" alt="Pentestify" style="height: 38px; width: 38px; object-fit: contain; flex-shrink: 0;">
+                    <span class="app-name">Pentestify</span>
+                </span>
                 <span class="app-version-badge">v${APP_VERSION}</span>
                 ${state.isDirty ? '<span class="dirty-indicator">•</span>' : ''}
             </div>
@@ -1091,64 +1098,6 @@ function renderEditor() {
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>${state.lang === 'es' ? 'Estado' : 'Status'}</label>
-                                <select id="findingStatus" onchange="updateCurrentFinding('status', this.value)">
-                                    ${Object.entries(t.findingStatuses).map(([k, label]) =>
-        `<option value="${k}" ${(state.currentFinding.status || 'open') === k ? 'selected' : ''}>${label}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
-                                    <label style="margin:0;">${state.lang === 'es' ? 'Categoría OWASP Top 10' : 'OWASP Top 10 category'}</label>
-                                    ${_findingFieldToggle('owasp', state.lang === 'es')}
-                                </div>
-                                <input type="text" id="findingOwasp" placeholder="A01:2021" value="${escapeHTML(state.currentFinding.owasp || '')}" oninput="updateCurrentFinding('owasp', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'owasp') ? 'opacity:0.45;' : ''}">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
-                                    <label style="margin:0;">${state.lang === 'es' ? 'Probabilidad' : 'Likelihood'}</label>
-                                    ${_findingFieldToggle('risk', state.lang === 'es')}
-                                </div>
-                                <select id="findingLikelihood" onchange="updateCurrentFinding('likelihood', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'risk') ? 'opacity:0.45;' : ''}">
-                                    ${Object.entries(t.riskLevels).map(([k, label]) =>
-        `<option value="${k}" ${(state.currentFinding.likelihood || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>${state.lang === 'es' ? 'Impacto (riesgo)' : 'Impact (risk)'}</label>
-                                <select id="findingImpactRating" onchange="updateCurrentFinding('impactRating', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'risk') ? 'opacity:0.45;' : ''}">
-                                    ${Object.entries(t.riskLevels).map(([k, label]) =>
-        `<option value="${k}" ${(state.currentFinding.impactRating || '') === k ? 'selected' : ''}>${label}</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>${state.lang === 'es' ? 'Activos afectados (host/URL/parámetro, uno por línea)' : 'Affected assets (host/URL/param, one per line)'}</label>
-                            <textarea id="findingAffected" rows="2" placeholder="${state.lang === 'es' ? 'https://app.com/api/users/{id}\nparam: id' : 'https://app.com/api/users/{id}\nparam: id'}" oninput="updateCurrentFinding('affectedAssets', this.value)">${escapeHTML(state.currentFinding.affectedAssets || '')}</textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
-                                <label style="margin:0;">${state.lang === 'es' ? 'Cumplimiento / mapeo (separado por comas)' : 'Compliance / mapping (comma separated)'}</label>
-                                ${_findingFieldToggle('compliance', state.lang === 'es')}
-                            </div>
-                            <input type="text" id="findingCompliance" placeholder="PCI-DSS 6.5.1, ISO 27001 A.14, MITRE T1190" value="${escapeHTML((state.currentFinding.compliance || []).join(', '))}" oninput="updateCurrentFindingCsv('compliance', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'compliance') ? 'opacity:0.45;' : ''}">
-                        </div>
-
-                        <div class="form-group">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
-                                <label style="margin:0;">${state.lang === 'es' ? 'Notas de re-test (opcional)' : 'Re-test notes (optional)'}</label>
-                                ${_findingFieldToggle('retest', state.lang === 'es')}
-                            </div>
-                            <textarea id="findingRetest" rows="2" placeholder="${state.lang === 'es' ? 'Estado tras la re-verificación...' : 'Status after re-verification...'}" oninput="updateCurrentFinding('retestNotes', this.value)" style="${!getFindingFieldVis(state.currentFinding, 'retest') ? 'opacity:0.45;' : ''}">${escapeHTML(state.currentFinding.retestNotes || '')}</textarea>
-                        </div>
-
                         <div class="form-actions">
                             <button type="submit" class="btn-primary">${state.editingFindingIndex !== null ? t.updateFinding : t.addFinding}</button>
                             <button type="button" onclick="resetFindingForm()">${t.cancel}</button>
@@ -1328,7 +1277,7 @@ function toggleMethodologyStandard(key) {
 
 function getScopeFieldVis(key) {
     const vis = state.auditData.scopeFieldsVisibility || {};
-    return vis[key] !== false;
+    return !!vis[key];
 }
 
 function _scopeFieldToggle(key, isEs) {
@@ -1387,28 +1336,23 @@ function renderScopeMethodologySection() {
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e5e7eb;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
             <h3 style="margin:0;">${isEs ? 'Alcance y Metodología' : 'Scope & Methodology'}</h3>
-            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500; font-size:0.82rem; color:${d.showScopeSection !== false ? '#2563eb' : '#9ca3af'}; user-select:none;">
-                <div style="position:relative; width:36px; height:20px; flex-shrink:0;" onclick="updateAuditData('showScopeSection', ${d.showScopeSection !== false ? 'false' : 'true'}); renderApp();" title="${isEs ? 'Incluir esta sección en el informe' : 'Include this section in the report'}">
-                    <div style="width:36px; height:20px; border-radius:999px; background:${d.showScopeSection !== false ? '#2563eb' : '#d1d5db'}; transition:background 0.2s;"></div>
-                    <div style="position:absolute; top:2px; left:${d.showScopeSection !== false ? '18px' : '2px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:left 0.2s;"></div>
+            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500; font-size:0.82rem; color:${d.showScopeSection === true ? '#2563eb' : '#9ca3af'}; user-select:none;">
+                <div style="position:relative; width:36px; height:20px; flex-shrink:0;" onclick="updateAuditData('showScopeSection', ${d.showScopeSection === true ? 'false' : 'true'}); renderApp();" title="${isEs ? 'Incluir esta sección en el informe' : 'Include this section in the report'}">
+                    <div style="width:36px; height:20px; border-radius:999px; background:${d.showScopeSection === true ? '#2563eb' : '#d1d5db'}; transition:background 0.2s;"></div>
+                    <div style="position:absolute; top:2px; left:${d.showScopeSection === true ? '18px' : '2px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:left 0.2s;"></div>
                 </div>
                 ${isEs ? 'Incluir en informe' : 'Include in report'}
             </label>
         </div>
 
         <div class="form-row">
-            <div class="form-group" style="position:relative;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
-                    <label style="margin:0;">${isEs ? 'Inicio del engagement' : 'Engagement start'}</label>
-                    ${_scopeFieldToggle('engagementWindow', isEs)}
-                </div>
-                <input type="date" value="${escapeHTML(d.engagementStart || '')}" onchange="updateAuditData('engagementStart', this.value)" style="${!getScopeFieldVis('engagementWindow') ? 'opacity:0.4;' : ''}">
+            <div class="form-group">
+                <label>${isEs ? 'Inicio del engagement' : 'Engagement start'}</label>
+                <input type="date" value="${escapeHTML(d.engagementStart || '')}" onchange="updateAuditData('engagementStart', this.value)">
             </div>
             <div class="form-group">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
-                    <label style="margin:0;">${isEs ? 'Fin del engagement' : 'Engagement end'}</label>
-                </div>
-                <input type="date" value="${escapeHTML(d.engagementEnd || '')}" onchange="updateAuditData('engagementEnd', this.value)" style="${!getScopeFieldVis('engagementWindow') ? 'opacity:0.4;' : ''}">
+                <label>${isEs ? 'Fin del engagement' : 'Engagement end'}</label>
+                <input type="date" value="${escapeHTML(d.engagementEnd || '')}" onchange="updateAuditData('engagementEnd', this.value)">
             </div>
         </div>
 
@@ -2578,12 +2522,12 @@ function renderScopeMethodologyPreview(c, t) {
     const d = state.auditData;
     const std = d.methodologyStandards || [];
     const stdLabels = METHODOLOGY_STANDARDS.filter(s => std.includes(s.key)).map(s => s.label);
-    if (d.showScopeSection === false) return '';
+    if (d.showScopeSection !== true) return '';
 
     const fv = d.scopeFieldsVisibility || {};
-    const fvis = (key) => fv[key] !== false;
+    const fvis = (key) => !!fv[key];
 
-    const showDates   = fvis('engagementWindow') && (d.engagementStart || d.engagementEnd);
+    const showDates   = (d.engagementStart || d.engagementEnd);
     const showScopeIn  = fvis('scopeIn') && d.scopeIn;
     const showScopeOut = fvis('scopeOut') && d.scopeOut;
     const showStd      = fvis('standards') && stdLabels.length;
@@ -2927,7 +2871,6 @@ function renderPreview() {
                                 <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap;">
                                     ${t.severityLevels[f.severity]}
                                 </div>
-                                ${findingStatusBadge(f.status)}
                             </div>
                         </div>
 
@@ -4986,7 +4929,7 @@ async function loadReport(id) {
             engagementStart: report.engagement_start || '',
             engagementEnd: report.engagement_end || '',
             revisionHistory: Array.isArray(report.revision_history) ? report.revision_history : [],
-            showScopeSection: report.show_scope_section === 0 ? false : true,
+            showScopeSection: report.show_scope_section === 1,
             scopeFieldsVisibility: (typeof report.scope_fields_visibility === 'object' && report.scope_fields_visibility) ? report.scope_fields_visibility : {}
         };
         state.lang = report.lang;
@@ -5266,7 +5209,7 @@ async function saveCurrentReport(silent = false) {
             engagement_start: state.auditData.engagementStart || '',
             engagement_end: state.auditData.engagementEnd || '',
             revision_history: state.auditData.revisionHistory || [],
-            show_scope_section: state.auditData.showScopeSection === false ? 0 : 1,
+            show_scope_section: state.auditData.showScopeSection === true ? 1 : 0,
             scope_fields_visibility: state.auditData.scopeFieldsVisibility || {}
         };
 

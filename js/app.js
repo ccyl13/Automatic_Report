@@ -559,6 +559,14 @@ const escapeHTML = (str) => {
 
 const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
 
+// La severidad se interpola directamente en atributos `class` y `style`
+// (severity-<x>, var(--severity-<x>)), donde escapeHTML no protege (las comillas
+// escapadas no impiden romper el token del atributo). Se restringe a la lista
+// blanca conocida; cualquier otro valor cae a 'info'. Neutraliza el XSS aunque
+// un valor malicioso llegara a almacenarse.
+const SEVERITY_KEYS = ['crit', 'high', 'med', 'low', 'info'];
+const safeSeverity = (s) => (SEVERITY_KEYS.includes(s) ? s : 'info');
+
 function markdownToHtml(str) {
     if (!str) return '';
     let s = String(str);
@@ -1549,10 +1557,10 @@ function renderFindingsList() {
             ${header}
             <div class="findings-grid">
                 ${state.findings.map((f, idx) => `
-                    <div class="finding-item severity-${f.severity}">
+                    <div class="finding-item severity-${safeSeverity(f.severity)}">
                         <div class="finding-header">
                             <span class="finding-number">#${idx + 1}</span>
-                            <span class="finding-severity">${t.severityLevels[f.severity]}</span>
+                            <span class="finding-severity">${t.severityLevels[safeSeverity(f.severity)]}</span>
                             <div class="finding-actions">
                                 <button class="btn-edit" onclick="editFinding(${idx})" title="${isEs ? 'Editar' : 'Edit'}">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2820,8 +2828,8 @@ function renderPreview() {
                                 <span style="font-weight: 500;">${escapeHTML(f.title)}</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem;">
-                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 6px; background-color: var(--severity-${f.severity}); color: white; min-width: 80px; text-align: center; display: inline-block;">
-                                    ${t.severityLevels[f.severity]}
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 6px; background-color: var(--severity-${safeSeverity(f.severity)}); color: white; min-width: 80px; text-align: center; display: inline-block;">
+                                    ${t.severityLevels[safeSeverity(f.severity)]}
                                 </span>
                                 <span style="font-weight: 700; color: ${c.textGray}; font-size: 0.875rem; width: 40px; text-align: right;">${escapeHTML(f.cvss || '-')}</span>
                             </div>
@@ -2873,15 +2881,15 @@ function renderPreview() {
             <!-- HALLAZGOS TÉCNICOS -->
             <div class="findings-preview" style="background: ${c.pageBg};">
                 ${state.findings.map((f, idx) => `
-                    <div id="finding-${idx}" class="finding-preview severity-${f.severity}" style="margin-bottom: 3rem; background: ${c.cardBg}; padding: 2rem; border-radius: 12px; border: 1px solid ${c.border}; ${state.pdfShowSeverityBars ? `border-left: 6px solid var(--severity-${f.severity});` : ''} box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                    <div id="finding-${idx}" class="finding-preview severity-${safeSeverity(f.severity)}" style="margin-bottom: 3rem; background: ${c.cardBg}; padding: 2rem; border-radius: 12px; border: 1px solid ${c.border}; ${state.pdfShowSeverityBars ? `border-left: 6px solid var(--severity-${safeSeverity(f.severity)});` : ''} box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid ${c.border}; padding-bottom: 1rem; page-break-after: avoid;">
                             <div style="min-width:0;">
                                 <span style="display:inline-block;font-family:ui-monospace,monospace;font-size:0.7rem;font-weight:700;color:${c.textGray};border:1px solid ${c.border};border-radius:5px;padding:0.1rem 0.45rem;margin-bottom:0.4rem;">${findingCode(idx)}</span>
                                 <h3 style="font-size: 1.5rem; font-weight: 800; color: ${c.textHeading}; margin: 0;">${idx + 1}. ${escapeHTML(f.title)}</h3>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem;margin-left:1rem;">
-                                <div style="background-color: var(--severity-${f.severity}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap;">
-                                    ${t.severityLevels[f.severity]}
+                                <div style="background-color: var(--severity-${safeSeverity(f.severity)}); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-transform: uppercase; white-space: nowrap;">
+                                    ${t.severityLevels[safeSeverity(f.severity)]}
                                 </div>
                             </div>
                         </div>

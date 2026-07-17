@@ -11,6 +11,17 @@ _DATA_IMAGE_RE = re.compile(r'^data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s
 # Caracteres permitidos en el nombre de usuario (sin comillas ni metacaracteres).
 _USERNAME_RE = re.compile(r'^[A-Za-z0-9_.\-]{3,32}$')
 
+# Únicos valores de severidad admitidos. El frontend los interpola directamente
+# en atributos `class`/`style` (severity-<x>, var(--severity-<x>)), por lo que
+# cualquier otro valor permitiría romper el atributo e inyectar HTML/JS (XSS).
+# Se sanea aquí (entrada y salida) para neutralizar también datos ya guardados.
+SEVERITY_LEVELS = ("crit", "high", "med", "low", "info")
+
+
+def sanitize_severity(value) -> str:
+    v = (value or "").strip().lower() if isinstance(value, str) else ""
+    return v if v in SEVERITY_LEVELS else "info"
+
 
 def is_safe_image_src(value) -> bool:
     return isinstance(value, str) and bool(_DATA_IMAGE_RE.match(value.strip()))
@@ -105,6 +116,11 @@ class FindingBase(BaseModel):
     fields_visibility: dict = {}
     images: List[str] = []
     order_index: int = 0
+
+    @field_validator('severity')
+    @classmethod
+    def _sanitize_severity(cls, v):
+        return sanitize_severity(v)
 
     @field_validator('images')
     @classmethod
@@ -346,6 +362,11 @@ class FindingTemplateBase(BaseModel):
         if not _SLUG_RE.match(v):
             raise ValueError('Slug inválido (solo minúsculas, números y guiones)')
         return v
+
+    @field_validator('severity')
+    @classmethod
+    def _sanitize_severity(cls, v):
+        return sanitize_severity(v)
 
 
 class FindingTemplateCreate(FindingTemplateBase):

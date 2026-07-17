@@ -24,26 +24,6 @@
   <strong>Versión actual: 2.3.1</strong>
 </p>
 
-## 🚀 Novedades de la 2.3.0
-
-- **Reordenar evidencias arrastrando**: en el editor de hallazgos ya puedes **arrastrar las imágenes** para cambiar su orden, con un número de posición visible en cada miniatura. El nuevo orden se refleja tal cual en el informe (vista previa y PDF).
-- **Alcance y Metodología sin interruptor de sección**: se retira el interruptor *"Incluir en informe"* de la cabecera de la sección — no tenía sentido junto a los interruptores por-campo. La sección aparece automáticamente en el informe cuando algún campo opt-in tiene contenido (o hay fechas de engagement).
-
-## 🚀 Novedades de la 2.2.0
-
-- **Acceso rápido a "Mis Reportes"**: al hacer clic en el logo/nombre **Pentestify** de la cabecera se abre directamente la página de *Mis Reportes*.
-- **Editor de hallazgos más limpio**: se han retirado los campos accesorios (Estado, Categoría OWASP Top 10, Probabilidad, Impacto (riesgo), Activos afectados, Cumplimiento/mapeo y Notas de re-test) para centrar el formulario en lo esencial.
-- **Alcance y Metodología opt-in**: los interruptores *"en informe"* ahora están **desmarcados por defecto** — el usuario decide qué secciones incluir. El inicio/fin del engagement dejan de ser opcionales (sin interruptor propio) y los interruptores comienzan en *"Dentro del alcance"*.
-- **PoC con código perfecto**: el código pegado en *Pasos para Reproducir (PoC)* conserva su indentación en el informe (vista previa y PDF), sin descuadres, tanto con bloques ``` como con código sin vallas.
-
-## 🚀 Novedades de la 2.1.0
-
-- **Integración MCP para agentes IA**: servidor MCP nativo (`backend/mcp_server.py`) con 10 herramientas para que Claude Desktop, Claude Code y otros agentes compatibles creen y gestionen reportes sin pasar por la interfaz web. Incluye API keys (`ptf_*`) gestionables desde la página de Cuenta, con config JSON lista para `claude_desktop_config.json`.
-- **Autenticación más robusta**: rate-limiting anti fuerza bruta en el login (429 tras 5 fallos por IP), cabeceras de seguridad en todas las respuestas, cookies de sesión con `Secure`/HSTS automáticos y política de contraseñas mínima.
-- **Editor de hallazgos**: auto-guardado, campos opcionales opt-in y aviso para cambiar las credenciales por defecto.
-- **Informe / PDF**: los hallazgos fluyen entre páginas sin huecos en blanco, las tablas largas ya no saltan enteras de página, y el índice deja de reservar espacio de sobra en impresión.
-- **Retirada del TLP**: eliminado del editor y del informe (se mantiene la Clasificación); portada y editor rediseñados con mejor agrupación visual.
-
 ## 👥 Autores
 
 <br>

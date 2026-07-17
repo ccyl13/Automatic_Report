@@ -14,15 +14,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version 2.3.0">
+  <img src="https://img.shields.io/badge/version-2.3.1-blue.svg" alt="Version 2.3.1">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.3.0</strong>
+  <strong>Versión actual: 2.3.1</strong>
 </p>
+
+## 🔒 Novedades de la 2.3.1
+
+- **Corrección de seguridad (XSS almacenado en `severity`)**: el campo de severidad de los hallazgos se aceptaba sin validar y el frontend lo interpolaba directamente en atributos `class` (`severity-<x>`) y `style` (`var(--severity-<x>)`) sin escapar. Un usuario autenticado podía romper el atributo e inyectar un `<img onerror>` que ejecutaba JavaScript en el navegador de cualquiera que abriera el reporte (Edición y Vista Previa). Ahora la severidad se restringe a la lista blanca `{crit, high, med, low, info}` en **dos capas**: validación en el backend (aplicada también a las respuestas, por lo que neutraliza datos ya almacenados y la vía del servidor MCP) y saneado en el frontend antes de interpolarla.
 
 ## 🚀 Novedades de la 2.3.0
 

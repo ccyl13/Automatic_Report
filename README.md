@@ -24,10 +24,6 @@
   <strong>Versión actual: 2.3.1</strong>
 </p>
 
-## 🔒 Novedades de la 2.3.1
-
-- **Corrección de seguridad (XSS almacenado en `severity`)**: el campo de severidad de los hallazgos se aceptaba sin validar y el frontend lo interpolaba directamente en atributos `class` (`severity-<x>`) y `style` (`var(--severity-<x>)`) sin escapar. Un usuario autenticado podía romper el atributo e inyectar un `<img onerror>` que ejecutaba JavaScript en el navegador de cualquiera que abriera el reporte (Edición y Vista Previa). Ahora la severidad se restringe a la lista blanca `{crit, high, med, low, info}` en **dos capas**: validación en el backend (aplicada también a las respuestas, por lo que neutraliza datos ya almacenados y la vía del servidor MCP) y saneado en el frontend antes de interpolarla.
-
 ## 🚀 Novedades de la 2.3.0
 
 - **Reordenar evidencias arrastrando**: en el editor de hallazgos ya puedes **arrastrar las imágenes** para cambiar su orden, con un número de posición visible en cada miniatura. El nuevo orden se refleja tal cual en el informe (vista previa y PDF).

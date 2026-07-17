@@ -74,7 +74,7 @@ _enable_docs = os.environ.get("ENABLE_DOCS", "0") == "1"
 app = FastAPI(
     title="Pentestify API",
     description="API para gestión de reportes de pentesting",
-    version="2.3.1",
+    version="2.3.2",
     lifespan=_mcp_lifespan,
     docs_url="/docs" if _enable_docs else None,
     redoc_url="/redoc" if _enable_docs else None,
@@ -226,7 +226,7 @@ if _mcp_enabled:
 
 @app.get("/api")
 def api_info():
-    return {"message": "Pentestify API", "version": "2.3.1"}
+    return {"message": "Pentestify API", "version": "2.3.2"}
 
 
 @app.get("/")

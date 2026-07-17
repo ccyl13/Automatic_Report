@@ -1,6 +1,6 @@
 // Versión de la aplicación. Se muestra de forma persistente en la interfaz
 // (login y navbar) y debe coincidir con la del backend (FastAPI) y el badge del README.
-const APP_VERSION = '2.3.1';
+const APP_VERSION = '2.3.2';
 
 const state = {
     lang: 'es',
@@ -588,8 +588,12 @@ function markdownToHtml(str) {
         return `\x01IC${inlineCodes.length - 1}\x01`;
     });
 
-    // 3. Escapar HTML en el texto restante
-    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // 3. Escapar HTML en el texto restante. Se escapan también las comillas
+    // (dobles y simples): la URL de los links [texto](url) del paso 5 se
+    // interpola dentro de un atributo href="…", así que un `"` sin escapar
+    // permitiría cerrar el atributo e inyectar event handlers (XSS almacenado).
+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+         .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
     // 4. Negrita+cursiva, negrita, cursiva
     s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');

@@ -14,14 +14,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.3.1-blue.svg" alt="Version 2.3.1">
+  <img src="https://img.shields.io/badge/version-2.3.2-blue.svg" alt="Version 2.3.2">
   <img src="https://img.shields.io/badge/Maintyaned%3F-yes-green.svg" alt="Maintained">
   <img src="https://img.shields.io/badge/PRs-welcome-blue.svg" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT">
 </p>
 
 <p align="center">
-  <strong>Versión actual: 2.3.1</strong>
+  <strong>Versión actual: 2.3.2</strong>
 </p>
 
 ## 👥 Autores

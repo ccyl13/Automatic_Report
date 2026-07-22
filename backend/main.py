@@ -1088,7 +1088,6 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
                 "message": "Base de datos importada correctamente",
                 "filename": file.filename,
                 "backup_created": backup_path is not None,
-                "backup_path": backup_path
             }
         )
         

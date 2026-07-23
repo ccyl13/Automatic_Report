@@ -53,6 +53,11 @@ def main():
 
     env = os.environ.copy()
     env["PYTHONPATH"] = os.path.join(os.getcwd(), "backend")
+    # Por defecto no confiamos en X-Forwarded-For de ninguna IP.
+    # Para despliegues detrás de un proxy de confianza, el admin debe configurar
+    # explícitamente: FORWARDED_ALLOW_IPS=<ip_del_proxy>
+    if "FORWARDED_ALLOW_IPS" not in env:
+        env["FORWARDED_ALLOW_IPS"] = ""
 
     python_exec = find_venv_python()
 

@@ -265,6 +265,22 @@ def _sanitize_theme_vars(vars_dict) -> dict:
     return clean
 
 
+def _decode_css_escapes(css: str) -> str:
+    """Resuelve los escapes CSS (\\XX hexadecimal y \\X literal) tal y como
+    los interpreta el tokenizador de cualquier navegador, ANTES de aplicar
+    el blocklist. Sin esto, payloads como "\\75 rl(" evaden la detección de
+    "url(" porque la subcadena literal nunca aparece en el texto crudo.
+    """
+    def _hex(m):
+        try:
+            return chr(int(m.group(1), 16))
+        except (ValueError, OverflowError):
+            return ''
+    css = re.sub(r'\\([0-9a-fA-F]{1,6})\s?', _hex, css)
+    css = re.sub(r'\\(.)', r'\1', css, flags=re.DOTALL)
+    return css
+
+
 def sanitize_css_source(css) -> str:
     """Sanea CSS libre escrito por el usuario antes de inyectarlo en un <style>.
 
@@ -275,6 +291,9 @@ def sanitize_css_source(css) -> str:
     if not isinstance(css, str):
         return ''
     css = css[:8000]
+    # Neutraliza escapes CSS (\75 -> "u", etc.) antes del blocklist para que
+    # no se puedan usar para reconstruir palabras clave bloqueadas.
+    css = _decode_css_escapes(css)
     # Nada de etiquetas HTML ni cierre de <style>.
     css = css.replace('<', '').replace('>', '')
     # Construcciones peligrosas fuera.

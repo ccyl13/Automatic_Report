@@ -567,16 +567,280 @@ const formatMultiline = (str) => escapeHTML(str).replace(/\n/g, '<br>');
 const SEVERITY_KEYS = ['crit', 'high', 'med', 'low', 'info'];
 const safeSeverity = (s) => (SEVERITY_KEYS.includes(s) ? s : 'info');
 
+// =========================================================================== //
+// Resaltado de sintaxis autocontenido (sin dependencias externas).
+//
+// Genera HTML con estilos inline en tiempo de render, de modo que el resaltado
+// sobrevive a la exportación como HTML autocontenido y a la impresión a PDF
+// (donde los <script> se eliminan). Se usa en los campos de cada hallazgo:
+// Descripción, PoC, Impacto, Remediación (bloques ``` ```) y Exploit.
+//
+// Detecta automáticamente el lenguaje (html, javascript, bash, python, php,
+// sql, json, css) cuando no se indica explícitamente en la valla ```lang.
+// =========================================================================== //
+
+// Paleta tipo "editor oscuro" (buen contraste, legible al imprimir).
+const HL_THEME = {
+    bg: '#0d1117', fg: '#e6edf3', headerBg: '#161b22', border: '#30363d',
+    label: '#7d8590', comment: '#8b949e', string: '#a5d6a7', number: '#79c0ff',
+    keyword: '#ff7b72', func: '#d2a8ff', builtin: '#ffa657', variable: '#ffa657',
+    tag: '#7ee787', attr: '#79c0ff'
+};
+
+// Nombre legible que se muestra en la esquina del bloque de código.
+const HL_LABELS = {
+    bash: 'Shell', shell: 'Shell', sh: 'Shell', console: 'Shell',
+    javascript: 'JavaScript', js: 'JavaScript', node: 'JavaScript',
+    typescript: 'TypeScript', ts: 'TypeScript',
+    python: 'Python', py: 'Python',
+    html: 'HTML', xml: 'XML',
+    php: 'PHP', sql: 'SQL', json: 'JSON', css: 'CSS',
+    c: 'C', ruby: 'Ruby', rb: 'Ruby',
+    text: 'Texto', plaintext: 'Texto', '': 'Texto'
+};
+
+// Normaliza alias del lenguaje a una clave canónica.
+function _hlCanon(lang) {
+    const l = String(lang || '').toLowerCase().trim();
+    const map = {
+        sh: 'bash', shell: 'bash', console: 'bash', zsh: 'bash', bash: 'bash',
+        js: 'javascript', node: 'javascript', jsx: 'javascript', javascript: 'javascript',
+        ts: 'typescript', typescript: 'typescript', tsx: 'typescript',
+        py: 'python', python: 'python', python3: 'python',
+        html: 'html', htm: 'html', xml: 'html',
+        php: 'php', sql: 'sql', mysql: 'sql', psql: 'sql',
+        json: 'json', css: 'css', scss: 'css',
+        c: 'c', h: 'c', ruby: 'ruby', rb: 'ruby',
+        text: 'text', plaintext: 'text', txt: 'text'
+    };
+    return map[l] || (l || '');
+}
+
+function _hlEscape(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Detección heurística del lenguaje cuando no se especifica en la valla.
+function detectCodeLang(code) {
+    const s = String(code || '');
+    const head = s.slice(0, 400);
+
+    // Shebang explícito
+    const sheb = head.match(/^#!.*\b(bash|sh|zsh|python[0-9.]*|node|php|perl|ruby)\b/);
+    if (sheb) {
+        const b = sheb[1];
+        if (/python/.test(b)) return 'python';
+        if (b === 'node') return 'javascript';
+        if (b === 'php') return 'php';
+        return 'bash';
+    }
+
+    if (/^\s*<\?php/.test(head) || /<\?=/.test(head)) return 'php';
+    if (/^\s*<!doctype html/i.test(head) || /<\/(html|body|div|span|head|p|a|script|style|table)>/i.test(s) ||
+        /<(html|head|body|div|p|span|a|img|script|link|meta|table|ul|li|h[1-6])\b/i.test(head)) return 'html';
+
+    // JSON: empieza por { o [ y tiene pares "clave":
+    const trimmed = s.trim();
+    if ((trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+        /"[^"]*"\s*:/.test(head) && !/\bfunction\b|=>/.test(head)) return 'json';
+
+    // Ruby (antes que Python, porque ambos usan `def`). Señales exclusivas de
+    // Ruby: puts, require '...', elsif, interpolación #{...}, símbolos, o `end`
+    // cerrando un bloque def/class/module/do.
+    if (/\bputs\b|\bprint\s+["']|\brequire(_relative)?\s+['"]|\belsif\b|#\{[^}]*\}|\b(attr_accessor|attr_reader|attr_writer)\b/.test(s) ||
+        (/^\s*end\s*$/m.test(s) && /\b(def|class|module|do)\b/.test(s)) ||
+        /\.\w+\s+do\s*\|/.test(s)) return 'ruby';
+
+    if (/\b(def|elif|import\s+\w|from\s+\w+\s+import|print\()\b/.test(s) ||
+        /^\s*def\s+\w+\s*\(/m.test(s)) return 'python';
+
+    if (/\b(function|const|let|var|=>|console\.(log|error)|document\.|window\.|require\()\b/.test(s)) return 'javascript';
+
+    // C: #include, tipos y firma main(), o printf/malloc con ;
+    if (/^\s*#\s*(include|define|ifndef|ifdef|pragma)\b/m.test(s) ||
+        /\b(int|void|char|float|double|struct|unsigned|const)\s+\**\w+\s*\([^;{]*\)\s*\{/.test(s) ||
+        /\b(printf|scanf|malloc|free|sizeof|fprintf|memcpy|strcpy)\s*\(/.test(s)) return 'c';
+
+    if (/\b(SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE|DROP\s+TABLE|ALTER\s+TABLE)\b/i.test(s)) return 'sql';
+
+    if (/[.#][\w-]+\s*\{[^}]*:[^}]*;[^}]*\}/.test(s) || /^\s*[.#]?[\w-]+\s*\{/m.test(s) && /:\s*[^;]+;/.test(s)) return 'css';
+
+    // Shell: comandos comunes, prompts, tuberías, redirecciones.
+    if (/^\s*\$\s/m.test(s) || /^\s*#\s/m.test(s) ||
+        /\b(sudo|apt(-get)?|echo|cd|ls|cat|grep|awk|sed|curl|wget|chmod|chown|mkdir|rm|cp|mv|tar|ssh|nmap|export)\b/.test(s) ||
+        /(\|\||&&|\s\|\s|>>|2>&1)/.test(s)) return 'bash';
+
+    return 'text';
+}
+
+// Motor de tokenización por reglas (regex ancladas con flag sticky "y").
+function _hlTokenize(code, rules) {
+    let i = 0, out = '';
+    const n = code.length;
+    outer: while (i < n) {
+        for (const rule of rules) {
+            rule.re.lastIndex = i;
+            const m = rule.re.exec(code);
+            if (m && m.index === i && m[0].length > 0) {
+                const color = HL_THEME[rule.type];
+                const txt = _hlEscape(m[0]);
+                out += color ? `<span style="color:${color}">${txt}</span>` : txt;
+                i += m[0].length;
+                continue outer;
+            }
+        }
+        out += _hlEscape(code[i]);
+        i++;
+    }
+    return out;
+}
+
+// Conjuntos de reglas por lenguaje. El orden importa (más específico primero).
+function _hlRules(lang) {
+    const kw = (words) => new RegExp('\\b(?:' + words.join('|') + ')\\b', 'y');
+    const common = {
+        num: { type: 'number', re: /\b0x[0-9a-fA-F]+\b|\b\d[\d_]*(?:\.\d+)?\b/y },
+        func: { type: 'func', re: /[A-Za-z_]\w*(?=\s*\()/y },
+        dq: { type: 'string', re: /"(?:\\.|[^"\\])*"/y },
+        sq: { type: 'string', re: /'(?:\\.|[^'\\])*'/y }
+    };
+
+    switch (lang) {
+        case 'bash':
+            return [
+                { type: 'comment', re: /#.*/y },
+                common.dq, common.sq,
+                { type: 'variable', re: /\$\{[^}]*\}|\$\w+|\$[!@#?*]/y },
+                { type: 'keyword', re: kw(['if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'do', 'done', 'in', 'case', 'esac', 'function', 'return', 'exit', 'break', 'continue', 'local', 'export', 'source', 'set', 'unset', 'read', 'echo', 'printf', 'test', 'sudo', 'cd', 'ls', 'cat', 'grep', 'awk', 'sed', 'curl', 'wget', 'chmod', 'chown', 'mkdir', 'rm', 'cp', 'mv', 'tar', 'ssh', 'nmap', 'apt', 'apt-get', 'kill', 'ps', 'find']) },
+                common.num
+            ];
+        case 'python':
+            return [
+                { type: 'comment', re: /#.*/y },
+                { type: 'string', re: /[rbfRBF]?"""[\s\S]*?"""|[rbfRBF]?'''[\s\S]*?'''/y },
+                { type: 'string', re: /[rbfRBF]?"(?:\\.|[^"\\])*"|[rbfRBF]?'(?:\\.|[^'\\])*'/y },
+                { type: 'keyword', re: kw(['def', 'class', 'import', 'from', 'as', 'return', 'if', 'elif', 'else', 'for', 'while', 'in', 'try', 'except', 'finally', 'with', 'lambda', 'pass', 'break', 'continue', 'raise', 'yield', 'global', 'nonlocal', 'and', 'or', 'not', 'is', 'assert', 'del', 'async', 'await']) },
+                { type: 'builtin', re: kw(['True', 'False', 'None', 'self', 'print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple', 'open', 'super']) },
+                common.func, common.num
+            ];
+        case 'javascript':
+        case 'typescript':
+            return [
+                { type: 'comment', re: /\/\/.*|\/\*[\s\S]*?\*\//y },
+                { type: 'string', re: /`(?:\\.|[^`\\])*`/y },
+                common.dq, common.sq,
+                { type: 'keyword', re: kw(['var', 'let', 'const', 'function', 'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break', 'continue', 'new', 'class', 'extends', 'super', 'this', 'typeof', 'instanceof', 'in', 'of', 'await', 'async', 'try', 'catch', 'finally', 'throw', 'yield', 'import', 'export', 'from', 'delete', 'void', 'interface', 'type', 'enum']) },
+                { type: 'builtin', re: kw(['null', 'undefined', 'true', 'false', 'NaN', 'Infinity', 'console', 'document', 'window', 'Math', 'JSON', 'Object', 'Array', 'String', 'Number', 'Boolean', 'Promise']) },
+                common.func, common.num
+            ];
+        case 'php':
+            return [
+                { type: 'comment', re: /\/\/.*|#.*|\/\*[\s\S]*?\*\//y },
+                common.dq, common.sq,
+                { type: 'variable', re: /\$\w+/y },
+                { type: 'keyword', re: kw(['function', 'return', 'if', 'else', 'elseif', 'foreach', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'class', 'public', 'private', 'protected', 'static', 'new', 'echo', 'print', 'require', 'require_once', 'include', 'include_once', 'namespace', 'use', 'try', 'catch', 'finally', 'throw', 'array', 'as', 'global']) },
+                { type: 'builtin', re: kw(['true', 'false', 'null', 'this', 'self']) },
+                common.func, common.num
+            ];
+        case 'sql':
+            return [
+                { type: 'comment', re: /--.*|\/\*[\s\S]*?\*\//y },
+                common.sq, common.dq,
+                { type: 'keyword', re: /\b(?:SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|ON|GROUP|BY|ORDER|HAVING|LIMIT|OFFSET|UNION|ALL|AND|OR|NOT|NULL|IS|LIKE|IN|BETWEEN|AS|DISTINCT|COUNT|SUM|AVG|MIN|MAX|CREATE|TABLE|DROP|ALTER|ADD|PRIMARY|KEY|FOREIGN|REFERENCES|INDEX|DATABASE|TRUE|FALSE)\b/iy },
+                common.num
+            ];
+        case 'json':
+            return [
+                { type: 'attr', re: /"(?:\\.|[^"\\])*"(?=\s*:)/y },
+                { type: 'string', re: /"(?:\\.|[^"\\])*"/y },
+                { type: 'builtin', re: /\b(?:true|false|null)\b/y },
+                common.num
+            ];
+        case 'css':
+            return [
+                { type: 'comment', re: /\/\*[\s\S]*?\*\//y },
+                common.dq, common.sq,
+                { type: 'keyword', re: /[.#]?-?[A-Za-z_][\w-]*(?=\s*\{)/y },
+                { type: 'attr', re: /[-A-Za-z]+(?=\s*:)/y },
+                common.num
+            ];
+        case 'c':
+            return [
+                { type: 'comment', re: /\/\/.*|\/\*[\s\S]*?\*\//y },
+                { type: 'builtin', re: /^\s*#\s*\w+.*/my },   // directivas del preprocesador (#include, #define…)
+                { type: 'string', re: /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/y },
+                { type: 'keyword', re: kw(['int', 'char', 'short', 'long', 'float', 'double', 'void', 'unsigned', 'signed', 'const', 'static', 'extern', 'struct', 'union', 'enum', 'typedef', 'sizeof', 'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break', 'continue', 'goto', 'volatile', 'register', 'inline']) },
+                { type: 'builtin', re: kw(['printf', 'scanf', 'fprintf', 'sprintf', 'malloc', 'calloc', 'realloc', 'free', 'memcpy', 'memset', 'strcpy', 'strncpy', 'strlen', 'strcmp', 'fopen', 'fclose', 'fread', 'fwrite', 'NULL', 'stdin', 'stdout', 'stderr']) },
+                common.func, common.num
+            ];
+        case 'ruby':
+            return [
+                { type: 'comment', re: /#.*/y },
+                { type: 'string', re: /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/y },
+                { type: 'variable', re: /@@?\w+|\$\w+/y },       // @ivar, @@cvar, $global
+                { type: 'attr', re: /:[A-Za-z_]\w*[?!]?/y },      // símbolos :foo
+                { type: 'keyword', re: kw(['def', 'end', 'class', 'module', 'if', 'elsif', 'else', 'unless', 'case', 'when', 'then', 'while', 'until', 'for', 'in', 'do', 'begin', 'rescue', 'ensure', 'raise', 'return', 'yield', 'break', 'next', 'redo', 'retry', 'require', 'require_relative', 'include', 'extend', 'attr_accessor', 'attr_reader', 'attr_writer', 'and', 'or', 'not', 'super']) },
+                { type: 'builtin', re: kw(['nil', 'true', 'false', 'self', 'puts', 'print', 'p', 'gets', 'lambda', 'proc', 'new']) },
+                common.func, common.num
+            ];
+        default:
+            return null; // texto plano
+    }
+}
+
+// Resalta HTML mediante regex sobre el texto ya escapado (los tags quedan como
+// &lt;tag&gt;, sin colisión con entidades de identificadores).
+function _hlHtml(code) {
+    let s = _hlEscape(code);
+    s = s.replace(/&lt;!--[\s\S]*?--&gt;/g, m => `<span style="color:${HL_THEME.comment}">${m}</span>`);
+    s = s.replace(/(&lt;\/?)([A-Za-z][\w-]*)/g,
+        (_, br, name) => `${br}<span style="color:${HL_THEME.keyword}">${name}</span>`);
+    s = s.replace(/([\w-]+)(=)(&quot;[^&]*&quot;|&#39;[^&]*&#39;)/g,
+        (_, a, eq, v) => `<span style="color:${HL_THEME.attr}">${a}</span>${eq}<span style="color:${HL_THEME.string}">${v}</span>`);
+    return s;
+}
+
+// Devuelve solo el HTML resaltado del código (sin contenedor).
+function highlightCode(code, lang) {
+    const canon = _hlCanon(lang) || detectCodeLang(code);
+    if (canon === 'html') return { lang: canon, html: _hlHtml(code) };
+    const rules = _hlRules(canon);
+    if (!rules) return { lang: canon || 'text', html: _hlEscape(code) };
+    return { lang: canon, html: _hlTokenize(code, rules) };
+}
+
+// Bloque de código completo con cabecera (etiqueta de lenguaje) tipo editor.
+// opts.terminal = true muestra los 3 puntos de terminal (usado en Exploit).
+function renderCodeBlock(rawCode, langHint, opts) {
+    opts = opts || {};
+    const code = String(rawCode || '').replace(/\r\n?/g, '\n').replace(/\n$/, '');
+    const { lang, html } = highlightCode(code, langHint);
+    const label = HL_LABELS[lang] || (lang ? lang.toUpperCase() : 'Texto');
+    const T = HL_THEME;
+    const leftLabel = opts.title
+        ? `<span style="font-size:0.75rem;font-weight:700;color:${T.label};">${_hlEscape(opts.title)}</span>`
+        : '';
+    return `<div style="background:${T.bg};border:1px solid ${T.border};border-radius:8px;overflow:hidden;max-width:100%;break-inside:avoid;margin:0.6em 0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0.9rem;background:${T.headerBg};border-bottom:1px solid ${T.border};">
+            <span style="display:inline-flex;align-items:center;">${leftLabel}</span>
+            <span style="font-size:0.72rem;font-weight:700;letter-spacing:0.02em;color:${T.label};text-transform:none;">${_hlEscape(label)}</span>
+        </div>
+        <pre style="margin:0;padding:0.85rem 1.1rem;background:${T.bg};color:${T.fg};font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:0.82rem;line-height:1.6;tab-size:4;-moz-tab-size:4;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-width:100%;"><code>${html}</code></pre>
+    </div>`;
+}
+
 function markdownToHtml(str) {
     if (!str) return '';
     let s = String(str);
 
-    // 1. Proteger bloques de código (``` ... ```) antes de cualquier escape
+    // 1. Proteger bloques de código (``` ... ```) antes de cualquier escape.
+    //    Se conserva el lenguaje de la valla (```lang, opcional) y el código SIN
+    //    escapar: renderCodeBlock interpreta el lenguaje (o lo autodetecta) y
+    //    escapa token a token al aplicar el resaltado.
     const codeBlocks = [];
-    s = s.replace(/```(\w*)\r?\n?([\s\S]*?)```/g, (_, _lang, code) => {
-        const safe = code.replace(/\r?\n$/, '')
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        codeBlocks.push(safe);
+    s = s.replace(/```(\w*)\r?\n?([\s\S]*?)```/g, (_, lang, code) => {
+        codeBlocks.push({ lang: lang || '', code: code.replace(/\r?\n$/, '') });
         return `\x01CB${codeBlocks.length - 1}\x01`;
     });
 
@@ -653,7 +917,8 @@ function markdownToHtml(str) {
         const cbm = line.match(/^\x01CB(\d+)\x01$/);
         if (cbm) {
             closeAll();
-            out.push(`<pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(128,128,128,0.12);border-radius:6px;padding:0.7em 1em;font-size:0.82em;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin:0.35em 0;line-height:1.55;"><code>${codeBlocks[+cbm[1]]}</code></pre>`);
+            const _cb = codeBlocks[+cbm[1]];
+            out.push(renderCodeBlock(_cb.code, _cb.lang));
             continue;
         }
         // Encabezados # ## ### ####
@@ -2940,17 +3205,8 @@ function renderPreview() {
                         ` : ''}
 
                         ${f.exploit ? `
-                            <div style="margin-bottom: 1.5rem; background: ${c.pocBg}; color: ${c.pocText}; border-radius: 8px; border: 1px solid ${c.pocBorder}; overflow: hidden; max-width: 100%; break-inside: avoid;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; border-bottom: 1px solid ${c.pocBorder};">
-                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #ff5f56; display: inline-block;"></span>
-                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #ffbd2e; display: inline-block;"></span>
-                                    <span style="width: 11px; height: 11px; border-radius: 50%; background: #27c93f; display: inline-block;"></span>
-                                    <span style="margin-left: 0.5rem; font-size: 0.78rem; font-weight: 700; color: ${c.pocHeading}; display: inline-flex; align-items: center; gap: 0.4rem;">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c.pocHeading}" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                                        ${t.exploitCode}
-                                    </span>
-                                </div>
-                                <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.6; font-size: 0.82rem; color: ${c.pocText}; margin: 0; padding: 1rem 1.2rem; tab-size: 4; -moz-tab-size: 4; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%;">${escapeHTML(f.exploit)}</pre>
+                            <div style="margin-bottom: 1.5rem;">
+                                ${renderCodeBlock(f.exploit, '', { title: t.exploitCode })}
                             </div>
                         ` : ''}
 
@@ -3404,10 +3660,7 @@ function renderPdfModal() {
                     <!-- RIGHT: Live preview -->
                     <div style="flex:1;background:${panelBg};overflow:hidden;position:relative;min-height:480px;">
                         <div style="position:absolute;top:0;left:0;right:0;height:28px;display:flex;align-items:center;padding:0 0.75rem;gap:0.35rem;z-index:5;">
-                            <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;opacity:0.7;"></div>
-                            <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;opacity:0.7;"></div>
-                            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;opacity:0.7;"></div>
-                            <span style="margin-left:0.375rem;font-size:0.67rem;font-weight:600;color:${dotMuted};text-transform:uppercase;letter-spacing:0.06em;">Vista Previa</span>
+                            <span style="font-size:0.67rem;font-weight:600;color:${dotMuted};text-transform:uppercase;letter-spacing:0.06em;">Vista Previa</span>
                         </div>
                         <div id="pdf-preview-panel" style="position:absolute;inset:0;top:28px;overflow-y:auto;overflow-x:hidden;">
                             ${renderPdfPreviewHtml(state.pdfPrintTheme, state.pdfShowSeverityBars, state.pdfContentWidth)}

@@ -249,12 +249,25 @@ _LOGIN_WINDOW = int(os.environ.get("LOGIN_WINDOW_SECONDS", "900"))  # 15 min
 _login_fails: dict = {}
 _login_lock = threading.Lock()
 
+# IPs de proxies inversos de confianza que pueden establecer X-Forwarded-For.
+# Si está vacío (por defecto), el header se ignora y se usa siempre la IP real
+# de la conexión TCP, evitando que un atacante lo falsifique para bypassear el
+# rate limiting. Configurar solo si Pentestify corre detrás de un reverse proxy
+# conocido (ej: TRUSTED_PROXIES=127.0.0.1,192.168.1.1).
+_TRUSTED_PROXIES: set = {
+    ip.strip()
+    for ip in os.environ.get("TRUSTED_PROXIES", "").split(",")
+    if ip.strip()
+}
+
 
 def _client_ip(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    real_ip = request.client.host if request.client else "unknown"
+    if _TRUSTED_PROXIES and real_ip in _TRUSTED_PROXIES:
+        xff = request.headers.get("x-forwarded-for", "")
+        if xff:
+            return xff.split(",")[0].strip()
+    return real_ip
 
 
 def _login_retry_after(ip: str) -> int:
@@ -1075,7 +1088,6 @@ def import_database(file: UploadFile = File(...), db: Session = Depends(get_db),
                 "message": "Base de datos importada correctamente",
                 "filename": file.filename,
                 "backup_created": backup_path is not None,
-                "backup_path": backup_path
             }
         )
         
